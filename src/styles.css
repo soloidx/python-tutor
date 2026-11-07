@@ -547,6 +547,11 @@ button svg {
 .topic-chip.selected > span {
   color: #dc2626;
 }
+.topic-chip > span.topic-completed {
+  color: #059669;
+  font: inherit;
+  font-size: 9px;
+}
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr);
