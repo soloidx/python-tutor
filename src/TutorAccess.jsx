@@ -11,6 +11,7 @@ export function TutorPanel({
   access,
   conversation,
   topicId,
+  topicTitle,
   capture,
 }) {
   const state = useSyncExternalStore(
@@ -19,6 +20,12 @@ export function TutorPanel({
   );
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteButton = useRef(null);
+  function closeDelete() {
+    setConfirmDelete(false);
+    deleteButton.current?.focus();
+  }
   const busy = !!state.active;
   async function send() {
     if (!ready || busy || !message.trim()) return;
@@ -47,6 +54,42 @@ export function TutorPanel({
         </button>
       </div>
       <div className="lesson-content" aria-live="polite">
+        <button
+          ref={deleteButton}
+          className="secondary"
+          onClick={() => setConfirmDelete(true)}
+        >
+          Borrar conversación del tema
+        </button>
+        {confirmDelete && (
+          <div
+            className="reset-confirmation"
+            role="group"
+            aria-label="Confirmar borrado de conversación"
+          >
+            <p>
+              ¿Borrar la conversación de «{topicTitle}»? Se eliminarán sus
+              preguntas, respuestas, parciales y capturas y se detendrá su
+              respuesta activa. Los demás temas, el progreso y la Configuración
+              del tutor se conservan.
+            </p>
+            <div className="reset-actions">
+              <button className="secondary" autoFocus onClick={closeDelete}>
+                Cancelar
+              </button>
+              <button
+                className="primary"
+                onClick={() => {
+                  conversation.deleteTopic(topicId);
+                  setCopied("");
+                  closeDelete();
+                }}
+              >
+                Sí, borrar conversación
+              </button>
+            </div>
+          </div>
+        )}
         <h3>Aprende con ayuda, a tu ritmo</h3>
         {checking ? (
           <p>Comprobando acceso…</p>

@@ -64,7 +64,7 @@ export default function App() {
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const resetButton = useRef(null);
   function resetProgress() {
-    conversation.cancel();
+    const historyWarning = conversation.reset();
     const cleared = {
       ...emptyProgress,
       selectedRoute: "python-fundamentos",
@@ -73,14 +73,12 @@ export default function App() {
     // Remove the old record first: a full store may reject writes but allow deletion.
     const removed = removeProgress();
     const saved = saveProgress(cleared);
-    if (!removed && !saved) {
-      setResetError(
-        "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador.",
-      );
-    } else {
-      setStorageMessage("");
-      setResetError("");
-    }
+    const progressWarning =
+      !removed && !saved
+        ? "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador."
+        : "";
+    setStorageMessage("");
+    setResetError([progressWarning, historyWarning].filter(Boolean).join(" "));
     setSelectedRoute(cleared.selectedRoute);
     updateView(cleared.view);
     setTopicId(cleared.topicId);
@@ -210,7 +208,10 @@ export default function App() {
             >
               <p>
                 ¿Empezar de nuevo? Se borrarán los ejercicios completados y el
-                resultado de la evaluación final.
+                resultado de la evaluación final y todas las conversaciones del
+                tutor, incluidas sus capturas. Se detendrá la respuesta activa.
+                Se conserva la Configuración del tutor (clave, modelo y su
+                condición de persistencia).
               </p>
               <div className="reset-actions">
                 <button
@@ -620,6 +621,7 @@ function LearningWorkspace({
             access={access}
             conversation={conversation}
             topicId={topic.id}
+            topicTitle={topic.title}
             capture={() =>
               captureContext({ topic, exercise, draft: code, lastResult })
             }

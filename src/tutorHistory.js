@@ -32,6 +32,16 @@ export function saveHistory(exchanges) {
   }
 }
 
+export function removeHistory() {
+  try {
+    localStorage.removeItem(key);
+    return "";
+  } catch {
+    // A browser may reject deletion while still allowing replacement.
+    return saveHistory([]);
+  }
+}
+
 export function loadHistory() {
   try {
     const raw = localStorage.getItem(key);

@@ -1,5 +1,10 @@
 import { buildRequest } from "./tutorContext.js";
-import { loadHistory, saveHistory, requestHistory } from "./tutorHistory.js";
+import {
+  loadHistory,
+  saveHistory,
+  removeHistory,
+  requestHistory,
+} from "./tutorHistory.js";
 import { streamTutor } from "./openRouterTutor.js";
 
 const recovery = {
@@ -25,9 +30,15 @@ export function createConversationService() {
   let state = { ...loadHistory(), active: null, notice: "" };
   let controller = null;
   const listeners = new Set();
-  const publish = (next) => {
+  let deletionWarning = "";
+  const publish = (next, persist = saveHistory) => {
     if (next.exchanges !== state.exchanges) {
-      next = { ...next, storageWarning: saveHistory(next.exchanges) };
+      const warning = persist(next.exchanges);
+      if (!warning) deletionWarning = "";
+      next = {
+        ...next,
+        storageWarning: warning ? deletionWarning || warning : "",
+      };
     }
     state = next;
     listeners.forEach((listener) => listener());
@@ -194,5 +205,28 @@ export function createConversationService() {
       return send({ ...exchange, exchangeId, config, onAccessIssue });
     },
     cancel,
+    reset() {
+      cancel();
+      deletionWarning =
+        "Se borraron todas las conversaciones en esta sesión, pero no se pudo borrar el historial guardado: podría reaparecer al recargar. La Configuración del tutor se conserva. Puedes seguir aprendiendo; permite el almacenamiento o borra los datos del sitio en tu navegador.";
+      publish({ ...state, exchanges: [], notice: "" }, removeHistory);
+      return state.storageWarning;
+    },
+    deleteTopic(topicId) {
+      if (
+        state.exchanges.find((item) => item.id === state.active)?.topicId ===
+        topicId
+      )
+        cancel();
+      const exchanges = state.exchanges.filter(
+        (item) => item.topicId !== topicId,
+      );
+      deletionWarning =
+        "Se borró la conversación de este tema en esta sesión, pero no se pudo guardar el borrado: el historial borrado podría reaparecer al recargar. Los demás temas, el progreso y la Configuración del tutor se conservan. Puedes seguir aprendiendo; permite el almacenamiento o borra los datos del sitio en tu navegador.";
+      publish(
+        { ...state, exchanges, notice: "" },
+        exchanges.length ? saveHistory : removeHistory,
+      );
+    },
   };
 }
