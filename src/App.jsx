@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { assessmentQuestions } from "./assessment.js";
 import { topics } from "./curriculum.js";
+import {
+  emptyProgress,
+  loadProgress,
+  removeProgress,
+  saveProgress,
+} from "./progress.js";
 import { usePython } from "./usePython.js";
 
 function Icon({ name, ...props }) {
@@ -34,10 +40,68 @@ function Icon({ name, ...props }) {
 }
 
 export default function App() {
-  const [view, setView] = useState("courses");
-  const [topicId, setTopicId] = useState(topics[0].id);
-  const [completed, setCompleted] = useState([]);
-  const [assessmentResult, setAssessmentResult] = useState(null);
+  const [initial] = useState(loadProgress);
+  const [view, updateView] = useState(initial.progress.view);
+  const [selectedRoute, setSelectedRoute] = useState(
+    initial.progress.selectedRoute,
+  );
+  const [topicId, setTopicId] = useState(initial.progress.topicId);
+  const [completed, setCompleted] = useState(initial.progress.completed);
+  const [assessmentResult, setAssessmentResult] = useState(
+    initial.progress.assessmentResult,
+  );
+  const [storageMessage, setStorageMessage] = useState(initial.message);
+  const [resetError, setResetError] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
+  const resetButton = useRef(null);
+  function resetProgress() {
+    const cleared = {
+      ...emptyProgress,
+      selectedRoute: "python-fundamentos",
+      view: "learn",
+    };
+    // Remove the old record first: a full store may reject writes but allow deletion.
+    const removed = removeProgress();
+    const saved = saveProgress(cleared);
+    if (!removed && !saved) {
+      setResetError(
+        "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador.",
+      );
+    } else {
+      setStorageMessage("");
+      setResetError("");
+    }
+    setSelectedRoute(cleared.selectedRoute);
+    updateView(cleared.view);
+    setTopicId(cleared.topicId);
+    setCompleted([]);
+    setAssessmentResult(null);
+    setWorkspaceVersion((version) => version + 1);
+    setConfirmReset(false);
+    resetButton.current?.focus();
+    window.scrollTo(0, 0);
+  }
+
+  useEffect(() => {
+    if (
+      !saveProgress({
+        selectedRoute,
+        view,
+        topicId,
+        completed,
+        assessmentResult,
+      })
+    ) {
+      setStorageMessage(
+        "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
+      );
+    }
+  }, [selectedRoute, view, topicId, completed, assessmentResult]);
+  function setView(next) {
+    if (next !== "courses") setSelectedRoute("python-fundamentos");
+    updateView(next);
+  }
   const topic = topics.find((item) => item.id === topicId) || topics[0];
   const exerciseCount = topics.reduce(
     (count, item) => count + item.exercises.length,
@@ -104,6 +168,51 @@ export default function App() {
             <Icon name="code" /> Python en tu navegador
           </span>
         </header>
+        <section className="progress-controls" aria-label="Progreso guardado">
+          <div className="progress-summary">
+            {resetError || storageMessage ? (
+              <p className="storage-warning" role="alert">
+                {resetError || storageMessage}
+              </p>
+            ) : (
+              <p>Tu progreso se guarda en este navegador.</p>
+            )}
+            <button
+              ref={resetButton}
+              className="secondary"
+              onClick={() => setConfirmReset(true)}
+            >
+              Reiniciar progreso
+            </button>
+          </div>
+          {confirmReset && (
+            <div
+              className="reset-confirmation"
+              role="group"
+              aria-label="Confirmar reinicio"
+            >
+              <p>
+                ¿Empezar de nuevo? Se borrarán los ejercicios completados y el
+                resultado de la evaluación final.
+              </p>
+              <div className="reset-actions">
+                <button
+                  className="secondary"
+                  autoFocus
+                  onClick={() => {
+                    setConfirmReset(false);
+                    resetButton.current?.focus();
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button className="primary" onClick={resetProgress}>
+                  Sí, reiniciar
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
         {view === "courses" ? (
           <main className="courses">
             <div className="eyebrow">APRENDE. PRUEBA. DESCUBRE.</div>
@@ -258,7 +367,7 @@ export default function App() {
                   </section>
                 )}
                 <LearningWorkspace
-                  key={topic.id}
+                  key={`${topic.id}:${workspaceVersion}`}
                   topic={topic}
                   completed={completed}
                   onComplete={complete}
