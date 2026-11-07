@@ -27,6 +27,7 @@ export function TutorPanel({
       message,
       capture: capture(),
       config: access.config,
+      onAccessIssue: access.reportIssue,
     });
     if (!conversation.getSnapshot().notice) setMessage("");
     await pending;
@@ -119,6 +120,21 @@ export function TutorPanel({
                     </p>
                   </div>
                 ))}
+                {exchange.attempts.at(-1).status !== "complete" && (
+                  <button
+                    className="secondary"
+                    disabled={!ready || busy}
+                    onClick={() =>
+                      conversation.retry({
+                        exchangeId: exchange.id,
+                        config: access.config,
+                        onAccessIssue: access.reportIssue,
+                      })
+                    }
+                  >
+                    Reintentar respuesta
+                  </button>
+                )}
               </article>
             ))}
         </div>

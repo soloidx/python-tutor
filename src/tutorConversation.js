@@ -1,6 +1,25 @@
 import { buildRequest } from "./tutorContext.js";
 import { streamTutor } from "./openRouterTutor.js";
 
+const recovery = {
+  key: "OpenRouter rechazó la clave. Corrígela en Configuración del tutor.",
+  balance:
+    "OpenRouter indica saldo insuficiente. Revisa tu saldo y facturación en OpenRouter antes de reintentar.",
+  model:
+    "El modelo ya no está disponible o no es compatible. Selecciona otro modelo explícitamente en Configuración del tutor.",
+  context:
+    "OpenRouter rechazó la capacidad de contexto pese a la estimación. No se recortó ni reenvió nada. Reduce el mensaje o borrador en un mensaje nuevo, o selecciona un modelo con mayor ventana.",
+  rate: "OpenRouter alcanzó el límite de solicitudes. Espera y reintenta explícitamente.",
+  timeout:
+    "Se alcanzó el límite temporal de la respuesta. Puedes reintentar explícitamente.",
+  service:
+    "El servicio de OpenRouter no está disponible. Puedes reintentar explícitamente en unos momentos.",
+  network:
+    "Se perdió la conexión de red. Revisa tu conexión y reintenta explícitamente.",
+  rejected:
+    "El servicio rechazó la solicitud. Revisa el acceso y el modelo en Configuración del tutor antes de reintentar.",
+};
+
 export function createConversationService() {
   let state = { exchanges: [], active: null, notice: "" };
   let controller = null;
@@ -32,11 +51,20 @@ export function createConversationService() {
     controller?.abort();
     update(id, {
       status: "incomplete",
-      error: "Respuesta interrumpida. El parcial está incompleto.",
+      error:
+        "Respuesta interrumpida. El parcial está incompleto. Cancelar el transporte no garantiza detener la facturación del proveedor.",
+      errorKind: "interrupted",
     });
     publish({ ...state, active: null });
   }
-  async function send({ topicId, message, capture, config }) {
+  async function send({
+    topicId,
+    message,
+    capture,
+    config,
+    exchangeId,
+    onAccessIssue,
+  }) {
     if (state.active || !message.trim()) return false;
     let request;
     try {
@@ -45,7 +73,7 @@ export function createConversationService() {
       publish({ ...state, notice: error.message });
       return false;
     }
-    const id = crypto.randomUUID();
+    const id = exchangeId || crypto.randomUUID();
     const attempt = {
       id: crypto.randomUUID(),
       text: "",
@@ -63,11 +91,18 @@ export function createConversationService() {
     controller = current;
     publish({
       ...state,
-      exchanges: [...state.exchanges, exchange],
+      exchanges: exchangeId
+        ? state.exchanges.map((item) =>
+            item.id === id
+              ? { ...item, attempts: [...item.attempts, attempt] }
+              : item,
+          )
+        : [...state.exchanges, exchange],
       active: id,
       notice: "",
     });
-    const valid = () => !current.signal.aborted && state.active === id;
+    const valid = () =>
+      !current.signal.aborted && controller === current && state.active === id;
     try {
       const { finishReason } = await streamTutor({
         config,
@@ -83,21 +118,34 @@ export function createConversationService() {
       if (valid())
         update(id, {
           status: finishReason === "stop" ? "complete" : "incomplete",
+          errorKind:
+            finishReason === "stop"
+              ? ""
+              : finishReason === "length"
+                ? "output"
+                : "unconfirmed",
           error:
             finishReason === "stop"
               ? ""
-              : "Respuesta incompleta: no se confirmó una terminación normal.",
+              : finishReason === "length"
+                ? "Respuesta incompleta: se alcanzó el límite de salida. Puedes reintentar con la captura original; no se continúa automáticamente."
+                : "Respuesta incompleta: no se confirmó una terminación normal.",
         });
     } catch (error) {
-      if (valid())
+      if (valid()) {
+        const explanation = recovery[error.kind] || recovery.service;
         update(id, {
           status: "incomplete",
-          error:
-            "No se pudo completar la respuesta. Comprueba la conexión y el acceso del tutor.",
+          error: `Respuesta incompleta: ${explanation}`,
+          errorKind: error.kind,
         });
+        if (["key", "model"].includes(error.kind))
+          onAccessIssue?.({ kind: error.kind, message: explanation });
+      }
     } finally {
       current.abort();
-      if (state.active === id) publish({ ...state, active: null });
+      if (controller === current && state.active === id)
+        publish({ ...state, active: null });
     }
     return true;
   }
@@ -108,6 +156,12 @@ export function createConversationService() {
       return () => listeners.delete(listener);
     },
     send,
+    retry({ exchangeId, config, onAccessIssue }) {
+      const exchange = state.exchanges.find((item) => item.id === exchangeId);
+      if (!exchange || exchange.attempts.at(-1).status !== "incomplete")
+        return false;
+      return send({ ...exchange, exchangeId, config, onAccessIssue });
+    },
     cancel,
   };
 }
