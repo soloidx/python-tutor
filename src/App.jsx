@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { assessmentQuestions } from "./assessment.js";
+import { assessmentQuestions, assessAnswers } from "./assessment.js";
 import { topics } from "./curriculum.js";
 import {
   emptyProgress,
@@ -650,16 +650,7 @@ function FinalAssessment({ result, onResult, onBack }) {
   function submit(event) {
     event.preventDefault();
     if (!assessmentQuestions.every((question) => answers[question.id])) return;
-    const responses = assessmentQuestions.map((question) => ({
-      questionId: question.id,
-      correct: answers[question.id] === question.answer,
-    }));
-    onResult({
-      answers: { ...answers },
-      responses,
-      score: responses.filter((item) => item.correct).length,
-      total: assessmentQuestions.length,
-    });
+    onResult(assessAnswers(answers));
   }
   return (
     <section className="assessment panel">

@@ -20,15 +20,29 @@ const ready = loadPyodide({
 ready
   .then(() => postMessage({ type: "ready" }))
   .catch((error) => postMessage({ type: "load-error", error: String(error) }));
+function flushStreams(python) {
+  // Pyodide's batched handlers emit partial lines only when the fd is synced.
+  python.runPython(
+    "import sys, os; sys.stdout.flush(); sys.stderr.flush(); os.fsync(1); os.fsync(2)",
+  );
+}
+
 self.onmessage = async ({ data: { code, check } }) => {
   let namespace;
   try {
     const python = await ready;
+    // Discard any pending runtime initialization output before this attempt.
+    flushStreams(python);
     output = "";
     errors = "";
     namespace = python.globals.get("dict")();
-    const result = await python.runPythonAsync(code, { globals: namespace });
-    result?.destroy?.();
+    try {
+      const result = await python.runPythonAsync(code, { globals: namespace });
+      result?.destroy?.();
+    } finally {
+      // Capture partial output before checking work or reporting a Python error.
+      flushStreams(python);
+    }
     namespace.set("_output", output.trimEnd());
     let passed = false;
     // A missing variable is incorrect work, not a program execution error.

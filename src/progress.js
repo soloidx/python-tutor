@@ -1,5 +1,5 @@
 import { topics } from "./curriculum.js";
-import { assessmentQuestions } from "./assessment.js";
+import { assessmentQuestions, assessAnswers } from "./assessment.js";
 
 const storageKey = "python-tutor.progress.v1";
 export const emptyProgress = {
@@ -40,21 +40,7 @@ export function loadProgress() {
         throw new Error("Invalid assessment");
       }
       // Reconstruct the result from validated answers, never trust a stored score.
-      const responses = assessmentQuestions.map((question) => ({
-        questionId: question.id,
-        correct: answers[question.id] === question.answer,
-      }));
-      assessmentResult = {
-        answers: Object.fromEntries(
-          assessmentQuestions.map((question) => [
-            question.id,
-            answers[question.id],
-          ]),
-        ),
-        responses,
-        score: responses.filter((response) => response.correct).length,
-        total: assessmentQuestions.length,
-      };
+      assessmentResult = assessAnswers(answers);
     }
     return {
       progress: {
