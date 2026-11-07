@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Python Tutor - Aprender</title>
+<!-- Tailwind CSS CDN with forms and container queries plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              200: '#fecdd3',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Styles for Scrollbars and Fine Details -->
+<style data-purpose="custom-styling">
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #cbd5e1;
+    }
+  </style>
+</head>
+<body class="h-full bg-[#f8fafc] text-slate-800 font-sans antialiased overflow-hidden flex">
+<!-- BEGIN: LeftSidebar -->
+<aside class="w-60 bg-white border-r border-slate-200/80 flex flex-col justify-between p-5 select-none shrink-0" data-purpose="sidebar-navigation">
+<div class="space-y-8">
+<!-- App Brand Logo -->
+<div class="flex items-center gap-3 px-2 py-1">
+<div class="w-8 h-8 flex items-center justify-center text-brand-600">
+<!-- Python Stylized Red Mascot Icon -->
+<svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+<path d="M12 2c5.5 0 9 3 9 7.5s-4 5.5-9 5.5c-4 0-7-2-7-5.5S8 2 12 2z" fill="#f43f5e" fill-opacity="0.15" stroke="#e11d48"></path>
+<path d="M12 14c-5.5 0-9 3-9 7.5S7 22 12 22s9-1.5 9-5.5S17 14 12 14z" fill="#f43f5e" stroke="#e11d48"></path>
+<circle cx="9" cy="6" fill="#be123c" r="1"></circle>
+<circle cx="15" cy="18" fill="#ffffff" r="1"></circle>
+</svg>
+</div>
+<span class="font-bold text-lg tracking-tight text-slate-900">Python Tutor</span>
+</div>
+<!-- Navigation Links -->
+<nav class="space-y-1.5" data-purpose="main-navigation-menu">
+<!-- Active Link: Aprender -->
+<a class="flex items-center gap-3.5 px-4 py-2.5 rounded-2xl bg-brand-50 text-brand-600 font-semibold text-sm transition-colors shadow-sm shadow-brand-100/50" href="#">
+<svg class="w-5 h-5 shrink-0 stroke-[2]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path>
+<path d="M6 6h10"></path>
+<path d="M6 10h10"></path>
+</svg>
+<span>Aprender</span>
+</a>
+<!-- Cursos -->
+<a class="flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium text-sm transition-colors" href="#">
+<svg class="w-5 h-5 shrink-0 stroke-[1.8]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect>
+<line x1="16" x2="16" y1="2" y2="6"></line>
+<line x1="8" x2="8" y1="2" y2="6"></line>
+<line x1="3" x2="21" y1="10" y2="10"></line>
+</svg>
+<span>Cursos</span>
+</a>
+<!-- Práctica -->
+<a class="flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium text-sm transition-colors" href="#">
+<svg class="w-5 h-5 shrink-0 stroke-[1.8]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<path d="m18 15-6-6-6 6"></path>
+<circle cx="12" cy="12" r="9"></circle>
+<path d="M12 8v4l2.5 2.5"></path>
+</svg>
+<span>Práctica</span>
+</a>
+<!-- Configuración -->
+<a class="flex items-center gap-3.5 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium text-sm transition-colors" href="#">
+<svg class="w-5 h-5 shrink-0 stroke-[1.8]" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" viewbox="0 0 24 24">
+<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+<circle cx="12" cy="12" r="3"></circle>
+</svg>
+<span>Configuración</span>
+</a>
+</nav>
+</div>
+<!-- User Profile Badge -->
+<div class="px-2 pt-4">
+<div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 text-sm border border-slate-200 cursor-pointer hover:bg-slate-200 transition">
+        JS
+      </div>
+</div>
+</aside>
+<!-- END: LeftSidebar -->
+<!-- BEGIN: MainContentWrapper -->
+<div class="flex-1 flex flex-col h-full overflow-hidden bg-slate-50/60">
+<!-- BEGIN: TopBar -->
+<header class="h-16 px-6 flex items-center justify-between border-b border-slate-200/70 bg-white/70 backdrop-blur-sm shrink-0" data-purpose="top-navigation-bar">
+<!-- Breadcrumb Route Selector -->
+<div class="flex items-center gap-3.5">
+<button aria-label="Abrir panel temático" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition">
+<svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<line x1="4" x2="20" y1="6" y2="6"></line>
+<line x1="4" x2="20" y1="12" y2="12"></line>
+<line x1="4" x2="20" y1="18" y2="18"></line>
+</svg>
+</button>
+<div class="flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-slate-200/80 rounded-xl text-sm font-medium text-slate-700 shadow-sm cursor-pointer hover:bg-slate-100/70 transition">
+<span class="text-slate-600">Python Fundamentos</span>
+<span class="text-slate-400">/</span>
+<span class="text-slate-900 font-semibold">Bucles</span>
+<svg class="w-4 h-4 ml-1 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<polyline points="6 9 12 15 18 9"></polyline>
+</svg>
+</div>
+</div>
+<!-- Settings Icon -->
+<button aria-label="Ajustes de vista" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition">
+<svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="3"></circle>
+<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+</svg>
+</button>
+</header>
+<!-- END: TopBar -->
+<!-- BEGIN: WorkspaceGrid -->
+<main class="flex-1 grid grid-cols-12 gap-5 p-5 overflow-hidden">
+<!-- BEGIN: TutorChatPanel (Left/Center Panel) -->
+<section class="col-span-6 flex flex-col h-full bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden" data-purpose="ai-tutor-conversation-view">
+<!-- Conversation Thread -->
+<div class="flex-1 overflow-y-auto p-6 space-y-5" data-purpose="chat-scroll-area">
+<!-- Tutor Introduction Message Group -->
+<div class="flex items-start gap-3.5">
+<!-- Tutor Robot Avatar -->
+<div class="w-9 h-9 rounded-2xl bg-brand-50 border border-brand-200/60 flex items-center justify-center shrink-0 shadow-sm">
+<div class="w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center relative">
+<span class="w-1.5 h-1.5 bg-white rounded-full absolute -top-0.5"></span>
+<span class="w-1.5 h-1 bg-white rounded-sm mt-0.5"></span>
+</div>
+</div>
+<div class="space-y-3 max-w-[88%] text-[13.5px] leading-relaxed">
+<!-- Short Greeting Bubble -->
+<div class="bg-slate-50 border border-slate-200/70 text-slate-800 px-4 py-2.5 rounded-2xl inline-block shadow-xs">
+                Hoy vamos a aprender los bucles for.
+              </div>
+<!-- Main Explanation Card -->
+<div class="bg-slate-50 border border-slate-200/70 text-slate-700 p-4 rounded-2xl space-y-3 shadow-xs">
+<p>
+                  Un bucle for nos permite repetir un bloque de código varias veces.
+                </p>
+<p>
+                  Por ejemplo, si queremos mostrar los números del 1 al 5, podemos escribir:
+                </p>
+<!-- Code Example Box inside Chat -->
+<div class="bg-[#f1f5f9] p-3.5 rounded-xl font-mono text-[13px] border border-slate-200/60 leading-normal text-slate-800">
+<span class="text-purple-600 font-semibold">for</span> <span class="text-rose-500">i</span> <span class="text-purple-600 font-semibold">in</span> <span class="text-sky-600">range</span>(<span class="text-blue-600">1</span>, <span class="text-blue-600">6</span>):<br/>
+<span class="inline-block w-6"></span><span class="text-sky-600">print</span>(<span class="text-rose-500">i</span>)
+                </div>
+<p>
+                  ¿Te gustaría intentar modificar el código para que muestre solo los números pares?
+                </p>
+</div>
+</div>
+</div>
+<!-- Student Reply Bubble (Red accented, aligned right) -->
+<div class="flex justify-end">
+<div class="bg-brand-600 text-white px-5 py-3 rounded-2xl max-w-[80%] text-[13.5px] font-medium shadow-sm shadow-brand-500/20 leading-relaxed">
+              Creo que sería usando un if dentro del bucle
+            </div>
+</div>
+<!-- Tutor Feedback Message -->
+<div class="flex items-start gap-3.5">
+<div class="w-9 h-9 rounded-2xl bg-brand-50 border border-brand-200/60 flex items-center justify-center shrink-0 shadow-sm">
+<div class="w-5 h-5 rounded-full bg-brand-600 flex items-center justify-center relative">
+<span class="w-1.5 h-1.5 bg-white rounded-full absolute -top-0.5"></span>
+<span class="w-1.5 h-1 bg-white rounded-sm mt-0.5"></span>
+</div>
+</div>
+<div class="bg-slate-50 border border-slate-200/70 text-slate-700 px-4 py-3 rounded-2xl max-w-[85%] text-[13.5px] shadow-xs">
+              ¡Exacto! Esa es una buena idea. Inténtalo y si necesitas una pista, avísame.
+            </div>
+</div>
+<!-- Quick Action Prompt Pills -->
+<div class="flex flex-wrap items-center gap-2 pl-12 pt-1" data-purpose="suggested-replies">
+<button class="text-xs font-medium px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs">
+              Dame una pista
+            </button>
+<button class="text-xs font-medium px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs">
+              Explícame de otra forma
+            </button>
+<button class="text-xs font-medium px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs">
+              Ponme un reto
+            </button>
+</div>
+</div>
+<!-- Chat Input Field Dock -->
+<div class="p-4 border-t border-slate-100 bg-white" data-purpose="chat-input-bar">
+<div class="flex items-center gap-2 bg-slate-50/80 border border-slate-200/90 rounded-2xl px-3 py-1.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition">
+<!-- Attachment Icon -->
+<button aria-label="Adjuntar archivo" class="p-1.5 text-slate-400 hover:text-slate-600 transition">
+<svg class="w-5 h-5 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+</svg>
+</button>
+<!-- Text Input -->
+<input class="flex-1 bg-transparent border-0 focus:ring-0 text-sm text-slate-800 placeholder:text-slate-400 py-1.5" placeholder="Escribe un mensaje..." type="text"/>
+<!-- Send Action Button -->
+<button aria-label="Enviar mensaje" class="w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center shrink-0 shadow-sm transition active:scale-95">
+<svg class="w-4 h-4 stroke-[2.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<line x1="12" x2="12" y1="19" y2="5"></line>
+<polyline points="5 12 12 5 19 12"></polyline>
+</svg>
+</button>
+</div>
+</div>
+</section>
+<!-- END: TutorChatPanel -->
+<!-- BEGIN: PythonEditorAndConsole (Right Panel) -->
+<section class="col-span-6 flex flex-col h-full gap-4 overflow-hidden" data-purpose="code-execution-environment">
+<!-- Top Card: Code Editor -->
+<div class="flex-1 bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col overflow-hidden" data-purpose="code-editor-panel">
+<!-- Editor Top Actions & Tabs Bar -->
+<div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+<!-- File Tabs -->
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 text-xs font-semibold text-slate-700 shadow-2xs">
+<span class="text-brand-600">main.py</span>
+<button class="text-slate-400 hover:text-slate-600 ml-1 text-xs">✕</button>
+</div>
+<button aria-label="Añadir pestaña" class="w-7 h-7 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-200/60 hover:text-slate-600 transition">
+<svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="5" x2="19" y1="12" y2="12"></line>
+</svg>
+</button>
+</div>
+<!-- Run & Reset Controls -->
+<div class="flex items-center gap-2.5">
+<!-- Execute Button -->
+<button class="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-95 text-white font-medium text-xs shadow-sm transition">
+<svg class="w-3.5 h-3.5 fill-current" viewbox="0 0 24 24">
+<polygon points="5 3 19 12 5 21 5 3"></polygon>
+</svg>
+<span>Ejecutar</span>
+</button>
+<!-- Reset Button -->
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-medium transition shadow-2xs">
+<svg class="w-3.5 h-3.5 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+<path d="M3 3v5h5"></path>
+<path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+<path d="M16 21h5v-5"></path>
+</svg>
+<span>Reiniciar</span>
+</button>
+</div>
+</div>
+<!-- Code Workspace Area with Line Numbers -->
+<div class="flex-1 p-4 font-mono text-[13.5px] leading-6 overflow-auto flex bg-white" data-purpose="monaco-code-container">
+<!-- Line Numbers Column -->
+<div class="select-none text-slate-300 pr-4 text-right border-r border-slate-100 flex flex-col space-y-0 w-8">
+<span>1</span>
+<span>2</span>
+<span>3</span>
+<span>4</span>
+<span>5</span>
+</div>
+<!-- Code Content Highlighted -->
+<div class="pl-4 flex-1 whitespace-pre font-mono">
+<span class="text-emerald-600 italic"># Muestra los números pares del 1 al 10</span><br/>
+<span class="text-purple-600 font-semibold">for</span> <span class="text-rose-500 font-medium">i</span> <span class="text-purple-600 font-semibold">in</span> <span class="text-sky-600 font-medium">range</span>(<span class="text-blue-600">1</span>, <span class="text-blue-600">11</span>):<br/>
+<span class="inline-block w-7"></span><span class="text-purple-600 font-semibold">if</span> <span class="text-rose-500 font-medium">i</span> % <span class="text-blue-600">2</span> == <span class="text-blue-600">0</span>:<br/>
+<span class="inline-block w-14"></span><span class="text-sky-600 font-medium">print</span>(<span class="text-rose-500 font-medium">i</span>)
+            </div>
+</div>
+</div>
+<!-- Bottom Card: Console Output & Errors -->
+<div class="h-44 bg-white rounded-3xl border border-slate-200/90 shadow-sm flex flex-col p-4 overflow-hidden shrink-0" data-purpose="terminal-output-panel">
+<!-- Terminal Tabs Header -->
+<div class="flex items-center gap-6 border-b border-slate-100 text-xs font-semibold pb-2 px-1">
+<button class="text-brand-600 relative pb-1">
+              Salida
+              <span class="absolute bottom-[-9px] left-0 w-full h-[2px] bg-brand-600 rounded-full"></span>
+</button>
+<button class="text-slate-400 hover:text-slate-600 transition pb-1">
+              Errores
+            </button>
+</div>
+<!-- Console Terminal Container -->
+<div class="flex-1 mt-3 bg-slate-50/70 border border-slate-100 rounded-2xl p-3 font-mono text-xs text-slate-700 overflow-y-auto space-y-1">
+<div>2</div>
+<div>4</div>
+<div>6</div>
+<div>8</div>
+<div>10</div>
+</div>
+</div>
+</section>
+<!-- END: PythonEditorAndConsole -->
+</main>
+<!-- END: WorkspaceGrid -->
+</div>
+<!-- END: MainContentWrapper -->
+</body></html>

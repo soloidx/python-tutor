@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Python Tutor - Práctica</title>
+<!-- Tailwind CSS CDN with forms & container queries plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="base-styles">
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .font-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 antialiased min-h-screen flex flex-col justify-center items-center p-2 sm:p-6">
+<!-- BEGIN: ApplicationWindow -->
+<div class="w-full max-w-[1140px] bg-white rounded-3xl shadow-[0_4px_30px_rgba(0,0,0,0.04)] border border-slate-100 flex overflow-hidden min-h-[760px]" data-purpose="app-container">
+<!-- BEGIN: Sidebar -->
+<aside class="w-56 shrink-0 border-r border-slate-100 p-6 flex flex-col justify-between select-none" data-purpose="navigation-sidebar">
+<div class="space-y-8">
+<!-- Logo Python Tutor -->
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 flex items-center justify-center text-red-500">
+<!-- Python / Snake Red Icon -->
+<svg class="w-7 h-7 fill-current" viewbox="0 0 24 24">
+<path d="M11.91 2c-3.1 0-4.91 1.34-4.91 3.91v1.94h5v.65H5.09C2.52 8.5 2 10.3 2 13.41c0 3.03.71 4.93 3.09 4.93h1.91v-2.7c0-2.82 2.39-4.95 5.21-4.95h5.11v-.69c0-2.58-1.81-4-4.91-4H10.5V4.69c0-.95.74-1.69 1.69-1.69h3.72V2h-4zm-1.8 1.45a.73.73 0 1 1 0 1.46.73.73 0 0 1 0-1.46zm1.98 7.24c-2.82 0-5.21 2.13-5.21 4.95v.69c0 2.58 1.81 4 4.91 4h1.91v-1.31c0-.95-.74-1.69-1.69-1.69H8.29V16h3.71c3.1 0 4.91-1.34 4.91-3.91v-1.94h-5v-.65h6.91c2.57 0 3.09-1.8 3.09-4.91 0-3.03-.71-4.93-3.09-4.93h-1.91v2.7c0 2.82-2.39 4.95-5.21 4.95H8.79zm3.8 8.41a.73.73 0 1 1 0 1.46.73.73 0 0 1 0-1.46z"></path>
+</svg>
+</div>
+<span class="font-bold text-slate-800 text-base tracking-tight">Python Tutor</span>
+</div>
+<!-- Navigation Links -->
+<nav aria-label="Navegación principal" class="space-y-1.5">
+<!-- Aprender -->
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors font-medium text-sm" href="#">
+<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>Aprender</span>
+</a>
+<!-- Cursos -->
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors font-medium text-sm" href="#">
+<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<rect height="7" rx="1.5" width="7" x="3" y="3"></rect>
+<rect height="7" rx="1.5" width="7" x="14" y="3"></rect>
+<rect height="7" rx="1.5" width="7" x="3" y="14"></rect>
+<rect height="7" rx="1.5" width="7" x="14" y="14"></rect>
+</svg>
+<span>Cursos</span>
+</a>
+<!-- Práctica (ACTIVE) -->
+<a aria-current="page" class="flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl bg-rose-50/80 text-red-500 font-semibold text-sm transition-all shadow-sm shadow-rose-100" href="#">
+<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>Práctica</span>
+</a>
+<!-- Configuración -->
+<a class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors font-medium text-sm" href="#">
+<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>Configuración</span>
+</a>
+</nav>
+</div>
+<!-- User Avatar -->
+<div class="pt-4 border-t border-slate-50 flex items-center" data-purpose="user-profile">
+<div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-600">
+          JS
+        </div>
+</div>
+</aside>
+<!-- END: Sidebar -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 p-8 sm:p-10 flex flex-col justify-between" data-purpose="main-content">
+<div>
+<!-- Top Bar: Header and Dropdown -->
+<header class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+<div>
+<h1 class="text-2xl font-bold text-slate-900 tracking-tight">Práctica</h1>
+<p class="text-sm text-slate-500 mt-1">Refuerza tus conocimientos con ejercicios adaptados a tu nivel.</p>
+</div>
+<!-- Course Selector Dropdown Button -->
+<div class="shrink-0" data-purpose="course-selector">
+<button class="inline-flex items-center gap-2.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50/50 transition-colors" type="button">
+<span>Python Fundamentos</span>
+<svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M19.5 8.25l-7.5 7.5-7.5-7.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+</header>
+<!-- Body Layout Grid: Filters and Exercise Area -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- BEGIN: FilterColumn -->
+<section class="lg:col-span-4 space-y-4" data-purpose="exercise-filters">
+<h2 class="text-sm font-semibold text-slate-800">Tipos de ejercicio</h2>
+<div class="space-y-2">
+<!-- Item 1: Todas (Active) -->
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-red-400 bg-white text-left shadow-sm group" type="button">
+<div class="flex items-center gap-3">
+<svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<rect height="16" rx="2" width="18" x="3" y="4"></rect>
+<line x1="7" x2="17" y1="9" y2="9"></line>
+</svg>
+<span class="text-xs font-medium text-slate-700 group-hover:text-slate-900">Todas</span>
+</div>
+<span class="text-[11px] font-semibold text-red-500">24</span>
+</button>
+<!-- Item 2: Opción múltiple -->
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-100 bg-white hover:border-slate-200 text-left transition-colors group" type="button">
+<div class="flex items-center gap-3">
+<svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="9"></circle>
+<path d="M9 10a3 3 0 0 1 6 0c0 2-3 3-3 3"></path>
+<circle cx="12" cy="17" r=".5"></circle>
+</svg>
+<span class="text-xs font-medium text-slate-600 group-hover:text-slate-900">Opción múltiple</span>
+</div>
+<span class="text-[11px] font-medium text-slate-500 bg-slate-100/70 px-1.5 py-0.5 rounded-md">8</span>
+</button>
+<!-- Item 3: Completar código -->
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-100 bg-white hover:border-slate-200 text-left transition-colors group" type="button">
+<div class="flex items-center gap-3">
+<svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<rect height="16" rx="2" width="18" x="3" y="4"></rect>
+<path d="M7 14h3"></path>
+</svg>
+<span class="text-xs font-medium text-slate-600 group-hover:text-slate-900">Completar código</span>
+</div>
+<span class="text-[11px] font-medium text-slate-500 bg-slate-100/70 px-1.5 py-0.5 rounded-md">8</span>
+</button>
+<!-- Item 4: Corregir código -->
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-100 bg-white hover:border-slate-200 text-left transition-colors group" type="button">
+<div class="flex items-center gap-3">
+<svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-xs font-medium text-slate-600 group-hover:text-slate-900">Corregir código</span>
+</div>
+<span class="text-[11px] font-medium text-slate-500 bg-slate-100/70 px-1.5 py-0.5 rounded-md">5</span>
+</button>
+<!-- Item 5: Respuestas abierta -->
+<button class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-100 bg-white hover:border-slate-200 text-left transition-colors group" type="button">
+<div class="flex items-center gap-3">
+<svg class="w-4 h-4 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-xs font-medium text-slate-600 group-hover:text-slate-900">Respuestas abierta</span>
+</div>
+<span class="text-[11px] font-medium text-slate-500 bg-slate-100/70 px-1.5 py-0.5 rounded-md">3</span>
+</button>
+</div>
+</section>
+<!-- END: FilterColumn -->
+<!-- BEGIN: ExerciseCard -->
+<section class="lg:col-span-8 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between" data-purpose="exercise-workspace">
+<div>
+<!-- Exercise Header & Progress -->
+<div class="flex items-center justify-between mb-4">
+<span class="inline-block px-3 py-1 bg-slate-100/80 text-slate-600 rounded-lg text-xs font-medium">
+                  Opción múltiple
+                </span>
+<span class="text-xs font-semibold text-slate-400">1/10</span>
+</div>
+<!-- Question Title -->
+<h3 class="text-sm sm:text-base font-semibold text-slate-900 mb-3">
+                ¿Cuál será la salida del siguiente código?
+              </h3>
+<!-- Code Snippet Box -->
+<div class="bg-[#F1F5F9]/60 rounded-xl p-4 mb-4 text-xs font-code border border-slate-100" data-purpose="code-display">
+<pre class="leading-relaxed"><span class="text-purple-600 font-semibold">for</span> <span class="text-blue-600">i</span> <span class="text-purple-600 font-semibold">in</span> <span class="text-cyan-700">range</span>(<span class="text-amber-600">3</span>):<br/>    <span class="text-blue-600">print</span>(<span class="text-slate-700">i</span>)</pre>
+</div>
+<!-- Multiple Choice Options -->
+<div class="space-y-2 mb-4" data-purpose="choice-options">
+<!-- Option 1 -->
+<label class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-slate-300 transition-colors">
+<input class="w-4 h-4 text-red-500 border-slate-300 focus:ring-red-400" disabled="" name="exercise_choice" type="radio"/>
+<span class="text-xs font-medium text-slate-700 font-code tracking-wider">1 2 3</span>
+</label>
+<!-- Option 2 (Selected and Correct) -->
+<label class="flex items-center justify-between px-4 py-2.5 rounded-xl border-2 border-red-500 bg-white cursor-pointer transition-colors shadow-sm">
+<div class="flex items-center gap-3.5">
+<span class="w-4 h-4 rounded-full border-4 border-red-500 bg-white inline-block"></span>
+<span class="text-xs font-semibold text-slate-800 font-code tracking-wider">0 1 2</span>
+</div>
+<!-- Right Checkmark Icon -->
+<div class="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-white">
+<svg class="w-2.5 h-2.5 stroke-current" fill="none" stroke-width="3.5" viewbox="0 0 24 24">
+<path d="M4.5 12.75l6 6 9-13.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</label>
+<!-- Option 3 -->
+<label class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-slate-300 transition-colors">
+<input class="w-4 h-4 text-red-500 border-slate-300 focus:ring-red-400" disabled="" name="exercise_choice" type="radio"/>
+<span class="text-xs font-medium text-slate-700 font-code tracking-wider">0 1 2 3</span>
+</label>
+<!-- Option 4 -->
+<label class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-slate-300 transition-colors">
+<input class="w-4 h-4 text-red-500 border-slate-300 focus:ring-red-400" disabled="" name="exercise_choice" type="radio"/>
+<span class="text-xs font-medium text-slate-700 font-code tracking-wider">3 2 1</span>
+</label>
+</div>
+<!-- Success Notification Alert -->
+<div class="bg-[#EBFBF3] border border-emerald-100 rounded-xl p-3.5 flex items-start gap-3" data-purpose="feedback-alert">
+<div class="mt-0.5 text-emerald-600">
+<svg class="w-5 h-5 fill-none stroke-current" stroke-width="2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="10"></circle>
+<path d="M8 12.5l2.5 2.5 5.5-5.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<h4 class="text-xs font-bold text-emerald-800">¡Correcto!</h4>
+<p class="text-[11px] text-emerald-700 font-normal mt-0.5">
+                    range(3) genera los números 0, 1 y 2.
+                  </p>
+</div>
+</div>
+</div>
+<!-- Footer: Next Button -->
+<div class="flex justify-end pt-5">
+<button class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-medium text-xs shadow-sm hover:shadow transition-all" type="button">
+<span>Siguiente</span>
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24">
+<path d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+</section>
+<!-- END: ExerciseCard -->
+</div>
+</div>
+</main>
+<!-- END: MainContent -->
+</div>
+<!-- END: ApplicationWindow -->
+</body></html>

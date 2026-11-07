@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Configuración - Python Tutor</title>
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface": "#f9f9ff",
+            "primary-container": "#dc2626",
+            "on-secondary-container": "#54647a",
+            "secondary": "#505f76",
+            "on-secondary": "#ffffff",
+            "error": "#ba1a1a",
+            "on-tertiary-container": "#f3f8ff",
+            "tertiary-fixed-dim": "#90cdff",
+            "surface-tint": "#bf0715",
+            "surface-container-highest": "#dce2f7",
+            "secondary-container": "#d0e1fb",
+            "on-tertiary": "#ffffff",
+            "tertiary-container": "#0078b2",
+            "on-background": "#141b2b",
+            "primary": "#b70011",
+            "surface-container-high": "#e1e8fd",
+            "on-surface-variant": "#5c403c",
+            "secondary-fixed-dim": "#b7c8e1",
+            "inverse-surface": "#293040",
+            "surface-dim": "#d3daef",
+            "secondary-fixed": "#d3e4fe",
+            "primary-fixed-dim": "#ffb4ab",
+            "surface-container-lowest": "#ffffff",
+            "background": "#f9f9ff",
+            "surface-container-low": "#f1f3ff",
+            "inverse-on-surface": "#edf0ff",
+            "tertiary": "#005e8d",
+            "surface-variant": "#dce2f7",
+            "on-primary-fixed": "#410002",
+            "on-secondary-fixed": "#0b1c30",
+            "on-surface": "#141b2b",
+            "on-primary-container": "#fff6f5",
+            "surface-container": "#e9edff",
+            "on-tertiary-fixed": "#001e30",
+            "inverse-primary": "#ffb4ab",
+            "tertiary-fixed": "#cbe6ff",
+            "primary-fixed": "#ffdad6",
+            "surface-bright": "#f9f9ff",
+            "outline": "#916f6b",
+            "outline-variant": "#e6bdb8",
+            "error-container": "#ffdad6",
+            "on-secondary-fixed-variant": "#38485d",
+            "on-primary": "#ffffff",
+            "on-error-container": "#93000a",
+            "on-error": "#ffffff",
+            "on-tertiary-fixed-variant": "#004b71",
+            "on-primary-fixed-variant": "#93000b"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-xl": "2rem",
+            "space-xs": "0.25rem",
+            "margin": "1.5rem",
+            "gutter": "1.25rem",
+            "space-lg": "1.5rem",
+            "space-sm": "0.5rem",
+            "space-md": "1rem"
+          },
+          "fontFamily": {
+            "headline-lg": ["Inter"],
+            "label-sm": ["JetBrains Mono"],
+            "body-sm": ["Inter"],
+            "body-lg": ["Inter"],
+            "headline-sm": ["Inter"],
+            "headline-xl": ["Inter"],
+            "label-md": ["JetBrains Mono"],
+            "headline-md": ["Inter"],
+            "body-md": ["Inter"]
+          },
+          "fontSize": {
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.025em", "fontWeight": "600" }],
+            "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-sm": ["13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "400" }],
+            "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "label-md": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "-0.005em", "fontWeight": "400" }]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface h-full flex overflow-hidden antialiased selection:bg-primary-fixed selection:text-primary">
+<!-- SIDEBAR (Preserved from Shared Components JSON & Style Guidance) -->
+<aside class="fixed top-0 left-0 h-screen w-64 flex flex-col justify-between bg-surface-container-lowest border-r border-outline-variant/30 shadow-sm z-30 shrink-0">
+<!-- Header Brand -->
+<div class="p-5 border-b border-outline-variant/20">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-on-primary shadow-sm shadow-primary-container/20">
+<span class="material-symbols-outlined text-xl" data-icon="terminal">terminal</span>
+</div>
+<div>
+<h1 class="text-headline-md font-headline-md font-bold text-on-surface tracking-tight leading-none">Python Tutor</h1>
+<span class="text-label-sm font-label-sm text-secondary">AI-Assisted Learning</span>
+</div>
+</div>
+</div>
+<!-- Navigation List -->
+<nav class="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
+<!-- Aprender (inactive) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-surface text-xl transition-colors" data-icon="school">school</span>
+<span class="text-body-md font-body-md font-medium">Aprender</span>
+</a>
+<!-- Cursos (inactive) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-surface text-xl transition-colors" data-icon="menu_book">menu_book</span>
+<span class="text-body-md font-body-md font-medium">Cursos</span>
+</a>
+<!-- Práctica (inactive) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer group" href="#">
+<span class="material-symbols-outlined text-secondary group-hover:text-on-surface text-xl transition-colors" data-icon="code">code</span>
+<span class="text-body-md font-body-md font-medium">Práctica</span>
+</a>
+<!-- Configuración (ACTIVE STATE MATCHING PROTOCOL) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary-fixed text-primary font-semibold border-l-[3px] border-primary transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="settings" data-weight="fill">settings</span>
+<span class="text-body-md font-body-md">Configuración</span>
+</a>
+</nav>
+<!-- Footer Profile Section -->
+<div class="p-4 border-t border-outline-variant/20 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface font-semibold text-body-sm tracking-wide border border-outline-variant/40">
+          JS
+        </div>
+<div class="flex flex-col">
+<span class="text-body-sm font-body-sm font-semibold text-on-surface leading-tight">JS Profile</span>
+<span class="text-label-sm font-label-sm text-secondary">Estudiante Pro</span>
+</div>
+</div>
+<button class="text-secondary hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container" title="Cerrar sesión">
+<span class="material-symbols-outlined text-lg" data-icon="logout">logout</span>
+</button>
+</div>
+</aside>
+<!-- MAIN VIEWPORT CANVAS -->
+<main class="ml-64 flex-1 h-screen overflow-y-auto bg-surface">
+<div class="max-w-4xl mx-auto px-8 py-10">
+<!-- Header Section -->
+<header class="mb-8">
+<div class="flex items-center gap-2 mb-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-label-sm font-label-sm bg-primary-fixed text-primary border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+            Ajustes del Sistema
+          </span>
+</div>
+<h1 class="text-headline-xl font-headline-xl text-on-surface">Configuración</h1>
+<p class="text-body-lg font-body-lg text-secondary mt-1">Gestiona la conexión con el tutor de IA y personaliza tu entorno de aprendizaje.</p>
+</header>
+<!-- SECTIONS CONTAINER -->
+<div class="space-y-6">
+<!-- 1. SECCIÓN: PROVEEDOR Y MODELO DE IA -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-space-lg shadow-sm">
+<div class="flex items-start justify-between pb-4 mb-5 border-b border-outline-variant/20">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-xl" data-icon="neurology">neurology</span>
+<h2 class="text-headline-md font-headline-md text-on-surface">Proveedor y Modelo de IA</h2>
+</div>
+<p class="text-body-sm font-body-sm text-secondary mt-1">Selecciona la infraestructura cognitiva encargada del análisis y feedback pedagógico.</p>
+</div>
+<span class="text-label-sm font-label-sm px-2 py-1 rounded bg-surface-container text-secondary border border-outline-variant/30">Motor LLM</span>
+</div>
+<!-- Provider Cards Grid -->
+<div class="mb-6">
+<label class="block text-body-sm font-body-sm font-medium text-on-surface mb-3">Proveedor de IA</label>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+<!-- OpenAI (Selected) -->
+<div class="relative p-4 rounded-xl border-2 border-primary-container bg-primary-fixed/20 cursor-pointer transition-all hover:shadow-sm">
+<div class="flex items-center justify-between mb-2">
+<div class="w-8 h-8 rounded-lg bg-surface-container-lowest border border-outline-variant/40 flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-primary-container text-lg" data-icon="smart_toy">smart_toy</span>
+</div>
+<div class="w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-xs" data-icon="check">check</span>
+</div>
+</div>
+<h3 class="text-headline-sm font-headline-sm text-on-surface">OpenAI</h3>
+<p class="text-label-sm font-label-sm text-secondary mt-1">GPT-4o, GPT-4o-mini</p>
+<div class="mt-3 pt-2 border-t border-primary/10 flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-label-sm font-label-sm text-secondary font-medium">Recomendado</span>
+</div>
+</div>
+<!-- Anthropic -->
+<div class="relative p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest hover:border-outline-variant hover:bg-surface-container-low cursor-pointer transition-all">
+<div class="flex items-center justify-between mb-2">
+<div class="w-8 h-8 rounded-lg bg-surface-container-low border border-outline-variant/30 flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="psychology">psychology</span>
+</div>
+<div class="w-5 h-5 rounded-full border border-outline-variant/60"></div>
+</div>
+<h3 class="text-headline-sm font-headline-sm text-on-surface">Anthropic</h3>
+<p class="text-label-sm font-label-sm text-secondary mt-1">Claude 3.5 Sonnet, Haiku</p>
+<div class="mt-3 pt-2 border-t border-outline-variant/20 flex items-center gap-1.5">
+<span class="text-label-sm font-label-sm text-secondary">Razonamiento alto</span>
+</div>
+</div>
+<!-- Google Gemini -->
+<div class="relative p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest hover:border-outline-variant hover:bg-surface-container-low cursor-pointer transition-all">
+<div class="flex items-center justify-between mb-2">
+<div class="w-8 h-8 rounded-lg bg-surface-container-low border border-outline-variant/30 flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div class="w-5 h-5 rounded-full border border-outline-variant/60"></div>
+</div>
+<h3 class="text-headline-sm font-headline-sm text-on-surface">Google Gemini</h3>
+<p class="text-label-sm font-label-sm text-secondary mt-1">Gemini 1.5 Pro, Flash</p>
+<div class="mt-3 pt-2 border-t border-outline-variant/20 flex items-center gap-1.5">
+<span class="text-label-sm font-label-sm text-secondary">Contexto extendido</span>
+</div>
+</div>
+<!-- Local / Ollama -->
+<div class="relative p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest hover:border-outline-variant hover:bg-surface-container-low cursor-pointer transition-all">
+<div class="flex items-center justify-between mb-2">
+<div class="w-8 h-8 rounded-lg bg-surface-container-low border border-outline-variant/30 flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="memory">memory</span>
+</div>
+<div class="w-5 h-5 rounded-full border border-outline-variant/60"></div>
+</div>
+<h3 class="text-headline-sm font-headline-sm text-on-surface">Local / Ollama</h3>
+<p class="text-label-sm font-label-sm text-secondary mt-1">Llama 3, DeepSeek</p>
+<div class="mt-3 pt-2 border-t border-outline-variant/20 flex items-center gap-1.5">
+<span class="text-label-sm font-label-sm text-secondary">100% Privado</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Model Selector Dropdown -->
+<div class="space-y-2">
+<div class="flex items-center justify-between">
+<label class="block text-body-sm font-body-sm font-medium text-on-surface" for="model-select">Selector de Modelo</label>
+<span class="text-label-sm font-label-sm text-secondary">Snapshot: v2024-05-13</span>
+</div>
+<div class="relative">
+<select class="w-full appearance-none bg-surface-container-lowest border border-outline-variant/40 rounded-xl px-4 py-2.5 text-body-md font-body-md text-on-surface focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary-fixed transition-all cursor-pointer" id="model-select">
+<option selected="">GPT-4o (Recomendado para tutoría interactiva paso a paso)</option>
+<option>GPT-4o-mini (Respuestas ultrarrápidas y menor consumo)</option>
+<option>Claude 3.5 Sonnet (Excelente análisis sintáctico de trazas)</option>
+<option>Gemini 1.5 Pro (Gran ventana para depurar módulos enteros)</option>
+<option>Llama 3.1 70B (Ejecución local vía endpoint Ollama)</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-secondary">
+<span class="material-symbols-outlined text-xl" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<p class="text-body-sm font-body-sm text-secondary pt-1 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base text-secondary" data-icon="info">info</span>
+              Este modelo se utilizará para guiar las conversaciones, explicar código y generar ejercicios personalizados.
+            </p>
+</div>
+</section>
+<!-- 2. SECCIÓN: CONFIGURACIÓN DE LA CONEXIÓN -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-space-lg shadow-sm">
+<div class="flex items-start justify-between pb-4 mb-5 border-b border-outline-variant/20">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-xl" data-icon="vpn_key">vpn_key</span>
+<h2 class="text-headline-md font-headline-md text-on-surface">Configuración de la Conexión</h2>
+</div>
+<p class="text-body-sm font-body-sm text-secondary mt-1">Credenciales y enrutamiento para comunicar tu entorno con la API seleccionada.</p>
+</div>
+<span class="text-label-sm font-label-sm px-2 py-1 rounded bg-surface-container text-secondary border border-outline-variant/30">Seguridad Cero-Tránsito</span>
+</div>
+<div class="space-y-5">
+<!-- Clave API -->
+<div>
+<div class="flex items-center justify-between mb-1.5">
+<label class="block text-body-sm font-body-sm font-medium text-on-surface" for="api-key">Clave API (API Key)</label>
+<a class="text-label-sm font-label-sm text-primary hover:underline flex items-center gap-1" href="#">
+<span>Obtener clave OpenAI</span>
+<span class="material-symbols-outlined text-xs" data-icon="open_in_new">open_in_new</span>
+</a>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl px-4 py-2.5 font-label-md text-label-md text-on-surface focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary-fixed tracking-wider transition-all" id="api-key" placeholder="sk-proj-••••••••••••••••••••••••" type="password" value="mock-key-not-a-secret"/>
+<button class="absolute inset-y-0 right-0 flex items-center px-3.5 text-secondary hover:text-on-surface transition-colors" title="Mostrar/Ocultar clave" type="button">
+<span class="material-symbols-outlined text-xl" data-icon="visibility">visibility</span>
+</button>
+</div>
+<p class="text-body-sm font-body-sm text-secondary mt-1.5 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base text-emerald-600" data-icon="lock">lock</span>
+                Tu clave se almacena localmente de forma segura en tu navegador y nunca pasa por servidores intermediarios.
+              </p>
+</div>
+<!-- URL Base / Endpoint personalizado -->
+<div>
+<div class="flex items-center justify-between mb-1.5">
+<label class="block text-body-sm font-body-sm font-medium text-on-surface" for="base-url">URL base / Endpoint personalizado <span class="text-secondary font-normal">(Opcional)</span></label>
+<span class="text-label-sm font-label-sm text-secondary">Proxy / Reverse Proxy</span>
+</div>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-xl px-4 py-2.5 font-label-md text-label-md text-on-surface placeholder:text-secondary/60 focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary-fixed transition-all" id="base-url" placeholder="https://api.openai.com/v1 (Predeterminado)" type="text"/>
+<p class="text-body-sm font-body-sm text-secondary mt-1">Útil si utilizas LiteLLM, Ollama con túneles Cloudflare, o proxies universitarios.</p>
+</div>
+<!-- Botón de comprobación y Estado de Ping -->
+<div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-outline-variant/20">
+<button class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/40 text-on-surface text-body-sm font-body-sm font-medium hover:bg-primary-fixed/20 hover:border-primary/40 hover:text-primary transition-all" type="button">
+<span class="material-symbols-outlined text-lg text-primary-container" data-icon="bolt">bolt</span>
+<span>Comprobar conexión</span>
+</button>
+<!-- Pill de Estado Activo de Prueba -->
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+</span>
+<span class="text-label-sm font-label-sm font-semibold">Conexión establecida con éxito</span>
+<span class="text-label-sm font-label-sm text-emerald-600 border-l border-emerald-200 pl-2">Latencia: 142ms</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. SECCIÓN: APARIENCIA Y TEMA -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-space-lg shadow-sm">
+<div class="flex items-start justify-between pb-4 mb-5 border-b border-outline-variant/20">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-xl" data-icon="palette">palette</span>
+<h2 class="text-headline-md font-headline-md text-on-surface">Apariencia</h2>
+</div>
+<p class="text-body-sm font-body-sm text-secondary mt-1">Configura el contraste cromático de los paneles de código y el área conversacional.</p>
+</div>
+<span class="text-label-sm font-label-sm px-2 py-1 rounded bg-surface-container text-secondary border border-outline-variant/30">Interfaz</span>
+</div>
+<!-- Selector de Modo Claro y Modo Oscuro -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+<!-- Modo Claro (ACTIVE) -->
+<div class="border-2 border-primary-container bg-primary-fixed/10 rounded-xl p-4 cursor-pointer relative transition-all shadow-sm">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-surface-container-lowest border border-outline-variant/40 flex items-center justify-center text-primary-container shadow-xs">
+<span class="material-symbols-outlined text-xl" data-icon="light_mode">light_mode</span>
+</div>
+<div>
+<h3 class="text-headline-sm font-headline-sm text-on-surface">Modo claro</h3>
+<span class="text-label-sm font-label-sm text-secondary">Predeterminado</span>
+</div>
+</div>
+<div class="w-5 h-5 rounded-full bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-xs" data-icon="check">check</span>
+</div>
+</div>
+<!-- Mini Mockup Esquema Claro -->
+<div class="rounded-lg border border-outline-variant/30 bg-surface p-2.5 space-y-1.5">
+<div class="flex items-center justify-between border-b border-outline-variant/20 pb-1">
+<div class="w-12 h-2 rounded bg-outline-variant/40"></div>
+<div class="w-4 h-2 rounded bg-primary-container/40"></div>
+</div>
+<div class="flex gap-1.5">
+<div class="w-1/3 h-10 rounded bg-surface-container-lowest border border-outline-variant/20"></div>
+<div class="w-2/3 h-10 rounded bg-surface-container border border-outline-variant/20 p-1 space-y-1">
+<div class="w-3/4 h-1.5 rounded bg-outline-variant/60"></div>
+<div class="w-1/2 h-1.5 rounded bg-primary-container/50"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Modo Oscuro -->
+<div class="border border-outline-variant/40 bg-surface-container-lowest hover:border-outline-variant hover:bg-surface-container-low rounded-xl p-4 cursor-pointer relative transition-all">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-inverse-surface flex items-center justify-center text-inverse-on-surface shadow-xs">
+<span class="material-symbols-outlined text-xl" data-icon="dark_mode">dark_mode</span>
+</div>
+<div>
+<h3 class="text-headline-sm font-headline-sm text-on-surface">Modo oscuro</h3>
+<span class="text-label-sm font-label-sm text-secondary">Bajo brillo</span>
+</div>
+</div>
+<div class="w-5 h-5 rounded-full border border-outline-variant/60"></div>
+</div>
+<!-- Mini Mockup Esquema Oscuro -->
+<div class="rounded-lg border border-outline-variant/30 bg-inverse-surface p-2.5 space-y-1.5">
+<div class="flex items-center justify-between border-b border-outline/30 pb-1">
+<div class="w-12 h-2 rounded bg-secondary"></div>
+<div class="w-4 h-2 rounded bg-primary-container"></div>
+</div>
+<div class="flex gap-1.5">
+<div class="w-1/3 h-10 rounded bg-[#1c2230] border border-outline/20"></div>
+<div class="w-2/3 h-10 rounded bg-[#161c28] border border-outline/20 p-1 space-y-1">
+<div class="w-3/4 h-1.5 rounded bg-secondary"></div>
+<div class="w-1/2 h-1.5 rounded bg-primary-container/70"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sincronizar con el sistema Toggle -->
+<div class="flex items-center justify-between pt-3 border-t border-outline-variant/20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="devices">devices</span>
+<div>
+<span class="text-body-sm font-body-sm font-medium text-on-surface">Sincronizar con el sistema operativo</span>
+<p class="text-body-sm font-body-sm text-secondary">Ajusta la paleta automáticamente según la preferencia global de tu dispositivo.</p>
+</div>
+</div>
+<!-- Toggle Switch -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</section>
+</div>
+<!-- 4. BARRA DE ACCIONES INFERIORES -->
+<footer class="mt-8 pt-6 border-t border-outline-variant/30 flex items-center justify-between gap-4">
+<div class="flex items-center gap-2 text-secondary text-body-sm font-body-sm">
+<span class="material-symbols-outlined text-base" data-icon="history">history</span>
+<span>Último cambio guardado: Hoy, 14:32</span>
+</div>
+<div class="flex items-center gap-3">
+<!-- Botón Secundario: Restablecer valores -->
+<button class="px-5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface font-body-md text-body-md font-medium hover:bg-surface-container hover:text-on-surface transition-all" type="button">
+            Restablecer valores
+          </button>
+<!-- Botón Principal Rojo: Guardar cambios -->
+<button class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary-container text-on-primary font-body-md text-body-md font-semibold hover:bg-primary transition-all shadow-sm shadow-primary-container/20 active:scale-[0.98]" type="button">
+<span class="material-symbols-outlined text-lg" data-icon="check">check</span>
+<span>Guardar cambios</span>
+</button>
+</div>
+</footer>
+</div>
+</main>
+</body></html>
