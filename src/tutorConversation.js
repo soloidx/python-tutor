@@ -1,4 +1,5 @@
 import { buildRequest } from "./tutorContext.js";
+import { loadHistory, saveHistory, requestHistory } from "./tutorHistory.js";
 import { streamTutor } from "./openRouterTutor.js";
 
 const recovery = {
@@ -21,10 +22,13 @@ const recovery = {
 };
 
 export function createConversationService() {
-  let state = { exchanges: [], active: null, notice: "" };
+  let state = { ...loadHistory(), active: null, notice: "" };
   let controller = null;
   const listeners = new Set();
   const publish = (next) => {
+    if (next.exchanges !== state.exchanges) {
+      next = { ...next, storageWarning: saveHistory(next.exchanges) };
+    }
     state = next;
     listeners.forEach((listener) => listener());
   };
@@ -66,9 +70,15 @@ export function createConversationService() {
     onAccessIssue,
   }) {
     if (state.active || !message.trim()) return false;
+    const antecedents = requestHistory(state.exchanges, topicId, exchangeId);
     let request;
     try {
-      request = buildRequest({ capture, message, model: config.model });
+      request = buildRequest({
+        capture,
+        message,
+        model: config.model,
+        history: antecedents.history,
+      });
     } catch (error) {
       publish({ ...state, notice: error.message });
       return false;
@@ -89,6 +99,24 @@ export function createConversationService() {
     };
     const current = new AbortController();
     controller = current;
+    const topicExchanges = state.exchanges.filter(
+      (item) => item.topicId === topicId,
+    );
+    const removedId =
+      !exchangeId && topicExchanges.length >= 50 ? topicExchanges[0].id : null;
+    const notices = [];
+    if (removedId)
+      notices.push(
+        "Se eliminó el intercambio más antiguo de este tema: el historial local conserva hasta 50 intercambios, incluidos los incompletos.",
+      );
+    if (antecedents.omitted)
+      notices.push(
+        "Se omitieron antecedentes antiguos del envío: se incluyen como máximo los diez intercambios completos más recientes.",
+      );
+    if (request.omitted)
+      notices.push(
+        "Se omitieron antecedentes antiguos por capacidad del modelo, sin resumir ni recortar su contenido.",
+      );
     publish({
       ...state,
       exchanges: exchangeId
@@ -97,9 +125,12 @@ export function createConversationService() {
               ? { ...item, attempts: [...item.attempts, attempt] }
               : item,
           )
-        : [...state.exchanges, exchange],
+        : [
+            ...state.exchanges.filter((item) => item.id !== removedId),
+            exchange,
+          ],
       active: id,
-      notice: "",
+      notice: notices.join(" "),
     });
     const valid = () =>
       !current.signal.aborted && controller === current && state.active === id;

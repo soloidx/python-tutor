@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setup, frame } from "./fixtures/tutor-setup.js";
+import { setup, frame } from "./fixtures/tutor.js";
 import { streamingOpenRouter } from "./fixtures/openrouter.js";
 test.use({ actionTimeout: 8000, ignoreHTTPSErrors: true });
 
@@ -185,7 +185,7 @@ for (const scenario of [
   });
 
 test("uses the declared alternate output limit parameter", async ({ page }) => {
-  const { model } = await import("./fixtures/tutor-setup.js");
+  const { model } = await import("./fixtures/tutor.js");
   const requests = await setup(page, {
     ...model,
     supported_parameters: ["max_completion_tokens"],
@@ -306,4 +306,41 @@ test("late stop frames cannot complete a cancelled attempt or affect the single 
   } finally {
     await fixture.close();
   }
+});
+
+test("generation model rejection requires explicit selection before saving access", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.route("https://openrouter.ai/api/v1/chat/completions", (route) =>
+    route.fulfill({
+      status: 404,
+      json: { error: { code: 404, message: "Model not found" } },
+    }),
+  );
+  await page.getByLabel("Mensaje al tutor").fill("Ayuda");
+  await page.getByRole("button", { name: "Enviar", exact: true }).click();
+  await expect(
+    page.getByText(/Respuesta incompleta: El modelo ya no está disponible/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enviar", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Configuración del tutor", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Validar clave", exact: true })
+    .click();
+  await expect(
+    page.getByText("Credenciales válidas", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Guardar y volver al tutor" }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: /Tutor de prueba/ }).click();
+  await page.getByRole("button", { name: "Guardar y volver al tutor" }).click();
+  await expect(
+    page.getByRole("button", { name: "Enviar", exact: true }),
+  ).toBeEnabled();
 });

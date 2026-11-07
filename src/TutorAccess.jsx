@@ -29,7 +29,7 @@ export function TutorPanel({
       config: access.config,
       onAccessIssue: access.reportIssue,
     });
-    if (!conversation.getSnapshot().notice) setMessage("");
+    if (conversation.getSnapshot().active) setMessage("");
     await pending;
   }
   const ready = access.status === "ready";
@@ -140,6 +140,11 @@ export function TutorPanel({
         </div>
         {copied && <p>{copied}</p>}
         {state.notice && <p role="alert">{state.notice}</p>}
+        {state.storageWarning && (
+          <p role="alert" className="storage-warning">
+            {state.storageWarning}
+          </p>
+        )}
         <label className="tutor-message">
           Mensaje al tutor
           <textarea
@@ -177,6 +182,9 @@ export function TutorSettings({ access, onClose, onSaved }) {
   const [key, setKey] = useState(access.config?.key || "");
   const [selected, setSelected] = useState(access.config?.model || null);
   const [models, setModels] = useState([]);
+  const [acknowledgedModelIssue, setAcknowledgedModelIssue] = useState(null);
+  const needsModelSelection =
+    access.status === "model" && acknowledgedModelIssue !== access.message;
   const [validatedKey, setValidatedKey] = useState("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -339,6 +347,9 @@ export function TutorSettings({ access, onClose, onSaved }) {
             predeterminado.
           </p>
         )}
+        {needsModelSelection && (
+          <p>Selecciona un modelo explícitamente de nuevo antes de guardar.</p>
+        )}
         {valid && (
           <>
             {!models.some((model) => !modelIncompatibility(model)) && (
@@ -364,6 +375,7 @@ export function TutorSettings({ access, onClose, onSaved }) {
                       className="model-option"
                       onClick={() => {
                         setSelected(model);
+                        setAcknowledgedModelIssue(access.message);
                         setStorageFailed(false);
                         setPending(null);
                       }}
@@ -412,7 +424,7 @@ export function TutorSettings({ access, onClose, onSaved }) {
         </button>
         <button
           className="primary"
-          disabled={!valid || !selected || busy}
+          disabled={!valid || !selected || needsModelSelection || busy}
           onClick={() => validate(true)}
         >
           Guardar y volver al tutor
