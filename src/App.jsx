@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { assessmentQuestions } from "./assessment.js";
 import { topics } from "./curriculum.js";
 import { usePython } from "./usePython.js";
 
@@ -36,6 +37,7 @@ export default function App() {
   const [view, setView] = useState("courses");
   const [topicId, setTopicId] = useState(topics[0].id);
   const [completed, setCompleted] = useState([]);
+  const [assessmentResult, setAssessmentResult] = useState(null);
   const topic = topics.find((item) => item.id === topicId) || topics[0];
   const exerciseCount = topics.reduce(
     (count, item) => count + item.exercises.length,
@@ -72,7 +74,7 @@ export default function App() {
             Cursos y rutas
           </button>
           <button
-            className={view === "learn" ? "nav active" : "nav"}
+            className={view !== "courses" ? "nav active" : "nav"}
             onClick={() => setView("learn")}
           >
             <Icon name="book" />
@@ -203,30 +205,66 @@ export default function App() {
                 <progress value={completed.length} max={exerciseCount} />
               </div>
             </div>
-            <div className="topic-strip" aria-label="Temas de la ruta">
-              {topics.map((item, index) => (
-                <button
-                  className={
-                    topicId === item.id ? "topic-chip selected" : "topic-chip"
-                  }
-                  key={item.id}
-                  aria-current={topicId === item.id ? "step" : undefined}
-                  onClick={() => setTopicId(item.id)}
-                >
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  {item.title}
-                  {item.exercises.every((exercise) => completed.includes(exercise.id)) && (
-                    <span className="topic-completed">Completado</span>
-                  )}
-                </button>
-              ))}
-            </div>
-            <LearningWorkspace
-              key={topic.id}
-              topic={topic}
-              completed={completed}
-              onComplete={complete}
-            />
+            {view === "assessment" ? (
+              <FinalAssessment
+                result={assessmentResult}
+                onResult={setAssessmentResult}
+                onBack={() => setView("learn")}
+              />
+            ) : (
+              <>
+                <div className="topic-strip" aria-label="Temas de la ruta">
+                  {topics.map((item, index) => (
+                    <button
+                      className={
+                        topicId === item.id
+                          ? "topic-chip selected"
+                          : "topic-chip"
+                      }
+                      key={item.id}
+                      aria-current={topicId === item.id ? "step" : undefined}
+                      onClick={() => setTopicId(item.id)}
+                    >
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      {item.title}
+                      {item.exercises.every((exercise) =>
+                        completed.includes(exercise.id),
+                      ) && <span className="topic-completed">Completado</span>}
+                    </button>
+                  ))}
+                </div>
+                {(topicId === topics.at(-1).id ||
+                  completed.length === exerciseCount) && (
+                  <section className="assessment-invite panel">
+                    <div>
+                      <h2>Pon a prueba lo aprendido</h2>
+                      <p>
+                        6 preguntas sobre los seis temas. Sin límite de tiempo;
+                        puedes volver a las lecciones cuando quieras.
+                      </p>
+                    </div>
+                    <button
+                      className="primary"
+                      onClick={() => {
+                        setView("assessment");
+                        window.scrollTo(0, 0);
+                      }}
+                    >
+                      {assessmentResult
+                        ? "Ver evaluación final"
+                        : "Comenzar evaluación final"}
+                      <Icon name="arrow" />
+                    </button>
+                  </section>
+                )}
+                <LearningWorkspace
+                  key={topic.id}
+                  topic={topic}
+                  completed={completed}
+                  onComplete={complete}
+                />
+              </>
+            )}
           </main>
         )}
       </div>
@@ -491,5 +529,126 @@ function LearningWorkspace({ topic, completed, onComplete }) {
         </p>
       </section>
     </div>
+  );
+}
+
+function FinalAssessment({ result, onResult, onBack }) {
+  const [answers, setAnswers] = useState(result?.answers || {});
+  const resultHeading = useRef(null);
+  useEffect(() => {
+    if (result) resultHeading.current?.focus();
+  }, [result]);
+  function submit(event) {
+    event.preventDefault();
+    if (!assessmentQuestions.every((question) => answers[question.id])) return;
+    const responses = assessmentQuestions.map((question) => ({
+      questionId: question.id,
+      correct: answers[question.id] === question.answer,
+    }));
+    onResult({
+      answers: { ...answers },
+      responses,
+      score: responses.filter((item) => item.correct).length,
+      total: assessmentQuestions.length,
+    });
+  }
+  return (
+    <section className="assessment panel">
+      <div className="lesson-content">
+        <div className="eyebrow">EL ÚLTIMO PASO DE TU RUTA</div>
+        <h2>Evaluación final</h2>
+        <p>
+          Elige una respuesta por pregunta y revisa tu resultado. Puedes
+          intentarlo de nuevo para seguir practicando.
+        </p>
+        {result && (
+          <div className="assessment-result" role="status">
+            <h3 ref={resultHeading} tabIndex={-1}>
+              Tu resultado: {result.score} de {result.total}
+            </h3>
+            <p>
+              {result.score === result.total
+                ? "¡Muy bien! Reconoces los fundamentos de Python."
+                : "Revisa las explicaciones y vuelve a los temas que quieras practicar."}
+            </p>
+          </div>
+        )}
+        <form onSubmit={submit}>
+          {assessmentQuestions.map((question, index) => (
+            <fieldset
+              key={question.id}
+              className="assessment-question"
+              disabled={Boolean(result)}
+            >
+              <legend>
+                {index + 1}. {question.topic}
+              </legend>
+              <p>{question.prompt}</p>
+              {question.code && (
+                <pre className="example">
+                  <code>{question.code}</code>
+                </pre>
+              )}
+              <div className="assessment-options">
+                {question.options.map((option) => (
+                  <label key={option}>
+                    <input
+                      type="radio"
+                      name={question.id}
+                      value={option}
+                      checked={answers[question.id] === option}
+                      onChange={() =>
+                        setAnswers({ ...answers, [question.id]: option })
+                      }
+                      required
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+              {result && (
+                <div
+                  className={`answer-explanation ${result.answers[question.id] === question.answer ? "correct" : "incorrect"}`}
+                >
+                  <strong>
+                    {result.answers[question.id] === question.answer
+                      ? "¡Correcto!"
+                      : `Respuesta correcta: ${question.answer}`}
+                  </strong>
+                  <p>{question.explanation}</p>
+                </div>
+              )}
+            </fieldset>
+          ))}
+          <div className="assessment-actions">
+            {result ? (
+              <button
+                type="button"
+                className="primary"
+                onClick={() => {
+                  setAnswers({});
+                  onResult(null);
+                }}
+              >
+                Intentar de nuevo
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="primary"
+                disabled={
+                  !assessmentQuestions.every((question) => answers[question.id])
+                }
+              >
+                Ver resultado
+              </button>
+            )}
+            <button type="button" className="secondary" onClick={onBack}>
+              Volver a las lecciones
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }
