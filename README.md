@@ -24,7 +24,8 @@ Instala Google Chrome, o cambia `channel` en `playwright.config.js` y usa `npx p
 ## Extender las lecciones
 
 - `src/curriculum.js`: contenido en español, código inicial, pistas progresivas y expresiones Python de comprobación. Cada ejercicio necesita un identificador globalmente único. Las expresiones pueden consultar las variables del programa y `_output` (salida sin salto de línea final).
-- `src/App.jsx`: entrada de cursos, selección de tema y ejercicios completados en la sesión.
+- `src/assessment.js`: seis preguntas de evaluación final con respuestas y explicaciones deterministas.
+- `src/App.jsx`: entrada de cursos, selección de tema, ejercicios completados y resultado de evaluación en la sesión.
 - `src/usePython.js`: estados de carga, ejecución y recuperación del intérprete.
 - `public/python-worker.js`: Pyodide en un Web Worker, con un diccionario Python nuevo para cada ejecución. No es un servidor ni un entorno para ejecutar código de otras personas.
 - `tests/learning.spec.js`: prueba de comportamiento mediante la interfaz real, sin simular Python.
