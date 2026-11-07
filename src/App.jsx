@@ -9,6 +9,8 @@ import {
 } from "./progress.js";
 import { useTutorAccess } from "./tutorAccess.js";
 import { TutorPanel, TutorSettings } from "./TutorAccess.jsx";
+import { createConversationService } from "./tutorConversation.js";
+import { captureContext } from "./tutorContext.js";
 import { usePython } from "./usePython.js";
 
 function Icon({ name, ...props }) {
@@ -42,7 +44,8 @@ function Icon({ name, ...props }) {
 }
 
 export default function App() {
-  const access = useTutorAccess();
+  const [conversation] = useState(createConversationService);
+  const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [learningTab, setLearningTab] = useState("lesson");
   const [initial] = useState(loadProgress);
@@ -61,6 +64,7 @@ export default function App() {
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const resetButton = useRef(null);
   function resetProgress() {
+    conversation.cancel();
     const cleared = {
       ...emptyProgress,
       selectedRoute: "python-fundamentos",
@@ -385,6 +389,7 @@ export default function App() {
                   completed={completed}
                   onComplete={complete}
                   access={access}
+                  conversation={conversation}
                   learningTab={learningTab}
                   setLearningTab={setLearningTab}
                   onConfigure={() => setSettingsOpen(true)}
@@ -417,10 +422,14 @@ function LearningWorkspace({
   completed,
   onComplete,
   access,
+  conversation,
   learningTab,
   setLearningTab,
   onConfigure,
 }) {
+  useEffect(() => () => conversation.cancel(), [conversation]);
+  const execution = useRef(null);
+  const [lastResult, setLastResult] = useState(null);
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const exercise = topic.exercises[exerciseIndex];
   const [code, setCode] = useState(exercise.starter);
@@ -429,6 +438,12 @@ function LearningWorkspace({
   const [feedback, setFeedback] = useState("");
   const python = usePython((received) => {
     setResult(received);
+    if (execution.current)
+      setLastResult({
+        ...execution.current,
+        output: received.output || "",
+        error: received.error || null,
+      });
     if (received.passed) {
       onComplete(exercise.id);
       setFeedback(`¡Correcto! ${exercise.success}`);
@@ -600,7 +615,15 @@ function LearningWorkspace({
           aria-labelledby="tutor-tab"
           hidden={learningTab !== "tutor"}
         >
-          <TutorPanel onConfigure={onConfigure} access={access} />
+          <TutorPanel
+            onConfigure={onConfigure}
+            access={access}
+            conversation={conversation}
+            topicId={topic.id}
+            capture={() =>
+              captureContext({ topic, exercise, draft: code, lastResult })
+            }
+          />
         </div>
       </section>
       <section className="runner-column" aria-label="Espacio de práctica">
@@ -635,6 +658,7 @@ function LearningWorkspace({
                 onClick={() => {
                   setFeedback("");
                   setResult(null);
+                  execution.current = { exerciseId: exercise.id, code };
                   python.run(code, exercise.check);
                 }}
               >

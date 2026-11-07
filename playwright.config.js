@@ -9,7 +9,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `npm run dev -- --port ${port}`,
+    command: `npm run ${process.env.PLAYWRIGHT_PREVIEW ? "preview" : "dev"} -- --port ${port}`,
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
   },

@@ -1481,3 +1481,8 @@ textarea:focus-visible {
 .storage-warning {
   color: #9a3412;
 }
+
+.tutor-exchange { border-bottom: 1px solid var(--border, #e2e6e2); padding: 12px 0; overflow-wrap: anywhere; }
+.tutor-answer, .tutor-question { white-space: pre-wrap; }
+.tutor-exchange pre { overflow: auto; background: #f4f6f3; padding: 12px; border-radius: 8px; }
+.tutor-message textarea { min-height: 88px; }
