@@ -80,8 +80,25 @@ test("retains fifty exchanges, removes the oldest with notice, and sends only te
   test.setTimeout(120000);
   const requests = await setup(page, model, "Respuesta breve");
   await page.getByLabel("Código Python").fill("");
-  for (let index = 1; index <= 50; index++)
-    await send(page, `Pregunta ${index}`, index);
+  await page.route("https://openrouter.ai/api/v1/chat/completions", (route) => {
+    requests.push(route.request().postDataJSON());
+    return route.fulfill({
+      contentType: "text/event-stream",
+      body:
+        frame("Respuesta breve", requests.length === 1 ? "length" : "stop") +
+        "data: [DONE]\n\n",
+    });
+  });
+  await page.getByLabel("Mensaje al tutor").fill("Pregunta 1");
+  await page.getByRole("button", { name: "Enviar", exact: true }).click();
+  await expect(
+    page.getByText("Respuesta breve", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enviar", exact: true }),
+  ).toBeEnabled();
+  for (let index = 2; index <= 50; index++)
+    await send(page, `Pregunta ${index}`, index - 1);
   await expect(page.getByText("Pregunta 1", { exact: true })).toBeVisible();
   await send(page, "Pregunta 51", 50);
   await expect(page.getByRole("alert")).toContainText(
