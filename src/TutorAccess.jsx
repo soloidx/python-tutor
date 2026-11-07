@@ -28,7 +28,7 @@ export function TutorPanel({
       capture: capture(),
       config: access.config,
     });
-    if (!conversation.getSnapshot().notice) setMessage("");
+    if (conversation.getSnapshot().active) setMessage("");
     await pending;
   }
   const ready = access.status === "ready";
@@ -124,6 +124,11 @@ export function TutorPanel({
         </div>
         {copied && <p>{copied}</p>}
         {state.notice && <p role="alert">{state.notice}</p>}
+        {state.storageWarning && (
+          <p role="alert" className="storage-warning">
+            {state.storageWarning}
+          </p>
+        )}
         <label className="tutor-message">
           Mensaje al tutor
           <textarea
