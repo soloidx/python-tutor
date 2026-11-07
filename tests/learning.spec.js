@@ -26,8 +26,16 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(page.getByText("Pista 2 de 2")).toBeVisible();
   await page
     .getByLabel("Código Python")
+    .fill('nombre = "Ada"\nprint("Hola, " + nombre, end="")');
+  await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
+  await expect(page.getByLabel("Salida del programa")).toHaveText("Hola, Ada");
+  await expect(page.getByRole("status")).toContainText("¡Correcto!");
+  // A following run must not inherit buffered output from the previous one.
+  await page
+    .getByLabel("Código Python")
     .fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
+  await expect(page.getByLabel("Salida del programa")).toHaveText("Hola, Ada");
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
   await expect(
     page.getByText("1 de 2 ejercicios completados", { exact: true }),
@@ -37,10 +45,15 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Todavía no");
   await page.getByRole("button", { name: /2\. Un valor que cambia/ }).click();
-  await page.getByLabel("Código Python").fill("print(variable_inexistente)");
+  await page
+    .getByLabel("Código Python")
+    .fill('print("Antes del error", end="")\nprint(variable_inexistente)');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByLabel("Errores del programa")).toContainText(
     "NameError",
+  );
+  await expect(page.getByLabel("Salida del programa")).toHaveText(
+    "Antes del error",
   );
   await page
     .getByLabel("Código Python")

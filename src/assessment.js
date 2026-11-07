@@ -62,3 +62,18 @@ export const assessmentQuestions = [
       "El índice 0 obtiene el primer diccionario; la clave nombre obtiene Ada.",
   },
 ];
+
+export function assessAnswers(answers) {
+  const responses = assessmentQuestions.map((question) => ({
+    questionId: question.id,
+    correct: answers[question.id] === question.answer,
+  }));
+  return {
+    answers: Object.fromEntries(
+      assessmentQuestions.map((question) => [question.id, answers[question.id]]),
+    ),
+    responses,
+    score: responses.filter((response) => response.correct).length,
+    total: assessmentQuestions.length,
+  };
+}
