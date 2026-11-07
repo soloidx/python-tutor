@@ -210,10 +210,14 @@ export default function App() {
                     topicId === item.id ? "topic-chip selected" : "topic-chip"
                   }
                   key={item.id}
+                  aria-current={topicId === item.id ? "step" : undefined}
                   onClick={() => setTopicId(item.id)}
                 >
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   {item.title}
+                  {item.exercises.every((exercise) => completed.includes(exercise.id)) && (
+                    <span className="topic-completed">Completado</span>
+                  )}
                 </button>
               ))}
             </div>
