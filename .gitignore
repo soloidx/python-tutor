@@ -1,3 +1,9 @@
+node_modules/
+dist/
+public/runtime/
+test-results/
+playwright-report/
+
 # Keep repository agent instructions trackable despite a global ignore rule.
 !/AGENTS.md
 

@@ -1,0 +1,22 @@
+{
+  "name": "python-tutor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "node scripts/prepare-runtime.mjs && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "playwright test",
+    "postinstall": "node scripts/prepare-runtime.mjs"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "pyodide": "0.28.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "vite": "^7.2.0"
+  }
+}
