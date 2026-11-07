@@ -7,6 +7,10 @@ import {
   removeProgress,
   saveProgress,
 } from "./progress.js";
+import { useTutorAccess } from "./tutorAccess.js";
+import { TutorPanel, TutorSettings } from "./TutorAccess.jsx";
+import { createConversationService } from "./tutorConversation.js";
+import { captureContext } from "./tutorContext.js";
 import { usePython } from "./usePython.js";
 
 function Icon({ name, ...props }) {
@@ -40,6 +44,18 @@ function Icon({ name, ...props }) {
 }
 
 export default function App() {
+  const [conversation] = useState(createConversationService);
+  const access = useTutorAccess({ beforeApply: conversation.cancel });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [learningTab, setLearningTab] = useState("lesson");
+  const focusTutorAfterSettings = useRef(false);
+  useEffect(() => {
+    if (!settingsOpen && focusTutorAfterSettings.current) {
+      // Run after the dialog cleanup has restored its original opener.
+      focusTutorAfterSettings.current = false;
+      document.getElementById("tutor-tab")?.focus();
+    }
+  }, [settingsOpen]);
   const [initial] = useState(loadProgress);
   const [view, updateView] = useState(initial.progress.view);
   const [selectedRoute, setSelectedRoute] = useState(
@@ -56,6 +72,7 @@ export default function App() {
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const resetButton = useRef(null);
   function resetProgress() {
+    const historyWarning = conversation.reset();
     const cleared = {
       ...emptyProgress,
       selectedRoute: "python-fundamentos",
@@ -64,14 +81,12 @@ export default function App() {
     // Remove the old record first: a full store may reject writes but allow deletion.
     const removed = removeProgress();
     const saved = saveProgress(cleared);
-    if (!removed && !saved) {
-      setResetError(
-        "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador.",
-      );
-    } else {
-      setStorageMessage("");
-      setResetError("");
-    }
+    const progressWarning =
+      !removed && !saved
+        ? "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador."
+        : "";
+    setStorageMessage("");
+    setResetError([progressWarning, historyWarning].filter(Boolean).join(" "));
     setSelectedRoute(cleared.selectedRoute);
     updateView(cleared.view);
     setTopicId(cleared.topicId);
@@ -144,6 +159,14 @@ export default function App() {
             <Icon name="book" />
             Aprender
           </button>
+          <button
+            className="nav configuration-nav"
+            aria-label="Configuración"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Icon name="grid" />
+            Configuración
+          </button>
         </nav>
         <div className="sidebar-note">
           <span className="tiny-code">&lt;/&gt;</span>
@@ -193,7 +216,10 @@ export default function App() {
             >
               <p>
                 ¿Empezar de nuevo? Se borrarán los ejercicios completados y el
-                resultado de la evaluación final.
+                resultado de la evaluación final y todas las conversaciones del
+                tutor, incluidas sus capturas. Se detendrá la respuesta activa.
+                Se conserva la Configuración del tutor (clave, modelo y su
+                condición de persistencia).
               </p>
               <div className="reset-actions">
                 <button
@@ -371,17 +397,46 @@ export default function App() {
                   topic={topic}
                   completed={completed}
                   onComplete={complete}
+                  access={access}
+                  conversation={conversation}
+                  learningTab={learningTab}
+                  setLearningTab={setLearningTab}
+                  onConfigure={() => setSettingsOpen(true)}
                 />
               </>
             )}
           </main>
         )}
       </div>
+      {settingsOpen && (
+        <TutorSettings
+          access={access}
+          onClose={() => setSettingsOpen(false)}
+          onSaved={() => {
+            focusTutorAfterSettings.current = true;
+            setSettingsOpen(false);
+            setLearningTab("tutor");
+            setView("learn");
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function LearningWorkspace({ topic, completed, onComplete }) {
+function LearningWorkspace({
+  topic,
+  completed,
+  onComplete,
+  access,
+  conversation,
+  learningTab,
+  setLearningTab,
+  onConfigure,
+}) {
+  useEffect(() => () => conversation.cancel(), [conversation]);
+  const execution = useRef(null);
+  const [lastResult, setLastResult] = useState(null);
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const exercise = topic.exercises[exerciseIndex];
   const [code, setCode] = useState(exercise.starter);
@@ -390,6 +445,12 @@ function LearningWorkspace({ topic, completed, onComplete }) {
   const [feedback, setFeedback] = useState("");
   const python = usePython((received) => {
     setResult(received);
+    if (execution.current)
+      setLastResult({
+        ...execution.current,
+        output: received.output || "",
+        error: received.error || null,
+      });
     if (received.passed) {
       onComplete(exercise.id);
       setFeedback(`¡Correcto! ${exercise.success}`);
@@ -415,99 +476,162 @@ function LearningWorkspace({ topic, completed, onComplete }) {
   return (
     <div className="workspace">
       <section className="lesson-panel panel">
-        <div className="panel-heading">
-          <span className="lesson-label">
-            <Icon name="book" />
-            LA LECCIÓN
-          </span>
-          <span className="muted">
-            <Icon name="clock" />
-            {topic.duration}
-          </span>
-        </div>
-        <div className="lesson-content">
-          <h2>{topic.title}</h2>
-          <p className="lesson-intro">{topic.summary}</p>
-          {topic.explanation.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
+        <div
+          role="tablist"
+          aria-label="Panel de aprendizaje"
+          className="learning-tabs"
+        >
+          {[
+            ["lesson", "Lección"],
+            ["tutor", "Tutor"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              id={`${id}-tab`}
+              role="tab"
+              aria-selected={learningTab === id}
+              aria-controls={`${id}-panel`}
+              tabIndex={learningTab === id ? 0 : -1}
+              onClick={() => setLearningTab(id)}
+              onKeyDown={(event) => {
+                if (
+                  ["ArrowRight", "ArrowLeft", "Home", "End"].includes(event.key)
+                ) {
+                  event.preventDefault();
+                  const next =
+                    event.key === "Home"
+                      ? "lesson"
+                      : event.key === "End"
+                        ? "tutor"
+                        : id === "lesson"
+                          ? "tutor"
+                          : "lesson";
+                  setLearningTab(next);
+                  document.getElementById(`${next}-tab`).focus();
+                }
+              }}
+            >
+              {label}
+            </button>
           ))}
-          <pre className="example">
-            <code>{topic.example}</code>
-          </pre>
-          <div className="takeaway">
-            <Icon name="bulb" />
-            <p>{topic.takeaway}</p>
-          </div>
-          <div className="exercise-heading">
-            <h3>Ahora te toca a ti</h3>
-            <span>
-              {topicCompleted} de {topic.exercises.length} ejercicios
-              completados
+        </div>
+        <div
+          role="tabpanel"
+          id="lesson-panel"
+          aria-labelledby="lesson-tab"
+          hidden={learningTab !== "lesson"}
+        >
+          <div className="panel-heading">
+            <span className="lesson-label">
+              <Icon name="book" />
+              LA LECCIÓN
+            </span>
+            <span className="muted">
+              <Icon name="clock" />
+              {topic.duration}
             </span>
           </div>
-          <div className="exercise-tabs">
-            {topic.exercises.map((item, index) => (
-              <button
-                key={item.id}
-                className={
-                  exerciseIndex === index
-                    ? "exercise-tab selected"
-                    : "exercise-tab"
-                }
-                onClick={() => selectExercise(index)}
-                disabled={python.status === "running"}
-              >
-                <span
-                  className={
-                    completed.includes(item.id)
-                      ? "exercise-number done"
-                      : "exercise-number"
-                  }
-                >
-                  {completed.includes(item.id) ? (
-                    <Icon name="check" />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <span>
-                  {index + 1}. {item.title}
-                </span>
-                {completed.includes(item.id) && (
-                  <span className="completed-label">Completado</span>
-                )}
-              </button>
+          <div className="lesson-content">
+            <h2>{topic.title}</h2>
+            <p className="lesson-intro">{topic.summary}</p>
+            {topic.explanation.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
             ))}
-          </div>
-          <div className="exercise-prompt">
-            <span className="eyebrow">EJERCICIO {exerciseIndex + 1}</span>
-            <h3>{exercise.title}</h3>
-            <p>{exercise.prompt}</p>
-          </div>
-          <button
-            className="hint-button"
-            onClick={() =>
-              setHintCount(Math.min(hintCount + 1, exercise.hints.length))
-            }
-            disabled={hintCount === exercise.hints.length}
-          >
-            <Icon name="bulb" />
-            {hintCount === 0
-              ? "Dame una pista"
-              : hintCount < exercise.hints.length
-                ? "Otra pista"
-                : "Todas las pistas mostradas"}
-          </button>
-          {hintCount > 0 && (
-            <div className="hints">
-              <strong>
-                Pista {hintCount} de {exercise.hints.length}
-              </strong>
-              {exercise.hints.slice(0, hintCount).map((hint) => (
-                <p key={hint}>{hint}</p>
+            <pre className="example">
+              <code>{topic.example}</code>
+            </pre>
+            <div className="takeaway">
+              <Icon name="bulb" />
+              <p>{topic.takeaway}</p>
+            </div>
+            <div className="exercise-heading">
+              <h3>Ahora te toca a ti</h3>
+              <span>
+                {topicCompleted} de {topic.exercises.length} ejercicios
+                completados
+              </span>
+            </div>
+            <div className="exercise-tabs">
+              {topic.exercises.map((item, index) => (
+                <button
+                  key={item.id}
+                  className={
+                    exerciseIndex === index
+                      ? "exercise-tab selected"
+                      : "exercise-tab"
+                  }
+                  onClick={() => selectExercise(index)}
+                  disabled={python.status === "running"}
+                >
+                  <span
+                    className={
+                      completed.includes(item.id)
+                        ? "exercise-number done"
+                        : "exercise-number"
+                    }
+                  >
+                    {completed.includes(item.id) ? (
+                      <Icon name="check" />
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <span>
+                    {index + 1}. {item.title}
+                  </span>
+                  {completed.includes(item.id) && (
+                    <span className="completed-label">Completado</span>
+                  )}
+                </button>
               ))}
             </div>
-          )}
+            <div className="exercise-prompt">
+              <span className="eyebrow">EJERCICIO {exerciseIndex + 1}</span>
+              <h3>{exercise.title}</h3>
+              <p>{exercise.prompt}</p>
+            </div>
+            <button
+              className="hint-button"
+              onClick={() =>
+                setHintCount(Math.min(hintCount + 1, exercise.hints.length))
+              }
+              disabled={hintCount === exercise.hints.length}
+            >
+              <Icon name="bulb" />
+              {hintCount === 0
+                ? "Dame una pista"
+                : hintCount < exercise.hints.length
+                  ? "Otra pista"
+                  : "Todas las pistas mostradas"}
+            </button>
+            {hintCount > 0 && (
+              <div className="hints">
+                <strong>
+                  Pista {hintCount} de {exercise.hints.length}
+                </strong>
+                {exercise.hints.slice(0, hintCount).map((hint) => (
+                  <p key={hint}>{hint}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div
+          role="tabpanel"
+          id="tutor-panel"
+          aria-labelledby="tutor-tab"
+          hidden={learningTab !== "tutor"}
+        >
+          <TutorPanel
+            onConfigure={onConfigure}
+            access={access}
+            conversation={conversation}
+            topicId={topic.id}
+            topicTitle={topic.title}
+            capture={() =>
+              captureContext({ topic, exercise, draft: code, lastResult })
+            }
+          />
         </div>
       </section>
       <section className="runner-column" aria-label="Espacio de práctica">
@@ -542,6 +666,7 @@ function LearningWorkspace({ topic, completed, onComplete }) {
                 onClick={() => {
                   setFeedback("");
                   setResult(null);
+                  execution.current = { exerciseId: exercise.id, code };
                   python.run(code, exercise.check);
                 }}
               >

@@ -1,0 +1,24 @@
+diff --git a/node_modules/@langchain/openrouter/dist/chat_models/index.cjs b/node_modules/@langchain/openrouter/dist/chat_models/index.cjs
+index 4869f40..f33b44d 100644
+--- a/node_modules/@langchain/openrouter/dist/chat_models/index.cjs
++++ b/node_modules/@langchain/openrouter/dist/chat_models/index.cjs
+@@ -352,6 +352,7 @@ var ChatOpenRouter = class extends _langchain_core_language_models_chat_models.B
+ 				const { done, value: data } = await reader.read();
+ 				if (done) break;
+ 				if (!data) continue;
++                if (data.error) throw new require_errors.OpenRouterError(data.error.message ?? "OpenRouter stream error", undefined, data.error.code, data.error.metadata);
+ 				const choice = data.choices?.[0];
+ 				if (!choice?.delta) continue;
+ 				const chunk = require_messages.convertOpenRouterDeltaToBaseMessageChunk(choice.delta, data, defaultRole);
+diff --git a/node_modules/@langchain/openrouter/dist/chat_models/index.js b/node_modules/@langchain/openrouter/dist/chat_models/index.js
+index e4a8e30..79daa8e 100644
+--- a/node_modules/@langchain/openrouter/dist/chat_models/index.js
++++ b/node_modules/@langchain/openrouter/dist/chat_models/index.js
+@@ -352,6 +352,7 @@ var ChatOpenRouter = class extends BaseChatModel {
+ 				const { done, value: data } = await reader.read();
+ 				if (done) break;
+ 				if (!data) continue;
++                if (data.error) throw new OpenRouterError(data.error.message ?? "OpenRouter stream error", undefined, data.error.code, data.error.metadata);
+ 				const choice = data.choices?.[0];
+ 				if (!choice?.delta) continue;
+ 				const chunk = convertOpenRouterDeltaToBaseMessageChunk(choice.delta, data, defaultRole);
