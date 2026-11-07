@@ -8,15 +8,18 @@
     "build": "node scripts/prepare-runtime.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "playwright test",
-    "postinstall": "node scripts/prepare-runtime.mjs"
+    "postinstall": "patch-package && node scripts/prepare-runtime.mjs"
   },
   "dependencies": {
+    "@langchain/core": "1.3.5",
+    "@langchain/openrouter": "0.4.22",
+    "pyodide": "0.28.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "pyodide": "0.28.3"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
+    "patch-package": "8.0.1",
     "vite": "^7.2.0"
   }
 }

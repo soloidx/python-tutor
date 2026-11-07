@@ -1,7 +1,36 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { checkAccess, modelIncompatibility } from "./openRouterAccess.js";
 
-export function TutorPanel({ onConfigure, access }) {
+export function TutorPanel({
+  onConfigure,
+  access,
+  conversation,
+  topicId,
+  capture,
+}) {
+  const state = useSyncExternalStore(
+    conversation.subscribe,
+    conversation.getSnapshot,
+  );
+  const [message, setMessage] = useState("");
+  const [copied, setCopied] = useState("");
+  const busy = !!state.active;
+  async function send() {
+    if (!ready || busy || !message.trim()) return;
+    const pending = conversation.send({
+      topicId,
+      message,
+      capture: capture(),
+      config: access.config,
+    });
+    if (!conversation.getSnapshot().notice) setMessage("");
+    await pending;
+  }
   const ready = access.status === "ready";
   const checking = access.status === "checking";
   return (
@@ -43,13 +72,84 @@ export function TutorPanel({ onConfigure, access }) {
             Solo en esta sesión. La configuración se perderá al recargar.
           </p>
         )}
+        <div className="tutor-conversation" aria-label="Conversación de tema">
+          {state.exchanges
+            .filter((item) => item.topicId === topicId)
+            .map((exchange) => (
+              <article key={exchange.id} className="tutor-exchange">
+                <p>
+                  <strong>{exchange.capture.exercise.title}</strong>
+                </p>
+                <p className="tutor-question">{exchange.message}</p>
+                {exchange.attempts.map((attempt) => (
+                  <div key={attempt.id}>
+                    <p className="tutor-answer">{attempt.text}</p>
+                    {Array.from(
+                      attempt.text.matchAll(
+                        /```(?:[a-zA-Z]+)?\n([\s\S]*?)```/g,
+                      ),
+                    ).map((match, index) => (
+                      <div key={index}>
+                        <pre>
+                          <code>{match[1]}</code>
+                        </pre>
+                        <button
+                          className="secondary"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(match[1]);
+                              setCopied("Código copiado");
+                            } catch {
+                              setCopied(
+                                "No se pudo copiar el código. Selecciónalo y cópialo manualmente.",
+                              );
+                            }
+                          }}
+                        >
+                          Copiar código
+                        </button>
+                      </div>
+                    ))}
+                    <p>
+                      {attempt.status === "complete"
+                        ? "Respuesta completa"
+                        : attempt.status === "generating"
+                          ? "Generando…"
+                          : attempt.error}
+                    </p>
+                  </div>
+                ))}
+              </article>
+            ))}
+        </div>
+        {copied && <p>{copied}</p>}
+        {state.notice && <p role="alert">{state.notice}</p>}
         <label className="tutor-message">
           Mensaje al tutor
-          <textarea disabled={!ready} />
+          <textarea
+            disabled={!ready}
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey &&
+                !event.nativeEvent.isComposing
+              ) {
+                event.preventDefault();
+                send();
+              }
+            }}
+          />
         </label>
-        <button className="primary" disabled={!ready}>
+        <button className="primary" disabled={!ready || busy} onClick={send}>
           Enviar
         </button>
+        {busy && (
+          <button className="secondary" onClick={conversation.cancel}>
+            Detener
+          </button>
+        )}
       </div>
     </div>
   );
