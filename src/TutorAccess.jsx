@@ -113,7 +113,9 @@ export function TutorPanel({
         )}
         {access.sessionOnly && (
           <p className="storage-warning">
-            Solo en esta sesión. La configuración se perderá al recargar.
+            Solo en esta sesión. La configuración se perderá al recargar.{" "}
+            Cualquier configuración guardada anteriormente se puede recuperar al
+            recargar.
           </p>
         )}
         <div className="tutor-conversation" aria-label="Conversación de tema">
@@ -448,7 +450,9 @@ export function TutorSettings({ access, onClose, onSaved }) {
             almacenamiento e intentar Guardar de nuevo.
           </p>
           <p>
-            Usar solo en esta sesión perderá esta configuración al recargar.
+            Usar solo en esta sesión perderá esta configuración al recargar.{" "}
+            Cualquier configuración guardada anteriormente se puede recuperar al
+            recargar.
           </p>
           <button
             className="secondary"
@@ -462,6 +466,24 @@ export function TutorSettings({ access, onClose, onSaved }) {
         </div>
       )}
       <footer>
+        {(access.config?.key || access.keyRemovalFailed) && (
+          <button
+            className="secondary"
+            disabled={busy}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  "¿Eliminar la clave de OpenRouter de este navegador? Se interrumpirá la respuesta activa y se bloquearán los envíos. Se conservan el modelo seleccionado y las conversaciones.",
+                )
+              )
+                return;
+              access.removeKey();
+              onClose();
+            }}
+          >
+            Eliminar clave
+          </button>
+        )}
         <button className="secondary" onClick={onClose}>
           Cancelar
         </button>

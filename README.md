@@ -55,6 +55,12 @@ Los campos son cambios pendientes. «Guardar y volver al tutor» vuelve a compro
 
 La clave se guarda sin cifrar en este navegador y origen; evita un dispositivo compartido. No se incluye en el bundle ni se configura mediante variables de compilación. Si falla la escritura local, la aplicación no afirma que haya guardado: ofrece «Usar solo en esta sesión» mediante una elección explícita y avisa de su pérdida al recargar. Borrar los datos del sitio elimina también este acceso. El envío se habilita únicamente con acceso comprobado.
 
+Durante una respuesta, editar campos, cancelar el diálogo o fallar la validación no interrumpe el acceso anterior. Solo guardar cambios comprobados —o elegir explícitamente el uso temporal tras un fallo de escritura— cancela la solicitud activa y aplica el nuevo acceso; conserva la pregunta, la Captura de contexto y el parcial como incompleto. No hay reenvío automático. Una configuración temporal puede dejar una configuración anterior guardada, que se recuperará tras recargar.
+
+«Eliminar clave» pide confirmación, interrumpe la respuesta y bloquea nuevos envíos; conserva el modelo seleccionado, las conversaciones y el progreso. Cancelar la confirmación no cambia nada. Si el navegador impide retirar la clave guardada, se bloquea el acceso en memoria y se advierte que la clave anterior podría volver tras recargar. Configuración permite volver a intentar eliminarla; borrar los datos del sitio desde el navegador también la retira, junto con los demás datos locales.
+
+`tests/tutor-settings-stream.spec.js` verifica cambios pendientes, cancelados, fallidos y válidos durante SSE, elección temporal explícita, eliminación confirmada/cancelada, fallos de almacenamiento, eventos tardíos, acceso nuevo y conservación del modelo e historial tras recargar. Incluye una pantalla estrecha y usa únicamente credenciales ficticias y HTTP/SSE simulado con LangChain real.
+
 `tests/tutor-access.spec.js` prueba la interfaz real y la persistencia con credenciales ficticias, simulando solo el HTTP de OpenRouter y los fallos de almacenamiento del navegador. Inspecciona las solicitudes para asegurar que validar/guardar/recargar no genera respuestas. La suite conserva el recorrido de aprendizaje con Pyodide real y no requiere inferencias pagadas. Para ejecutar otra copia en paralelo, usa `PLAYWRIGHT_PORT=4185 npm test`.
 
 ## Tutor contextual
