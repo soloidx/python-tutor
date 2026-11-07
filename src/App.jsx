@@ -48,6 +48,14 @@ export default function App() {
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [learningTab, setLearningTab] = useState("lesson");
+  const focusTutorAfterSettings = useRef(false);
+  useEffect(() => {
+    if (!settingsOpen && focusTutorAfterSettings.current) {
+      // Run after the dialog cleanup has restored its original opener.
+      focusTutorAfterSettings.current = false;
+      document.getElementById("tutor-tab")?.focus();
+    }
+  }, [settingsOpen]);
   const [initial] = useState(loadProgress);
   const [view, updateView] = useState(initial.progress.view);
   const [selectedRoute, setSelectedRoute] = useState(
@@ -405,12 +413,10 @@ export default function App() {
           access={access}
           onClose={() => setSettingsOpen(false)}
           onSaved={() => {
+            focusTutorAfterSettings.current = true;
             setSettingsOpen(false);
             setLearningTab("tutor");
             setView("learn");
-            requestAnimationFrame(() =>
-              document.getElementById("tutor-tab")?.focus(),
-            );
           }}
         />
       )}
