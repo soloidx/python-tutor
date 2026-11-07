@@ -27,6 +27,7 @@ export function TutorPanel({
       message,
       capture: capture(),
       config: access.config,
+      onAccessIssue: access.reportIssue,
     });
     if (conversation.getSnapshot().active) setMessage("");
     await pending;
@@ -119,6 +120,21 @@ export function TutorPanel({
                     </p>
                   </div>
                 ))}
+                {exchange.attempts.at(-1).status !== "complete" && (
+                  <button
+                    className="secondary"
+                    disabled={!ready || busy}
+                    onClick={() =>
+                      conversation.retry({
+                        exchangeId: exchange.id,
+                        config: access.config,
+                        onAccessIssue: access.reportIssue,
+                      })
+                    }
+                  >
+                    Reintentar respuesta
+                  </button>
+                )}
               </article>
             ))}
         </div>
@@ -166,6 +182,9 @@ export function TutorSettings({ access, onClose, onSaved }) {
   const [key, setKey] = useState(access.config?.key || "");
   const [selected, setSelected] = useState(access.config?.model || null);
   const [models, setModels] = useState([]);
+  const [acknowledgedModelIssue, setAcknowledgedModelIssue] = useState(null);
+  const needsModelSelection =
+    access.status === "model" && acknowledgedModelIssue !== access.message;
   const [validatedKey, setValidatedKey] = useState("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -328,6 +347,9 @@ export function TutorSettings({ access, onClose, onSaved }) {
             predeterminado.
           </p>
         )}
+        {needsModelSelection && (
+          <p>Selecciona un modelo explícitamente de nuevo antes de guardar.</p>
+        )}
         {valid && (
           <>
             {!models.some((model) => !modelIncompatibility(model)) && (
@@ -353,6 +375,7 @@ export function TutorSettings({ access, onClose, onSaved }) {
                       className="model-option"
                       onClick={() => {
                         setSelected(model);
+                        setAcknowledgedModelIssue(access.message);
                         setStorageFailed(false);
                         setPending(null);
                       }}
@@ -401,7 +424,7 @@ export function TutorSettings({ access, onClose, onSaved }) {
         </button>
         <button
           className="primary"
-          disabled={!valid || !selected || busy}
+          disabled={!valid || !selected || needsModelSelection || busy}
           onClick={() => validate(true)}
         >
           Guardar y volver al tutor

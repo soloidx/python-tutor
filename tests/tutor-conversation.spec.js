@@ -316,7 +316,7 @@ test("preserves partial text and rejects an HTTP 200 SSE error even if it claims
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByText("Ayuda parcial", { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/No se pudo completar la respuesta/),
+    page.getByText(/Respuesta incompleta: OpenRouter indica saldo insuficiente/),
   ).toBeVisible();
   await expect(
     page.getByText("Respuesta completa", { exact: true }),

@@ -83,6 +83,12 @@ export function useTutorAccess({ beforeApply } = {}) {
     message,
     sessionOnly,
     recheck,
+    reportIssue({ kind, message: explanation }) {
+      ++checkVersion.current;
+      activeCheck.current?.abort();
+      setStatus(kind);
+      setMessage(explanation);
+    },
     save,
     useForSession: (next) => apply(next, true),
   };
