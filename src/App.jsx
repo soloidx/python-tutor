@@ -8,6 +8,7 @@ import {
   saveProgress,
 } from "./progress.js";
 import { usePython } from "./usePython.js";
+import TutorWorkspacePrototype, { tutorPrototype } from "./TutorWorkspace.prototype.jsx";
 
 function Icon({ name, ...props }) {
   const paths = {
@@ -40,7 +41,7 @@ function Icon({ name, ...props }) {
 }
 
 export default function App() {
-  const [initial] = useState(loadProgress);
+  const [initial] = useState(() => tutorPrototype ? { progress: { ...emptyProgress, selectedRoute: "python-fundamentos", view: "learn" }, message: "" } : loadProgress());
   const [view, updateView] = useState(initial.progress.view);
   const [selectedRoute, setSelectedRoute] = useState(
     initial.progress.selectedRoute,
@@ -84,6 +85,7 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (tutorPrototype) return;
     if (
       !saveProgress({
         selectedRoute,
@@ -413,6 +415,7 @@ function LearningWorkspace({ topic, completed, onComplete }) {
     completed.includes(item.id),
   ).length;
   return (
+    <TutorWorkspacePrototype topic={topic} exercise={exercise}>
     <div className="workspace">
       <section className="lesson-panel panel">
         <div className="panel-heading">
@@ -638,6 +641,7 @@ function LearningWorkspace({ topic, completed, onComplete }) {
         </p>
       </section>
     </div>
+    </TutorWorkspacePrototype>
   );
 }
 

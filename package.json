@@ -8,7 +8,8 @@
     "build": "node scripts/prepare-runtime.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "playwright test",
-    "postinstall": "node scripts/prepare-runtime.mjs"
+    "postinstall": "node scripts/prepare-runtime.mjs",
+    "prototype:tutor": "vite --host 127.0.0.1 --port 5174 --open /?prototype=tutor&variant=A"
   },
   "dependencies": {
     "react": "^19.2.0",
