@@ -19,9 +19,12 @@ function loadAccess() {
 
 export function useTutorAccess({ beforeApply } = {}) {
   const [config, setConfig] = useState(loadAccess);
-  const [status, setStatus] = useState(() => (config ? "checking" : "missing"));
+  const [status, setStatus] = useState(() =>
+    config?.key ? "checking" : "missing",
+  );
   const [message, setMessage] = useState("");
   const [sessionOnly, setSessionOnly] = useState(false);
+  const [keyRemovalFailed, setKeyRemovalFailed] = useState(false);
   const checkVersion = useRef(0);
   const activeCheck = useRef(null);
   async function recheck() {
@@ -67,6 +70,7 @@ export function useTutorAccess({ beforeApply } = {}) {
     setStatus("ready");
     setMessage("");
     setSessionOnly(temporary);
+    setKeyRemovalFailed(false);
   }
   function save(next) {
     try {
@@ -82,6 +86,7 @@ export function useTutorAccess({ beforeApply } = {}) {
     status,
     message,
     sessionOnly,
+    keyRemovalFailed,
     recheck,
     reportIssue({ kind, message: explanation }) {
       ++checkVersion.current;
@@ -90,6 +95,27 @@ export function useTutorAccess({ beforeApply } = {}) {
       setMessage(explanation);
     },
     save,
+    removeKey() {
+      beforeApply?.();
+      ++checkVersion.current;
+      activeCheck.current?.abort();
+      const next = { key: "", model: config.model };
+      setConfig(next);
+      setStatus("missing");
+      setSessionOnly(false);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+        setKeyRemovalFailed(false);
+        setMessage(
+          "Clave eliminada. Configura una clave validada para volver a enviar. El modelo y las conversaciones se conservan.",
+        );
+      } catch {
+        setKeyRemovalFailed(true);
+        setMessage(
+          "No se pudo retirar la clave guardada del navegador. El acceso está bloqueado en esta sesión, pero la clave anterior podría volver al recargar. Borra los datos del sitio o vuelve a intentar eliminarla. El modelo y las conversaciones se conservan.",
+        );
+      }
+    },
     useForSession: (next) => apply(next, true),
   };
 }
