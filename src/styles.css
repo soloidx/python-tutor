@@ -1302,3 +1302,45 @@ button svg {
     padding: 14px;
   }
 }
+
+.progress-controls {
+  padding: 16px 28px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+.progress-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.progress-controls p {
+  font-size: 11px;
+  margin: 0;
+}
+.progress-controls .storage-warning {
+  color: #9a3412;
+}
+.reset-confirmation {
+  margin-top: 14px;
+  padding: 16px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 9px;
+}
+.reset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+@media (max-width: 600px) {
+  .progress-controls {
+    padding: 14px 20px;
+  }
+  .progress-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
