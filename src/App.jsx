@@ -6,8 +6,10 @@ import {
   resumeLabel,
   loadProgress,
   removeProgress,
+  progressStoragePrefix,
   saveProgress,
 } from "./progress.js";
+import { removeRecoveryCopies } from "./learnerRecovery.js";
 import { useTutorAccess } from "./tutorAccess.js";
 import { TutorPanel, TutorSettings } from "./TutorAccess.jsx";
 import { createConversationService } from "./tutorConversation.js";
@@ -89,6 +91,7 @@ export default function App({ publication }) {
     }
   }, [settingsOpen]);
   function navigate(next) {
+    setConfirmReset(false);
     conversation.cancel();
     setResumeNotice("");
     const value = { ...location, ...next };
@@ -170,30 +173,42 @@ export default function App({ publication }) {
     }
   }
   function resetProgress() {
-    const historyWarning = conversation.reset(course.id);
-    const cleared = emptyProgress();
-    const removed = removeProgress(course);
-    const saved = saveProgress(course, cleared);
-    setProgressByCourse((previous) => ({
-      ...previous,
-      [course.id]: {
-        progress: cleared,
-        message: saved
-          ? ""
-          : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
-      },
-    }));
-    setResetError(
-      [
-        !removed && !saved
-          ? "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador."
-          : "",
-        historyWarning,
-      ]
-        .filter(Boolean)
-        .join(" "),
-    );
-    navigate({ screen: "learn", topicId: course.topics[0].id });
+    const global = confirmReset === "all";
+    const historyWarning = conversation.reset(global ? undefined : course.id);
+    const ids = new Set(global ? Object.keys(progressByCourse) : [course.id]);
+    let enumerationFailed = false;
+    if (global) {
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith(progressStoragePrefix)) {
+            // Include retired courses that are absent from the active publication.
+            try {
+              ids.add(decodeURIComponent(key.slice(progressStoragePrefix.length)));
+            } catch {
+              enumerationFailed = true;
+            }
+          }
+        }
+      } catch {
+        enumerationFailed = true;
+      }
+    }
+    let progressFailed = false;
+    const cleared = {};
+    for (const id of ids) {
+      const saved = removeProgress({ id });
+      progressFailed ||= !saved;
+      if (courses[id]) cleared[id] = { progress: emptyProgress(), message: "" };
+    }
+    const copiesRemoved = removeRecoveryCopies(global ? undefined : course.id);
+    setProgressByCourse((previous) => ({ ...previous, ...cleared }));
+    setResetError([
+      progressFailed ? "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador." : "",
+      historyWarning,
+      !copiesRemoved ? "No se pudieron borrar todas las copias de recuperación; los datos anteriores podrían seguir guardados. Borra los datos del sitio en tu navegador." : "",
+      enumerationFailed ? "No se pudo comprobar todo el almacenamiento. Podrían quedar datos de cursos retirados; borra los datos del sitio en tu navegador para completar el reinicio global." : "",
+    ].filter(Boolean).join(" "));
+    navigate(global ? rootLocation : { screen: "topics", topicId: null });
     setWorkspaceVersion((value) => value + 1);
     setConfirmReset(false);
     resetButton.current?.focus();
@@ -283,59 +298,61 @@ export default function App({ publication }) {
         {resumeNotice && (
           <p className="storage-warning" role="alert">{resumeNotice}</p>
         )}
-        {!course && (resetError || storageMessage) && (
-          <p className="storage-warning" role="alert">
-            {resetError || storageMessage}
-          </p>
-        )}
-        {course && (
-          <section className="progress-controls" aria-label="Progreso guardado">
-            <div className="progress-summary">
-              {resetError || storageMessage ? (
-                <p className="storage-warning" role="alert">
-                  {resetError || storageMessage}
-                </p>
-              ) : (
-                <p>Tu progreso se guarda en este navegador.</p>
-              )}
+        <section className="progress-controls" aria-label="Progreso guardado">
+          <div className="progress-summary">
+            {resetError || storageMessage ? (
+              <p className="storage-warning" role="alert">
+                {resetError || storageMessage}
+              </p>
+            ) : (
+              <p>Tu progreso se guarda en este navegador.</p>
+            )}
+            {course && (
               <button
                 ref={resetButton}
                 className="secondary"
-                onClick={() => setConfirmReset(true)}
+                onClick={() => setConfirmReset("course")}
               >
                 Reiniciar progreso
               </button>
-            </div>
-            {confirmReset && (
-              <div
-                className="reset-confirmation"
-                role="group"
-                aria-label="Confirmar reinicio"
-              >
-                <p>
-                  ¿Empezar de nuevo? Se borrarán los ejercicios completados y el
-                  resultado de la evaluación final y todas las conversaciones
-                  del tutor, incluidas sus capturas. Se detendrá la respuesta
-                  activa. Se conserva la Configuración del tutor (clave, modelo
-                  y su condición de persistencia).
-                </p>
-                <button
-                  className="secondary"
-                  autoFocus
-                  onClick={() => {
-                    setConfirmReset(false);
-                    resetButton.current?.focus();
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button className="primary" onClick={resetProgress}>
-                  Sí, reiniciar
-                </button>
-              </div>
             )}
-          </section>
-        )}
+            <button className="secondary" onClick={() => setConfirmReset("all")}>
+              Reiniciar todo el aprendizaje
+            </button>
+          </div>
+          {confirmReset && (
+            <div
+              className="reset-confirmation"
+              role="group"
+              aria-label="Confirmar reinicio"
+            >
+              <p>
+                {confirmReset === "all"
+                  ? "¿Reiniciar todo el aprendizaje de todos los cursos, incluidos los retirados del catálogo?"
+                  : `¿Reiniciar «${course.title}»? El curso se reinicia en todas sus rutas.`}
+                {" "}Se borrarán todas las aprobaciones, incluidas las de ejercicios
+                retirados, el resultado de la evaluación final, todas las conversaciones
+                del tutor (preguntas, respuestas, parciales y capturas), la posición
+                y las copias de recuperación del ámbito elegido. Se detendrá la respuesta
+                activa afectada. Se conserva la Configuración del tutor (clave, modelo
+                y su condición de persistencia) y el catálogo descargado.
+              </p>
+              <button
+                className="secondary"
+                autoFocus
+                onClick={() => {
+                  setConfirmReset(false);
+                  resetButton.current?.focus();
+                }}
+              >
+                Cancelar
+              </button>
+              <button className="primary" onClick={resetProgress}>
+                Sí, reiniciar
+              </button>
+            </div>
+          )}
+        </section>
         {view === "paths" && (
           <main className="courses">
             <div className="eyebrow">APRENDE. PRUEBA. DESCUBRE.</div>

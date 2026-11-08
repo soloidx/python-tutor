@@ -92,7 +92,7 @@ The former production course is only in `tests/fixtures/content/`. `tests/fixtur
 
 ## Saved publications and activation
 
-The complete catalog and exact `courseFiles` texts are stored together under `python-tutor:catalog:v1`. Loading a backup validates the catalog, hashes the UTF-8 source texts again, and reconstructs each course from those verified texts; a separately stored parsed course object is never trusted. Replacement uses one atomic `localStorage.setItem`, so quota or permission failures preserve the previous complete value. This storage is independent of learner progress and tutor settings.
+The complete catalog and exact `courseFiles` texts are stored together under `python-tutor:catalog:v1`. Loading a backup validates the catalog, hashes the UTF-8 source texts again, and reconstructs each course from those verified texts; a separately stored parsed course object is never trusted. Replacement uses one atomic `localStorage.setItem`, so quota or permission failures preserve the previous complete value. This storage is independent of learner progress and tutor settings. Course and global learner resets preserve this downloaded publication.
 
 A valid backup opens immediately while all remote courses download in parallel. A new revision is saved for the next reload and announced without changing the running session. The consumer rejects changes to a known immutable file and changes to a publication with the same revision. Publishers must use both a new revision and a new file for changed course content.
 

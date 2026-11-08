@@ -419,6 +419,8 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
@@ -497,6 +499,8 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
@@ -528,6 +532,8 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
