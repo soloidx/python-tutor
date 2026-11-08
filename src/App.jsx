@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { assessAnswers } from "./assessment.js";
+import { assessAnswers, assessmentReview } from "./assessment.js";
 import {
   emptyProgress,
   courseProgress,
@@ -97,6 +97,7 @@ export default function App({ publication }) {
   );
   const course = courses[location.courseId];
   const state = course ? progressByCourse[course.id] : null;
+  const assessmentResult = assessmentReview(course?.assessment?.questions, state?.progress.assessmentResult);
   const completed = state?.progress.completed || [];
   const topic =
     course?.topics.find((item) => item.id === location.topicId) ||
@@ -409,7 +410,7 @@ export default function App({ publication }) {
                 className="primary"
                 onClick={() => navigate({ screen: "assessment" })}
               >
-                {state.progress.assessmentResult
+                {assessmentResult
                   ? "Ver evaluación final"
                   : "Comenzar evaluación final"}
               </button>
@@ -446,7 +447,7 @@ export default function App({ publication }) {
             {view === "assessment" ? (
               <FinalAssessment
                 course={course}
-                result={state.progress.assessmentResult}
+                result={assessmentResult}
                 onResult={(assessmentResult) =>
                   updateProgress(course.id, { assessmentResult })
                 }
@@ -481,7 +482,7 @@ export default function App({ publication }) {
                       className="primary"
                       onClick={() => navigate({ screen: "assessment" })}
                     >
-                      {state.progress.assessmentResult
+                      {assessmentResult
                         ? "Ver evaluación final"
                         : "Comenzar evaluación final"}
                       <Icon name="arrow" />
@@ -905,7 +906,7 @@ function FinalAssessment({ course, result, onResult, onBack }) {
   return (
     <section className="assessment panel">
       <div className="lesson-content">
-        <div className="eyebrow">EL ÚLTIMO PASO DE TU RUTA</div>
+        <div className="eyebrow">EVALUACIÓN OPCIONAL DEL CURSO</div>
         <h2>Evaluación final</h2>
         <p>
           Elige una respuesta por pregunta y revisa tu resultado. Puedes
