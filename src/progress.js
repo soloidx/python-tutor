@@ -114,6 +114,16 @@ export function removeProgress(course) {
     forgetProtectedRecord(progressStorageKey(course.id));
     return true;
   } catch {
-    return false;
+    try {
+      // Explicit reset may discard even a protected damaged original.
+      localStorage.setItem(
+        progressStorageKey(course.id),
+        JSON.stringify(emptyProgress()),
+      );
+      forgetProtectedRecord(progressStorageKey(course.id));
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

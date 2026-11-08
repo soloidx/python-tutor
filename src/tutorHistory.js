@@ -71,7 +71,12 @@ export function removeHistory(courseId) {
         forgetProtectedRecord(historyStorageKey(id));
       } catch {
         // A browser may reject deletion while still allowing replacement.
-        warning = saveHistory([], id) || warning;
+        try {
+          localStorage.setItem(historyStorageKey(id), "[]");
+          forgetProtectedRecord(historyStorageKey(id));
+        } catch {
+          warning = historyStorageWarning;
+        }
       }
     }
     return warning;
