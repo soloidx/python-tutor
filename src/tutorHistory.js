@@ -174,7 +174,8 @@ export function loadHistory() {
 
 // Only the latest confirmed answer of a completed exchange can be an antecedent.
 // A retry uses the original position of its question, never later exchanges.
-export function requestHistory(exchanges, courseId, topicId, beforeId) {
+export function requestHistory(exchanges, scope, beforeId) {
+  const { courseId, topicId } = scope;
   const before = beforeId
     ? exchanges.findIndex(
         (item) =>

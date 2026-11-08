@@ -89,8 +89,7 @@ export function createConversationService() {
     publish({ ...state, active: null });
   }
   async function send({
-    courseId,
-    topicId,
+    scope: topicScope,
     message,
     capture,
     config,
@@ -98,8 +97,9 @@ export function createConversationService() {
     onAccessIssue,
   }) {
     if (state.active || !message.trim()) return false;
+    const { courseId, topicId } = topicScope;
     const antecedents = requestHistory(
-      state.exchanges, courseId, topicId, exchangeId,
+      state.exchanges, topicScope, exchangeId,
     );
     let request;
     try {
@@ -222,13 +222,13 @@ export function createConversationService() {
       return () => listeners.delete(listener);
     },
     send,
-    retry({ courseId, topicId, exchangeId, config, onAccessIssue }) {
+    retry({ scope, exchangeId, config, onAccessIssue }) {
       const exchange = state.exchanges.find((item) =>
-        sameExchange(item, { id: exchangeId, courseId, topicId }),
+        sameExchange(item, { id: exchangeId, ...scope }),
       );
       if (!exchange || exchange.attempts.at(-1).status !== "incomplete")
         return false;
-      return send({ ...exchange, exchangeId, config, onAccessIssue });
+      return send({ ...exchange, scope, exchangeId, config, onAccessIssue });
     },
     cancel,
     reset(courseId) {
@@ -245,7 +245,7 @@ export function createConversationService() {
       }, () => removeHistory(courseId));
       return state.storageWarning;
     },
-    deleteTopic(courseId, topicId) {
+    deleteTopic({ courseId, topicId }) {
       const active = state.active;
       if (active?.courseId === courseId && active.topicId === topicId)
         cancel();
