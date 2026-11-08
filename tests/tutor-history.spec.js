@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 import { setup, model, frame } from "./fixtures/tutor.js";
 import { streamingOpenRouter } from "./fixtures/openrouter.js";
 
@@ -29,6 +29,7 @@ test("recovers a topic conversation and original exercise captures after reload 
   await page.getByLabel("Código Python").fill("# otro ejercicio");
   await send(page, "Segunda pregunta", 2);
   await page.reload();
+  await enterCourse(page);
   await tutor(page);
   await expect(
     page.getByText("Pregunta original", { exact: true }),
@@ -127,6 +128,7 @@ test("retains fifty exchanges, removes the oldest with notice, and sends only te
   ]);
   await expect(page.getByLabel("Mensaje al tutor")).toHaveValue("");
   await page.reload();
+  await enterCourse(page);
   await tutor(page);
   await expect(
     page.getByText("Respuesta completa", { exact: true }),
@@ -150,6 +152,7 @@ test("recovers streamed partials as interrupted and excludes incomplete pairs fr
       page.getByText("Parcial guardado", { exact: true }),
     ).toBeVisible();
     await page.reload();
+    await enterCourse(page);
     await tutor(page);
     await expect(
       page.getByText("Pregunta interrumpida", { exact: true }),
@@ -216,6 +219,7 @@ for (const finish of ["length", null, "error"])
       page.getByRole("button", { name: "Enviar", exact: true }),
     ).toBeEnabled();
     await page.reload();
+    await enterCourse(page);
     await tutor(page);
     await expect(
       page.getByText("Parcial de prueba", { exact: true }),
@@ -284,6 +288,7 @@ test("continues with a truthful history warning when real browser storage is ful
     ),
   ).toHaveCount(0);
   await page.reload();
+  await enterCourse(page);
   await tutor(page);
   await expect(
     page.getByText("Pregunta sin guardar", { exact: true }),

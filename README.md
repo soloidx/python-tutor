@@ -23,9 +23,11 @@ Instala Google Chrome, o cambia `channel` en `playwright.config.js` y usa `npx p
 
 ## Extender las lecciones
 
-- `src/curriculum.js`: contenido en español, código inicial, pistas progresivas y expresiones Python de comprobación. Cada ejercicio necesita un identificador globalmente único. Las expresiones pueden consultar las variables del programa y `_output` (salida sin salto de línea final).
-- `src/assessment.js`: seis preguntas de evaluación final con respuestas y explicaciones deterministas.
-- `src/App.jsx`: entrada de cursos, selección de tema, ejercicios completados y evaluación final.
+- El contenido procede de una única fuente JSON remota predeterminada. El [contrato de catálogo](docs/catalog.md) describe la URL, los campos, las identidades, las huellas SHA-256 y la publicación de archivos inmutables. No hay cursos integrados de respaldo ni selector de fuente. Publicar y operar la fuente real es externo a la aplicación.
+- `src/catalog.js`: descarga y validación completa de cada publicación; `src/CatalogBootstrap.jsx`: carga inicial, errores y Reintentar.
+- `tests/fixtures/catalog.js`: fuente HTTP controlada para las pruebas; las lecciones antiguas viven únicamente en `tests/fixtures/content/`.
+- `src/assessment.js`: cálculo del resultado de la evaluación opcional del curso remoto mediante IDs de pregunta y opción.
+- `src/App.jsx`: rutas → cursos → temas → aprendizaje, con navegación Atrás, contexto visible y acceso libre a cualquier tema.
 - `src/progress.js`: lectura validada y escritura del progreso en el almacenamiento local del navegador.
 - `src/usePython.js`: estados de carga, ejecución y recuperación del intérprete.
 - `public/python-worker.js`: Pyodide en un Web Worker, con un diccionario Python nuevo para cada ejecución. No es un servidor ni un entorno para ejecutar código de otras personas.
@@ -35,7 +37,7 @@ Un error o un resultado incorrecto no borra los ejercicios ya completados. Los b
 
 ## Progreso en este navegador
 
-La ruta elegida, la pantalla actual, el tema, los ejercicios y temas completados y el último resultado de evaluación final se guardan automáticamente en `localStorage`. Al recargar o volver a abrir el sitio en el mismo navegador y origen (protocolo, dominio y puerto), puedes continuar. El resultado conserva también las respuestas para revisar las explicaciones, incluso si no acertaste todas las preguntas.
+Cada apertura y recarga muestra todas las rutas. El aprendizaje se conserva en `localStorage` de forma independiente de la pantalla de entrada. Al recargar o volver a abrir el sitio en el mismo navegador y origen (protocolo, dominio y puerto), puedes continuar. El resultado conserva también las respuestas para revisar las explicaciones, incluso si no acertaste todas las preguntas.
 
 Los borradores de código, la salida de la consola, las pistas y las respuestas de una evaluación sin enviar no se guardan. Cada recarga empieza el primer ejercicio del tema actual con su código inicial. La configuración del tutor se guarda por separado; las conversaciones de tutoría se guardan por tema en este navegador, sin sincronización entre dispositivos.
 

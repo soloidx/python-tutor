@@ -1,6 +1,6 @@
 import { model, frame, setup } from "./fixtures/tutor.js";
 import { streamingOpenRouter } from "./fixtures/openrouter.js";
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 
 test.use({ actionTimeout: 8000, ignoreHTTPSErrors: true });
 
@@ -270,7 +270,9 @@ test("preserves partial text and rejects an HTTP 200 SSE error even if it claims
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByText("Ayuda parcial", { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/Respuesta incompleta: OpenRouter indica saldo insuficiente/),
+    page.getByText(
+      /Respuesta incompleta: OpenRouter indica saldo insuficiente/,
+    ),
   ).toBeVisible();
   await expect(
     page.getByText("Respuesta completa", { exact: true }),

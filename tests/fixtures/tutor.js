@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, enterCourse } from "./catalog.js";
 export const model = {
   id: "example/tutor",
   name: "Tutor de prueba",
@@ -31,7 +31,7 @@ export async function setup(
       });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Comenzar ruta" }).click();
+  await enterCourse(page);
   await page
     .getByRole("button", { name: "Configuración", exact: true })
     .click();

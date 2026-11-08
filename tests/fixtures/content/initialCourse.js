@@ -67,10 +67,20 @@ const questions = [
 
 // The bootstrap supplies content; the learning UI has no built-in course fallback.
 export const initialCourse = {
+  schemaVersion: 1,
   id: "python-fundamentos",
   title: "Python Fundamentos",
   description:
     "De tus primeras variables a tus propias funciones. Construye una base sólida, practicando en cada paso.",
   topics,
-  assessment: { questions },
+  assessment: {
+    questions: questions.map(({ answer, options, topic, ...question }) => ({
+      ...question,
+      options: options.map((text, index) => ({
+        id: `opcion-${index + 1}`,
+        text,
+      })),
+      answerId: `opcion-${options.indexOf(answer) + 1}`,
+    })),
+  },
 };
