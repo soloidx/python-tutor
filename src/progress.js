@@ -1,23 +1,24 @@
-import { topics } from "./curriculum.js";
-import { assessmentQuestions, assessAnswers } from "./assessment.js";
+import { assessAnswers } from "./assessment.js";
 
 const storageKey = "python-tutor.progress.v1";
-export const emptyProgress = {
+export const emptyProgress = (course) => ({
   selectedRoute: null,
   view: "courses",
-  topicId: topics[0].id,
+  topicId: course.topics[0].id,
   completed: [],
   assessmentResult: null,
-};
+});
 
-export function loadProgress() {
+export function loadProgress(course) {
+  const { topics } = course;
+  const assessmentQuestions = course.assessment?.questions || [];
   try {
     const raw = localStorage.getItem(storageKey);
-    if (!raw) return { progress: emptyProgress, message: "" };
+    if (!raw) return { progress: emptyProgress(course), message: "" };
     const saved = JSON.parse(raw);
     if (
       !saved ||
-      saved.selectedRoute !== "python-fundamentos" ||
+      saved.selectedRoute !== course.id ||
       !["courses", "learn", "assessment"].includes(saved.view) ||
       !topics.some((topic) => topic.id === saved.topicId) ||
       !Array.isArray(saved.completed) ||
@@ -40,7 +41,7 @@ export function loadProgress() {
         throw new Error("Invalid assessment");
       }
       // Reconstruct the result from validated answers, never trust a stored score.
-      assessmentResult = assessAnswers(answers);
+      assessmentResult = assessAnswers(assessmentQuestions, answers);
     }
     return {
       progress: {
@@ -52,14 +53,15 @@ export function loadProgress() {
     };
   } catch {
     return {
-      progress: emptyProgress,
+      progress: emptyProgress(course),
       message:
         "No se pudo recuperar el progreso guardado. Empieza de nuevo; si el almacenamiento está bloqueado, tu avance solo estará disponible en esta sesión.",
     };
   }
 }
 
-export function saveProgress(progress) {
+export function saveProgress(course, progress) {
+  const { topics } = course;
   try {
     if (!progress.selectedRoute) {
       localStorage.removeItem(storageKey);

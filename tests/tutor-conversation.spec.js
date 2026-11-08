@@ -31,6 +31,7 @@ test("sends a Spanish tutor policy and allowed context through real LangChain; c
   const sent = JSON.parse(requests[0].messages.at(-1).content);
   expect(sent.message).toBe("No entiendo\n");
   expect(sent.capture).toMatchObject({
+    course: { id: "python-fundamentos", title: "Python Fundamentos" },
     topic: { id: "valores-variables" },
     exercise: { id: "saludo" },
     draft: '# mi borrador\nprint("borrador")',

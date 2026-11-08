@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { assessmentQuestions, assessAnswers } from "./assessment.js";
-import { topics } from "./curriculum.js";
+import { assessAnswers } from "./assessment.js";
 import {
   emptyProgress,
   loadProgress,
@@ -43,7 +42,9 @@ function Icon({ name, ...props }) {
   );
 }
 
-export default function App() {
+export default function App({ course }) {
+  const { topics } = course;
+  const assessmentQuestions = course.assessment?.questions || [];
   const [conversation] = useState(createConversationService);
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -56,7 +57,7 @@ export default function App() {
       document.getElementById("tutor-tab")?.focus();
     }
   }, [settingsOpen]);
-  const [initial] = useState(loadProgress);
+  const [initial] = useState(() => loadProgress(course));
   const [view, updateView] = useState(initial.progress.view);
   const [selectedRoute, setSelectedRoute] = useState(
     initial.progress.selectedRoute,
@@ -74,13 +75,13 @@ export default function App() {
   function resetProgress() {
     const historyWarning = conversation.reset();
     const cleared = {
-      ...emptyProgress,
-      selectedRoute: "python-fundamentos",
+      ...emptyProgress(course),
+      selectedRoute: course.id,
       view: "learn",
     };
     // Remove the old record first: a full store may reject writes but allow deletion.
     const removed = removeProgress();
-    const saved = saveProgress(cleared);
+    const saved = saveProgress(course, cleared);
     const progressWarning =
       !removed && !saved
         ? "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador."
@@ -100,7 +101,7 @@ export default function App() {
 
   useEffect(() => {
     if (
-      !saveProgress({
+      !saveProgress(course, {
         selectedRoute,
         view,
         topicId,
@@ -112,9 +113,9 @@ export default function App() {
         "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
       );
     }
-  }, [selectedRoute, view, topicId, completed, assessmentResult]);
+  }, [course, selectedRoute, view, topicId, completed, assessmentResult]);
   function setView(next) {
-    if (next !== "courses") setSelectedRoute("python-fundamentos");
+    if (next !== "courses") setSelectedRoute(course.id);
     updateView(next);
   }
   const topic = topics.find((item) => item.id === topicId) || topics[0];
@@ -184,7 +185,7 @@ export default function App() {
             <span className="muted">Tu aprendizaje</span>
             <span className="slash">/</span>
             <strong>
-              {view === "courses" ? "Cursos y rutas" : "Python Fundamentos"}
+              {view === "courses" ? "Cursos y rutas" : course.title}
             </strong>
           </div>
           <span className="topbar-tag">
@@ -290,14 +291,12 @@ export default function App() {
                   <span className="pill">PRINCIPIANTE</span>
                   <span className="muted">Ruta guiada</span>
                 </div>
-                <h2>Python Fundamentos</h2>
-                <p>
-                  De tus primeras variables a tus propias funciones. Construye
-                  una base sólida, practicando en cada paso.
-                </p>
+                <h2>{course.title}</h2>
+                <p>{course.description}</p>
                 <div className="course-meta">
                   <span>
-                    <Icon name="book" />6 temas
+                    <Icon name="book" />
+                    {topics.length} temas
                   </span>
                   <span>
                     <Icon name="code" />
@@ -330,7 +329,7 @@ export default function App() {
                   <Icon name="back" />
                   Volver a cursos
                 </button>
-                <div className="eyebrow">PYTHON FUNDAMENTOS</div>
+                <div className="eyebrow">{course.title.toUpperCase()}</div>
                 <h1>Aprender haciendo</h1>
               </div>
               <div className="route-progress">
@@ -342,6 +341,7 @@ export default function App() {
             </div>
             {view === "assessment" ? (
               <FinalAssessment
+                course={course}
                 result={assessmentResult}
                 onResult={setAssessmentResult}
                 onBack={() => setView("learn")}
@@ -368,14 +368,16 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-                {(topicId === topics.at(-1).id ||
-                  completed.length === exerciseCount) && (
+                {assessmentQuestions.length > 0 &&
+                  (topicId === topics.at(-1).id ||
+                    completed.length === exerciseCount) && (
                   <section className="assessment-invite panel">
                     <div>
                       <h2>Pon a prueba lo aprendido</h2>
                       <p>
-                        6 preguntas sobre los seis temas. Sin límite de tiempo;
-                        puedes volver a las lecciones cuando quieras.
+                        {assessmentQuestions.length} preguntas sobre los temas del
+                        curso. Sin límite de tiempo; puedes volver a las lecciones
+                        cuando quieras.
                       </p>
                     </div>
                     <button
@@ -393,7 +395,8 @@ export default function App() {
                   </section>
                 )}
                 <LearningWorkspace
-                  key={`${topic.id}:${workspaceVersion}`}
+                  course={course}
+                  key={`${course.id}:${topic.id}:${workspaceVersion}`}
                   topic={topic}
                   completed={completed}
                   onComplete={complete}
@@ -425,6 +428,7 @@ export default function App() {
 }
 
 function LearningWorkspace({
+  course,
   topic,
   completed,
   onComplete,
@@ -629,7 +633,7 @@ function LearningWorkspace({
             topicId={topic.id}
             topicTitle={topic.title}
             capture={() =>
-              captureContext({ topic, exercise, draft: code, lastResult })
+              captureContext({ course, topic, exercise, draft: code, lastResult })
             }
           />
         </div>
@@ -766,7 +770,8 @@ function LearningWorkspace({
   );
 }
 
-function FinalAssessment({ result, onResult, onBack }) {
+function FinalAssessment({ course, result, onResult, onBack }) {
+  const assessmentQuestions = course.assessment.questions;
   const [answers, setAnswers] = useState(result?.answers || {});
   const resultHeading = useRef(null);
   useEffect(() => {
@@ -775,7 +780,7 @@ function FinalAssessment({ result, onResult, onBack }) {
   function submit(event) {
     event.preventDefault();
     if (!assessmentQuestions.every((question) => answers[question.id])) return;
-    onResult(assessAnswers(answers));
+    onResult(assessAnswers(assessmentQuestions, answers));
   }
   return (
     <section className="assessment panel">
