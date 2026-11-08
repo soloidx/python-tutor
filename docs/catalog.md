@@ -1,6 +1,6 @@
 # Remote learning catalog
 
-The app reads one public source, `https://soloidx.github.io/python-tutor-content/`, configured in `src/catalog.js`. It requests `catalog.json` on opening or reloading. There is no source selector or compiled course fallback. Operating that source and publishing real lessons are separate work; this change does not deploy it. The source must allow public cross-origin requests from the app.
+The app reads one public source, `https://www.ider.ninja/python-tutor-content/`, configured in `src/catalog.js`. It requests `catalog.json` on opening or reloading. There is no source selector or compiled course fallback. Operating that source and publishing real lessons are separate work; this change does not deploy it. The source must allow public cross-origin requests from the app.
 
 A publication is activated only after every registered course is downloaded, its exact response bytes match its SHA-256, and all documents satisfy this contract. Any failure rejects the entire publication. JSON strings are rendered as text, never as HTML or external JavaScript. Python examples and checks use the existing Pyodide worker; checks see program variables and `_output`.
 

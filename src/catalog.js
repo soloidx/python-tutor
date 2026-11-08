@@ -1,5 +1,5 @@
 // One predetermined public source; publishing and operating it are external to this app.
-export const catalogBaseUrl = "https://soloidx.github.io/python-tutor-content/";
+export const catalogBaseUrl = "https://www.ider.ninja/python-tutor-content/";
 
 function requireValue(condition, reason) {
   if (!condition) throw new Error(`Catálogo inválido: ${reason}.`);

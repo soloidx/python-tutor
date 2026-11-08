@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { test as base, expect } from "@playwright/test";
 import { initialCourse } from "./content/initialCourse.js";
 
-export const sourceBase = "https://soloidx.github.io/python-tutor-content/";
+export const sourceBase = "https://www.ider.ninja/python-tutor-content/";
 export function publication(revision = "fixture-1") {
   const shared = structuredClone(initialCourse);
   const other = {
