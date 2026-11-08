@@ -1,7 +1,7 @@
 export function assessAnswers(questions, answers) {
   const responses = questions.map((question) => ({
     questionId: question.id,
-    correct: answers[question.id] === question.answer,
+    correct: answers[question.id] === question.answerId,
   }));
   return {
     answers: Object.fromEntries(

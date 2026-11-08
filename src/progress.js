@@ -35,7 +35,7 @@ export function loadProgress(course) {
       if (
         !answers ||
         !assessmentQuestions.every((question) =>
-          question.options.includes(answers[question.id]),
+          question.options.some((option) => option.id === answers[question.id]),
         )
       ) {
         throw new Error("Invalid assessment");

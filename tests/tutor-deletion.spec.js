@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 import { setup, frame } from "./fixtures/tutor.js";
 import { streamingOpenRouter } from "./fixtures/openrouter.js";
 
@@ -66,6 +66,7 @@ test("deletes only the confirmed topic conversation and keeps other history, pro
     page.getByText("1 / 12 ejercicios", { exact: true }),
   ).toBeVisible();
   await page.reload();
+  await enterCourse(page);
   await tutor(page);
   await expect(
     page.getByText("Pregunta del primer tema", { exact: true }),
@@ -144,6 +145,7 @@ test("reset confirmation preserves an active response on cancel and removes ever
     ).toHaveCount(0);
     await expect(page.getByText(/EVENTO TARDÍO/)).toHaveCount(0);
     await page.reload();
+    await enterCourse(page);
     await tutor(page);
     await expect(
       page.getByText("Respuesta completa", { exact: true }),
@@ -207,6 +209,7 @@ test("topic deletion cancels its stream only on confirmation and late events nev
     ).toHaveCount(0);
     await expect(page.getByText(/EVENTO TARDÍO/)).toHaveCount(0);
     await page.reload();
+    await enterCourse(page);
     await tutor(page);
     await expect(
       page.getByText("Borrar pregunta activa", { exact: true }),
@@ -264,6 +267,7 @@ test("failed topic deletion reports session-only deletion, preserves other topic
     page.getByText("Otra conversación intacta", { exact: true }),
   ).toBeVisible();
   await page.reload();
+  await enterCourse(page);
   await topic(page, 1);
   await expect(
     page.getByText("Pregunta que podría reaparecer", { exact: true }),
@@ -342,6 +346,7 @@ for (const [failHistory, failProgress] of [
     ).toBeEnabled();
     expect(requests).toHaveLength(1);
     await page.reload();
+    await enterCourse(page);
     await topic(page, 1);
     await expect(
       page.getByText("Pregunta antes del reinicio", { exact: true }),
@@ -375,8 +380,8 @@ for (const blocked of ["setItem", "removeItem"])
       page.getByRole("alert").filter({ hasText: /podría reaparecer/ }),
     ).toHaveCount(0);
     await page.reload();
-    if (blocked === "setItem")
-      await page.getByRole("button", { name: "Comenzar ruta" }).click();
+    await enterCourse(page);
+
     await tutor(page);
     await expect(
       page.getByText("Pregunta que no debe volver", { exact: true }),
