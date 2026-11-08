@@ -303,7 +303,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
       page.getByRole("button", { name: /2\..*Completado/ }),
     ).toBeVisible();
   }
-  await page.getByRole("button", { name: "Volver a cursos" }).click();
+  await page.getByRole("navigation", { name: "Contexto de aprendizaje" }).getByRole("button").nth(1).click();
   await expect(
     page.getByText("100% · 12 / 12 ejercicios aprobados", { exact: true }),
   ).toBeVisible();
@@ -407,14 +407,14 @@ test("a beginner progresses through fundamentals with real Python", async ({
     page.getByRole("heading", { name: "Tu resultado: 6 de 6", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Tu resultado: 6 de 6", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
@@ -494,7 +494,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
     page.getByRole("heading", { name: "Expresiones y salida", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
@@ -527,7 +527,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })

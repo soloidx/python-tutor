@@ -106,7 +106,7 @@ test(`${scope} reset preserves an active response on cancel and removes every to
       page.getByText("Parcial antes de confirmar", { exact: true }),
     ).toBeVisible();
     await page
-      .getByRole("button", { name: scope === "course" ? "Reiniciar progreso" : "Reiniciar todo el aprendizaje", exact: true })
+      .getByRole("button", { name: scope === "course" ? "Reiniciar este curso" : "Reiniciar todo el aprendizaje", exact: true })
       .click();
     const confirmation = page.getByRole("group", {
       name: "Confirmar reinicio",
@@ -124,7 +124,7 @@ test(`${scope} reset preserves an active response on cancel and removes every to
     ).toBeVisible();
     expect(fixture.closed).toBe(0);
     await page
-      .getByRole("button", { name: scope === "course" ? "Reiniciar progreso" : "Reiniciar todo el aprendizaje", exact: true })
+      .getByRole("button", { name: scope === "course" ? "Reiniciar este curso" : "Reiniciar todo el aprendizaje", exact: true })
       .click();
     await confirmation
       .getByRole("button", { name: "Sí, reiniciar", exact: true })
@@ -314,14 +314,14 @@ for (const [failHistory, failProgress] of [
       { failHistory, failProgress },
     );
     await page
-      .getByRole("button", { name: "Reiniciar progreso", exact: true })
+      .getByRole("button", { name: "Reiniciar este curso", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Sí, reiniciar", exact: true })
       .click();
-    const warning = page
-      .getByRole("region", { name: "Progreso guardado" })
-      .getByRole("alert");
+    const warning = page.getByRole("alert").filter({ hasText:
+      failHistory ? "Se borraron todas las conversaciones en esta sesión" : "No se pudo borrar el progreso guardado",
+    });
     await expect(warning).toContainText(
       failHistory
         ? "Se borraron todas las conversaciones en esta sesión"
@@ -374,7 +374,7 @@ for (const blocked of ["setItem", "removeItem"])
       };
     }, blocked);
     await page
-      .getByRole("button", { name: "Reiniciar progreso", exact: true })
+      .getByRole("button", { name: "Reiniciar este curso", exact: true })
       .click();
     await page
       .getByRole("button", { name: "Sí, reiniciar", exact: true })
@@ -430,7 +430,7 @@ test(`${scope} reset preserves the explicitly chosen session-only configuration`
     ),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: scope === "course" ? "Reiniciar progreso" : "Reiniciar todo el aprendizaje", exact: true })
+    .getByRole("button", { name: scope === "course" ? "Reiniciar este curso" : "Reiniciar todo el aprendizaje", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })

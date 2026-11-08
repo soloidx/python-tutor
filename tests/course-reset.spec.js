@@ -8,7 +8,7 @@ test('course reset forgets position and shares its empty state across paths', as
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('¡Correcto!');
   await page.getByRole('button', { name: 'Siguiente tema', exact: true }).click();
-  await page.getByRole('button', { name: 'Reiniciar progreso', exact: true }).click();
+  await page.getByRole('button', { name: 'Reiniciar este curso', exact: true }).click();
   const confirmation = page.getByRole('group', { name: 'Confirmar reinicio' });
   await expect(confirmation).toContainText('todas sus rutas');
   await expect(confirmation).toContainText('posición');
@@ -36,7 +36,7 @@ async function ask(page, message) {
   await expect(page.getByText('Respuesta completa', { exact: true }).first()).toBeVisible();
 }
 async function reset(page, global = false) {
-  await page.getByRole('button', { name: global ? 'Reiniciar todo el aprendizaje' : 'Reiniciar progreso', exact: true }).click();
+  await page.getByRole('button', { name: global ? 'Reiniciar todo el aprendizaje' : 'Reiniciar este curso', exact: true }).click();
   await page.getByRole('button', { name: 'Sí, reiniciar', exact: true }).click();
 }
 

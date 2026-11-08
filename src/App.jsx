@@ -240,7 +240,7 @@ export default function App({ publication }) {
             <Icon name="code" /> Python en tu navegador
           </span>
         </header>
-        <nav className="progress-controls" aria-label="Contexto de aprendizaje">
+        <nav className="learning-breadcrumbs" aria-label="Contexto de aprendizaje">
           <button
             className="text-button"
             onClick={() => navigate(rootLocation)}
@@ -271,61 +271,9 @@ export default function App({ publication }) {
         {resumeNotice && (
           <p className="storage-warning" role="alert">{resumeNotice}</p>
         )}
-        <section className="progress-controls" aria-label="Progreso guardado">
-          <div className="progress-summary">
-            {resetError || storageMessage ? (
-              <p className="storage-warning" role="alert">
-                {resetError || storageMessage}
-              </p>
-            ) : (
-              <p>Tu progreso se guarda en este navegador.</p>
-            )}
-            {course && (
-              <button
-                ref={resetButton}
-                className="secondary"
-                onClick={() => setConfirmReset("course")}
-              >
-                Reiniciar progreso
-              </button>
-            )}
-            <button className="secondary" onClick={() => setConfirmReset("all")}>
-              Reiniciar todo el aprendizaje
-            </button>
-          </div>
-          {confirmReset && (
-            <div
-              className="reset-confirmation"
-              role="group"
-              aria-label="Confirmar reinicio"
-            >
-              <p>
-                {confirmReset === "all"
-                  ? "¿Reiniciar todo el aprendizaje de todos los cursos, incluidos los retirados del catálogo?"
-                  : `¿Reiniciar «${course.title}»? El curso se reinicia en todas sus rutas.`}
-                {" "}Se borrarán todas las aprobaciones, incluidas las de ejercicios
-                retirados, el resultado de la evaluación final, todas las conversaciones
-                del tutor (preguntas, respuestas, parciales y capturas), la posición
-                y las copias de recuperación del ámbito elegido. Se detendrá la respuesta
-                activa afectada. Se conserva la Configuración del tutor (clave, modelo
-                y su condición de persistencia) y el catálogo descargado.
-              </p>
-              <button
-                className="secondary"
-                autoFocus
-                onClick={() => {
-                  setConfirmReset(false);
-                  resetButton.current?.focus();
-                }}
-              >
-                Cancelar
-              </button>
-              <button className="primary" onClick={resetProgress}>
-                Sí, reiniciar
-              </button>
-            </div>
-          )}
-        </section>
+        {(resetError || storageMessage) && (
+          <p className="storage-warning learning-notice" role="alert">{resetError || storageMessage}</p>
+        )}
         {view === "paths" && (
           <main className="courses">
             <div className="eyebrow">APRENDE. PRUEBA. DESCUBRE.</div>
@@ -444,19 +392,12 @@ export default function App({ publication }) {
               <div>
                 <button
                   className="text-button"
-                  onClick={() => navigate({ screen: "courses" })}
-                >
-                  <Icon name="back" />
-                  Volver a cursos
-                </button>
-                <button
-                  className="text-button"
                   onClick={() => navigate({ screen: "topics" })}
                 >
                   Volver a temas
                 </button>
                 <div className="eyebrow">{course.title.toUpperCase()}</div>
-                <h1>Aprender haciendo</h1>
+                <h1>{view === "assessment" ? "Evaluación del curso" : `Tema ${String(course.topics.indexOf(topic) + 1).padStart(2, "0")} · ${topic.title}`}</h1>
               </div>
               <div className="route-progress">
                 <span>
@@ -496,20 +437,6 @@ export default function App({ publication }) {
                     </button>
                   ))}
                 </div>
-                {course.assessment && (
-                  <section className="assessment-invite panel">
-                    <h2>Pon a prueba lo aprendido</h2>
-                    <button
-                      className="primary"
-                      onClick={() => navigate({ screen: "assessment" })}
-                    >
-                      {assessmentResult
-                        ? "Ver evaluación final"
-                        : "Comenzar evaluación final"}
-                      <Icon name="arrow" />
-                    </button>
-                  </section>
-                )}
                 <LearningWorkspace
                   course={course}
                   key={`${course.id}:${topic.id}:${workspaceVersion}`}
@@ -528,6 +455,20 @@ export default function App({ publication }) {
                   setLearningTab={setLearningTab}
                   onConfigure={() => setSettingsOpen(true)}
                 />
+                {course.assessment && (
+                  <section className="assessment-invite">
+                    <span>Evaluación final <span className="muted">· Opcional, independiente del avance</span></span>
+                    <button
+                      className="secondary"
+                      onClick={() => navigate({ screen: "assessment" })}
+                    >
+                      {assessmentResult
+                        ? "Ver evaluación final"
+                        : "Comenzar evaluación final"}
+                      <Icon name="arrow" />
+                    </button>
+                  </section>
+                )}
                 <button
                   className="primary"
                   onClick={() => {
@@ -545,6 +486,55 @@ export default function App({ publication }) {
             )}
           </main>
         )}
+        <section className="progress-controls learning-data" aria-label="Progreso guardado">
+          <div className="progress-summary">
+            <p>Progreso y conversaciones de este navegador.</p>
+            {course && (
+              <button
+                ref={resetButton}
+                className="secondary"
+                onClick={() => setConfirmReset("course")}
+              >
+                Reiniciar este curso
+              </button>
+            )}
+            <button className="secondary" onClick={() => setConfirmReset("all")}>
+              Reiniciar todo el aprendizaje
+            </button>
+          </div>
+          {confirmReset && (
+            <div
+              className="reset-confirmation"
+              role="group"
+              aria-label="Confirmar reinicio"
+            >
+              <p>
+                {confirmReset === "all"
+                  ? "¿Reiniciar todo el aprendizaje de todos los cursos, incluidos los retirados del catálogo?"
+                  : `¿Reiniciar «${course.title}»? El curso se reinicia en todas sus rutas.`}
+                {" "}Se borrarán todas las aprobaciones, incluidas las de ejercicios
+                retirados, el resultado de la evaluación final, todas las conversaciones
+                del tutor (preguntas, respuestas, parciales y capturas), la posición
+                y las copias de recuperación del ámbito elegido. Se detendrá la respuesta
+                activa afectada. Se conserva la Configuración del tutor (clave, modelo
+                y su condición de persistencia) y el catálogo descargado.
+              </p>
+              <button
+                className="secondary"
+                autoFocus
+                onClick={() => {
+                  setConfirmReset(false);
+                  resetButton.current?.focus();
+                }}
+              >
+                Cancelar
+              </button>
+              <button className="primary" onClick={resetProgress}>
+                Sí, reiniciar
+              </button>
+            </div>
+          )}
+        </section>
       </div>
       {settingsOpen && (
         <TutorSettings
