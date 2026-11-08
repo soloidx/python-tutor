@@ -71,10 +71,12 @@ export default function App({ publication }) {
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const resetButton = useRef(null);
   const [resetError, setResetError] = useState("");
+  const [resumeNotice, setResumeNotice] = useState("");
   useEffect(() => {
     history.replaceState(rootLocation, "");
     const onBack = (event) => {
       conversation.cancel();
+      setResumeNotice("");
       setLocation(event.state?.screen ? event.state : rootLocation);
     };
     window.addEventListener("popstate", onBack);
@@ -88,6 +90,7 @@ export default function App({ publication }) {
   }, [settingsOpen]);
   function navigate(next) {
     conversation.cancel();
+    setResumeNotice("");
     const value = { ...location, ...next };
     if (value.screen === "paths") Object.assign(value, rootLocation);
     else if (value.screen === "courses")
@@ -146,12 +149,25 @@ export default function App({ publication }) {
     });
   }
   function startCourse(selectedCourse) {
-    const previous = progressByCourse[selectedCourse.id].progress.topicId;
-    openTopic(
-      selectedCourse,
-      selectedCourse.topics.find((item) => item.id === previous) ||
-        selectedCourse.topics[0],
+    const progress = progressByCourse[selectedCourse.id].progress;
+    const previous = selectedCourse.topics.find(
+      (item) => item.id === progress.topicId,
     );
+    const retired = progress.topicId && !previous;
+    const destination = previous ||
+      (retired && selectedCourse.topics.find((item) =>
+        item.exercises.some((exercise) => !progress.completed.includes(exercise.id)),
+      )) || selectedCourse.topics[0];
+    openTopic(selectedCourse, destination);
+    if (retired) {
+      setResumeNotice(
+        `Tu último tema ya no está disponible. Abrimos «${destination.title}», ${
+          courseProgress(selectedCourse, progress).status === "Completado"
+            ? "el primer tema del curso porque todos sus ejercicios vigentes están aprobados"
+            : "el primer tema con ejercicios pendientes"
+        }.`,
+      );
+    }
   }
   function resetProgress() {
     const historyWarning = conversation.reset(course.id);
@@ -263,6 +279,9 @@ export default function App({ publication }) {
         </nav>
         {recoveryWarning && (
           <p className="storage-warning" role="alert">{recoveryWarning}</p>
+        )}
+        {resumeNotice && (
+          <p className="storage-warning" role="alert">{resumeNotice}</p>
         )}
         {!course && (resetError || storageMessage) && (
           <p className="storage-warning" role="alert">
