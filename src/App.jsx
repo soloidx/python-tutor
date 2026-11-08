@@ -731,6 +731,7 @@ function LearningWorkspace({
             onConfigure={onConfigure}
             access={access}
             conversation={conversation}
+            courseId={course.id}
             topicId={topic.id}
             topicTitle={topic.title}
             capture={() =>
