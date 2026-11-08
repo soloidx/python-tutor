@@ -471,6 +471,9 @@ test("a beginner progresses through fundamentals with real Python", async ({
     await expect(
       page.getByText("0 / 12 ejercicios", { exact: true }),
     ).toBeVisible();
+    // Leave the topic before corrupting storage again: entering it saves the
+    // resume position, which must finish before the next fault injection.
+    await page.getByRole("button", { name: "Todas las rutas", exact: true }).click();
   }
   // A full or blocked store must leave the learning flow usable and report failure.
   await page.addInitScript(() => {
@@ -483,7 +486,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
     page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
   ).toBeVisible();
   await enterCourse(page);
-  await expect(page.getByRole("alert")).toContainText("No se pudo guardar");
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo guardar el progreso" })).toBeVisible();
   await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
   await expect(
     page.getByRole("heading", { name: "Expresiones y salida", exact: true }),
@@ -494,9 +497,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
-  await expect(page.getByRole("alert")).not.toContainText(
-    "el progreso anterior podría reaparecer",
-  );
+  await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
@@ -516,7 +517,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
   ).toBeVisible();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo recuperar el progreso" })).toBeVisible();
   await enterCourse(page);
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
@@ -527,9 +528,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
-  await expect(page.getByRole("alert")).toContainText(
-    "el progreso anterior podría reaparecer",
-  );
+  await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();

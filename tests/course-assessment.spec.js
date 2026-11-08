@@ -14,6 +14,12 @@ async function topics(page, { path = 'Primeros pasos con Python', course = 'Pyth
   await page.getByRole('button', { name: `Explorar ${path}`, exact: true }).click();
   await page.getByRole('button', { name: `Ver temas de ${course}`, exact: true }).click();
 }
+async function activate(page, context, value) {
+  await serveCatalog(context, value);
+  await page.reload();
+  await page.getByRole("button", { name: "Recargar para actualizar", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Cursos y rutas de aprendizaje", exact: true })).toBeVisible();
+}
 async function submit(page) {
   await page.getByRole('button', { name: 'Comenzar evaluación final', exact: true }).click();
   await page.getByRole('group').nth(0).getByRole('radio', { name: 'Dos', exact: true }).check();
@@ -30,21 +36,18 @@ test('retired assessment questions and temporarily absent assessment survive cou
   await submit(page);
   const absent = assessmentPublication('absent');
   updateCourse(absent, 'python-fundamentos', course => { delete course.assessment; });
-  await serveCatalog(context, absent);
-  await page.reload();
+  await activate(page, context, absent);
   await topics(page);
   await expect(page.getByRole('button', { name: /evaluación final/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Comenzar curso', exact: true }).click();
   const retired = assessmentPublication('retired');
   updateCourse(retired, 'python-fundamentos', course => { course.assessment.questions.pop(); });
-  await serveCatalog(context, retired);
-  await page.reload();
+  await activate(page, context, retired);
   await topics(page);
   await page.getByRole('button', { name: 'Ver evaluación final', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tu resultado: 1 de 1', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Volver a las lecciones', exact: true }).click();
-  await serveCatalog(context, assessmentPublication('restored'));
-  await page.reload();
+  await activate(page, context, assessmentPublication('restored'));
   await topics(page);
   await page.getByRole('button', { name: 'Ver evaluación final', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tu resultado: 1 de 2', exact: true })).toBeVisible();
@@ -131,4 +134,25 @@ test('storage failure reports a session-only assessment result that disappears o
   await page.getByRole('button', { name: 'Comenzar evaluación final', exact: true }).click();
   await expect(page.getByRole('radio', { checked: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /Tu resultado:/ })).toHaveCount(0);
+});
+
+test('new option identities require a new submission without destroying temporarily retired answers', async ({ page, context }) => {
+  await serveCatalog(context, assessmentPublication());
+  await page.goto('/');
+  await topics(page);
+  await submit(page);
+  const changed = assessmentPublication('new-option');
+  updateCourse(changed, 'python-fundamentos', course => {
+    course.assessment.questions[1].options[1].id = 'respuesta-nueva';
+  });
+  await activate(page, context, changed);
+  await topics(page);
+  await page.getByRole('button', { name: 'Comenzar evaluación final', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /Tu resultado:/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ver resultado', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Volver a las lecciones', exact: true }).click();
+  await activate(page, context, assessmentPublication('same-identities-return'));
+  await topics(page);
+  await page.getByRole('button', { name: 'Ver evaluación final', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Tu resultado: 1 de 2', exact: true })).toBeVisible();
 });
