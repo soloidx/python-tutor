@@ -1,5 +1,3 @@
-import { assessAnswers } from "./assessment.js";
-
 // Official learner records are scoped by course and independent of navigation.
 // The previous python-tutor.progress.v1 format is deliberately never imported.
 export const progressStoragePrefix = "python-tutor:course-progress:v1:";
@@ -50,19 +48,17 @@ export function loadProgress(course) {
       !saved.completed.every((id) => typeof id === "string" && id.length)
     )
       throw new Error("Invalid progress");
-    let assessmentResult = null;
-    const questions = course.assessment?.questions || [];
-    if (saved.assessmentResult !== null && saved.assessmentResult !== undefined) {
-      const answers = saved.assessmentResult?.answers;
-      if (
-        answers &&
-        questions.length &&
-        questions.every((question) =>
-          question.options.some((option) => option.id === answers[question.id]),
-        )
+    // Assessment identities can be temporarily absent from a publication. Keep
+    // submitted answers intact; the UI derives a review for current questions.
+    const storedAnswers = saved.assessmentResult?.answers;
+    const assessmentResult =
+      storedAnswers && typeof storedAnswers === "object" &&
+      !Array.isArray(storedAnswers) &&
+      Object.entries(storedAnswers).every(([id, answer]) =>
+        id.length && typeof answer === "string" && answer.length,
       )
-        assessmentResult = assessAnswers(questions, answers);
-    }
+        ? saved.assessmentResult
+        : null;
     return {
       progress: {
         topicId: saved.topicId,
