@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { assessAnswers } from "./assessment.js";
 import {
   emptyProgress,
+  courseProgress,
+  resumeLabel,
   loadProgress,
   removeProgress,
   saveProgress,
@@ -121,12 +123,12 @@ export default function App({ publication }) {
       };
     });
   }
+  useEffect(() => {
+    if (location.screen === "learn" && course && topic) {
+      updateProgress(course.id, { topicId: topic.id });
+    }
+  }, [location.screen, location.courseId, location.topicId]);
   function openTopic(selectedCourse, selectedTopic) {
-    updateProgress(selectedCourse.id, {
-      selectedRoute: selectedCourse.id,
-      topicId: selectedTopic.id,
-      view: "learn",
-    });
     navigate({
       screen: "learn",
       courseId: selectedCourse.id,
@@ -142,13 +144,9 @@ export default function App({ publication }) {
     );
   }
   function resetProgress() {
-    const historyWarning = conversation.reset();
-    const cleared = {
-      ...emptyProgress(course),
-      selectedRoute: course.id,
-      view: "learn",
-    };
-    const removed = removeProgress();
+    const historyWarning = conversation.reset(course.id);
+    const cleared = emptyProgress();
+    const removed = removeProgress(course);
     const saved = saveProgress(course, cleared);
     setProgressByCourse((previous) => ({
       ...previous,
@@ -174,9 +172,7 @@ export default function App({ publication }) {
     setConfirmReset(false);
     resetButton.current?.focus();
   }
-  const exerciseCount =
-    course?.topics.reduce((count, item) => count + item.exercises.length, 0) ||
-    0;
+  const currentProgress = course ? courseProgress(course, state.progress) : null;
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -317,6 +313,19 @@ export default function App({ publication }) {
               <article className="panel course-body" key={item.id}>
                 <h2>{item.title}</h2>
                 <p>{item.description}</p>
+                <p>
+                  {item.courseIds.every((id) =>
+                    courseProgress(courses[id], progressByCourse[id].progress)
+                      .status === "Completado",
+                  )
+                    ? "Completado"
+                    : item.courseIds.some((id) =>
+                        courseProgress(courses[id], progressByCourse[id].progress)
+                          .approved > 0,
+                      )
+                      ? "En progreso"
+                      : "Sin iniciar"}
+                </p>
                 <button
                   className="primary"
                   onClick={() =>
@@ -340,15 +349,16 @@ export default function App({ publication }) {
             <p>{path.description}</p>
             {path.courseIds.map((id) => {
               const item = courses[id];
+              const summary = courseProgress(item, progressByCourse[id].progress);
               return (
                 <article className="panel course-body" key={id}>
                   <h2>{item.title}</h2>
                   <p>{item.description}</p>
                   <p>{item.topics.length} temas</p>
                   <p>
-                    {progressByCourse[id].progress.completed.length} ejercicios
-                    completados
+                    {summary.percentage}% · {summary.approved} / {summary.total} ejercicios aprobados
                   </p>
+                  <p>{summary.status}</p>
                   <button
                     className="primary"
                     onClick={() =>
@@ -365,7 +375,7 @@ export default function App({ publication }) {
                     className="secondary"
                     onClick={() => startCourse(item)}
                   >
-                    Comenzar {item.title}
+                    {resumeLabel(item, progressByCourse[id].progress)} {item.title}
                   </button>
                 </article>
               );
@@ -377,8 +387,10 @@ export default function App({ publication }) {
             <h1>{course.title}</h1>
             <p>{course.description}</p>
             <button className="primary" onClick={() => startCourse(course)}>
-              Comenzar curso
+              {resumeLabel(course, state.progress)} curso
             </button>
+            <p>{currentProgress.percentage}% · {currentProgress.approved} / {currentProgress.total} ejercicios aprobados</p>
+            <p>{currentProgress.status}</p>
             <h2>Temas del curso</h2>
             {course.topics.map((item, index) => (
               <article className="panel course-body" key={item.id}>
@@ -426,9 +438,9 @@ export default function App({ publication }) {
               </div>
               <div className="route-progress">
                 <span>
-                  {completed.length} / {exerciseCount} ejercicios
+                  {currentProgress.approved} / {currentProgress.total} ejercicios
                 </span>
-                <progress value={completed.length} max={exerciseCount} />
+                <progress value={currentProgress.approved} max={currentProgress.total} />
               </div>
             </div>
             {view === "assessment" ? (

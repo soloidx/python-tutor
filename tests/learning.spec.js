@@ -305,7 +305,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   }
   await page.getByRole("button", { name: "Volver a cursos" }).click();
   await expect(
-    page.getByText("12 ejercicios completados", { exact: true }),
+    page.getByText("100% · 12 / 12 ejercicios aprobados", { exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(
@@ -315,12 +315,12 @@ test("a beginner progresses through fundamentals with real Python", async ({
     .getByRole("button", { name: "Explorar Primeros pasos con Python" })
     .click();
   await expect(
-    page.getByText("12 ejercicios completados", { exact: true }),
+    page.getByText("100% · 12 / 12 ejercicios aprobados", { exact: true }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Ver temas de Python Fundamentos" })
     .click();
-  await page.getByRole("button", { name: "Comenzar curso" }).click();
+  await page.getByRole("button", { name: "Repasar curso" }).click();
   await expect(
     page.getByRole("heading", { name: "Listas y diccionarios", exact: true }),
   ).toBeVisible();
@@ -459,7 +459,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   // Fault injection stays at the browser-storage boundary; assertions use the UI.
   for (const damaged of ["{damaged JSON", "{}"]) {
     await page.evaluate(
-      (value) => localStorage.setItem("python-tutor.progress.v1", value),
+      (value) => localStorage.setItem("python-tutor:course-progress:v1:python-fundamentos", value),
       damaged,
     );
     await page.reload();
