@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boceto descartable · Navegación de aprendizaje</title>
+<style>
+body{font:16px/1.5 system-ui,sans-serif;max-width:1100px;margin:32px auto;padding:0 20px;color:#182c30;background:#f4f7f6}h1{font-size:28px}h2{font-size:23px}h3{margin:0 0 8px}button{font:inherit;padding:8px 14px;border:1px solid #aac1bb;border-radius:6px;background:white;color:#185e50;cursor:pointer;margin:4px}button:hover{background:#e4f1ec}button:disabled{opacity:.45;cursor:default}section,article,aside{background:white;border:1px solid #d5e1dc;border-radius:8px;padding:20px;margin:16px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}.grid article{margin:0}.muted{color:#536b65;font-size:14px}.notice{background:#e5f2ec;padding:12px;border-radius:6px;margin:12px 0}.warn{background:#fff1cf}.tag{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:#526d62}progress{width:100%;accent-color:#24765f}dl{display:grid;grid-template-columns:minmax(130px,1fr) 3fr;gap:8px}dt{font-weight:600}dd{margin:0}nav{margin-bottom:16px}label{display:block;margin:10px 0}select{font:inherit;padding:6px}dialog{max-width:520px;border:1px solid #9cafaa;border-radius:10px}dialog::backdrop{background:#10262066}#guides button[aria-selected=true]{background:#d9ece3}small{display:block}a{color:#185e50}
+</style>
+<header><span class="tag">Prototipo descartable · Sin guardar datos · Reglas acordadas</span>
+<h1>¿Se entiende dónde estás y cómo retomar?</h1>
+<p>Explora rutas → cursos → temas. Este boceto prueba las reglas de navegación y reanudación; sus botones simulan el aprendizaje, la evaluación y el catálogo. No ejecuta Python ni modifica tus datos.</p>
+<details><summary>Reglas de navegación acordadas</summary><p>Inicio siempre en rutas. Cada curso recuerda su último tema, compartido entre rutas. «Continuar» existe por curso; sin visitas se llama «Comenzar» y abre el primer tema. Al completar el curso se llama «Repasar» y vuelve al último tema. Acceso libre en el orden del catálogo. Atrás conserva la ruta desde la que entraste. Reiniciar también olvida la posición del curso. Si el último tema desaparece, se abre el primero con ejercicios pendientes o, si todos están aprobados, el primero. Aprobar no avanza automáticamente. El botón Atrás del navegador conserva el contexto de entrada.</p></details></header>
+<aside><h2>Estado observable del boceto</h2><div id="state"></div></aside>
+<section><h2>Casos guiados</h2><div id="guides" role="tablist"></div><p id="guideText"></p><div id="steps"></div></section>
+<main id="app"></main>
+<section><h2>Simular condiciones</h2><p class="muted">Estos controles pertenecen al boceto, no a la interfaz propuesta.</p><label>Catálogo <select id="catalog"><option value="ok">Disponible</option><option value="loading">Primera visita: cargando</option><option value="error">Primera visita: error</option><option value="cached">Copia guardada; falla la actualización</option><option value="new">Novedad lista para recargar</option><option value="temporary">Contenido usable sin guardar</option><option value="damaged">Datos locales recuperados parcialmente</option></select></label><button data-action="resetDemo">Volver al boceto inicial</button><button data-action="globalReset">Reiniciar todo el aprendizaje…</button></section>
+<dialog id="confirm"><h2 id="confirmTitle"></h2><p id="confirmText"></p><button id="cancel">Cancelar</button><button id="confirmReset">Confirmar reinicio</button></dialog>
+<script>
+// Modelo puro: los datos se conservan únicamente en memoria.
+const paths=[{id:'python',title:'Desarrollador Python',courses:['basics','web']},{id:'data',title:'Análisis de datos',courses:['basics','data']}];
+const baseCourses={basics:{title:'Fundamentos de Python',topics:['Variables','Condicionales'],assessment:true},web:{title:'Python para la web',topics:['Peticiones','Respuestas'],assessment:false},data:{title:'Datos con Python',topics:['Listas','Tablas'],assessment:true}};
+const initial=()=>({screen:'paths',path:null,course:null,topic:null,passed:[],last:{},assessment:{},catalog:'ok',revision:1,message:'Boceto inicial. Ningún ejercicio aprobado.'});
+const courses=s=>({...baseCourses,basics:{...baseCourses.basics,topics:s.revision===1?baseCourses.basics.topics:s.revision===2?[...baseCourses.basics.topics,'Bucles']:['Variables','Bucles']}});
+const key=(c,t)=>c+':'+t;
+const count=(s,c)=>courses(s)[c].topics.filter(t=>s.passed.includes(key(c,t))).length;
+const percent=(s,c)=>Math.round(100*count(s,c)/courses(s)[c].topics.length);
+const status=(s,ids)=>ids.every(c=>percent(s,c)===100)?'Completado':ids.some(c=>count(s,c)>0)?'En progreso':'Sin iniciar';
+function reduce(s,a){
+ const n=structuredClone(s); n.message='';
+ switch(a.type){
+ case 'path':n.path=a.id;n.screen='courses';n.course=null;n.topic=null;break;
+ case 'course':n.course=a.id;n.screen='topics';n.topic=null;break;
+ case 'resume':{n.course=a.id;const ts=courses(n)[a.id].topics,previous=n.last[a.id];n.topic=ts.includes(previous)?previous:previous?(ts.find(t=>!n.passed.includes(key(a.id,t)))||ts[0]):ts[0];if(previous&&!ts.includes(previous))n.message='El último tema visitado ya no está disponible. Abrimos el primer tema con ejercicios pendientes o, si ya están aprobados todos, el primero.';n.last[a.id]=n.topic;n.screen='lesson';break;}
+ case 'topic':n.topic=a.id;n.last[n.course]=a.id;n.screen='lesson';break;
+ case 'pass':if(!n.passed.includes(key(n.course,n.topic)))n.passed.push(key(n.course,n.topic));n.message='Ejercicio simulado aprobado. El porcentaje se comparte entre rutas.';break;
+ case 'assessment':n.screen='assessment';break;
+ case 'result':n.assessment[n.course]='1 de 2 respuestas correctas';n.message='Evaluación registrada: no cambia el avance.';break;
+ case 'back':if(['lesson','assessment'].includes(n.screen))n.screen='topics';else if(n.screen==='topics'){n.screen='courses';n.course=null;n.topic=null;}else{n.screen='paths';n.path=null;n.course=null;n.topic=null;}break;
+ case 'paths':n.screen='paths';n.path=null;n.course=null;n.topic=null;break;
+ case 'reset':n.passed=n.passed.filter(k=>a.id&&!k.startsWith(a.id+':'));if(a.id){delete n.last[a.id];delete n.assessment[a.id];}else{n.last={};n.assessment={};n.screen='paths';n.path=null;n.course=null;n.topic=null;}n.message='Reinicio simulado: aprobaciones, evaluación, conversaciones y posición borradas del alcance elegido. Configuración del tutor y catálogo conservados.';break;
+ case 'catalog':n.catalog=a.id;break;
+ case 'retire':n.revision=3;n.screen='paths';n.path=null;n.course=null;n.topic=null;n.message='Recarga simulada: Condicionales fue retirado y Bucles está disponible. Se conservan aprobaciones y posiciones para probar la reanudación.';break;
+ case 'retry':n.catalog='ok';n.message='Descarga simulada completada.';break;
+ case 'reload':n.catalog='ok';n.revision=2;n.screen='paths';n.path=null;n.course=null;n.topic=null;n.message='Nueva revisión activada: Fundamentos añade Bucles. Las aprobaciones se conservan y los porcentajes se recalculan.';break;
+ }
+ return n;
+}
+const scenarios=[
+ {title:'Último tema retirado',text:'Visita un tema y simula una recarga que lo retira. Continuar abre el primer tema pendiente y explica el cambio.',steps:[['Abrir ruta',{type:'path',id:'python'}],['Abrir temas',{type:'course',id:'basics'}],['Visitar Condicionales',{type:'topic',id:'Condicionales'}],['Simular recarga que retira el tema',{type:'retire'}],['Abrir ruta',{type:'path',id:'python'}],['Continuar curso',{type:'resume',id:'basics'}]]},
+ {title:'Primer acceso',text:'Sin visitas: Comenzar abre el primer tema. Abrirlo no cambia el estado Sin iniciar.',steps:[['Abrir Desarrollador Python',{type:'path',id:'python'}],['Comenzar Fundamentos',{type:'resume',id:'basics'}],['Aprobar Variables',{type:'pass'}],['Volver a temas',{type:'back'}]]},
+ {title:'Curso compartido',text:'Visita Condicionales desde una ruta y retoma el mismo curso desde otra. La ruta de entrada cambia; la posición y el avance del curso se comparten.',steps:[['Abrir Desarrollador Python',{type:'path',id:'python'}],['Ver temas de Fundamentos',{type:'course',id:'basics'}],['Abrir Condicionales libremente',{type:'topic',id:'Condicionales'}],['Aprobar el ejercicio',{type:'pass'}],['Ir a rutas',{type:'paths'}],['Abrir Análisis de datos',{type:'path',id:'data'}],['Continuar Fundamentos',{type:'resume',id:'basics'}],['Volver a temas',{type:'back'}],['Volver a cursos de Análisis de datos',{type:'back'}]]},
+ {title:'Completar y repasar',text:'Aprobar todos los ejercicios completa el curso. Repasar vuelve al último tema, sin forzar la evaluación final.',steps:[['Abrir ruta',{type:'path',id:'python'}],['Comenzar Fundamentos',{type:'resume',id:'basics'}],['Aprobar Variables',{type:'pass'}],['Volver',{type:'back'}],['Abrir Condicionales',{type:'topic',id:'Condicionales'}],['Aprobar Condicionales',{type:'pass'}],['Volver a temas',{type:'back'}],['Repasar Fundamentos',{type:'resume',id:'basics'}],['Volver a temas',{type:'back'}],['Abrir evaluación opcional',{type:'assessment'}],['Simular resultado',{type:'result'}]]},
+ {title:'Contenido nuevo',text:'La novedad no sustituye contenido mientras estudias. Activarla requiere recarga y puede reducir el porcentaje.',steps:[['Abrir ruta',{type:'path',id:'python'}],['Comenzar curso',{type:'resume',id:'basics'}],['Aprobar Variables',{type:'pass'}],['Detectar novedad',{type:'catalog',id:'new'}],['Simular recarga y activación',{type:'reload'}],['Ver nuevo avance',{type:'path',id:'python'}]]},
+ {title:'Reinicio compartido',text:'Aprueba un ejercicio y abre los temas. Usa Reiniciar este curso para ver la confirmación y el efecto en ambas rutas; cancelar conserva todo.',steps:[['Abrir ruta',{type:'path',id:'python'}],['Comenzar Fundamentos',{type:'resume',id:'basics'}],['Aprobar Variables',{type:'pass'}],['Volver a temas y probar reinicio',{type:'back'}]]}
+];
+let state=initial(),guide=0,step=0,pendingReset=null;
+const $=id=>document.getElementById(id);
+const button=(text,action)=>`<button data-json='${JSON.stringify(action)}'>${text}</button>`;
+const resumeLabel=c=>percent(state,c)===100?'Repasar':state.last[c]?'Continuar':'Comenzar';
+function render(){
+ const cs=courses(state),p=paths.find(p=>p.id===state.path),c=cs[state.course];
+ $('state').innerHTML=`<dl><dt>Pantalla</dt><dd>${({paths:'Rutas',courses:'Cursos',topics:'Temas',lesson:'Tema',assessment:'Evaluación final'})[state.screen]}</dd><dt>Contexto</dt><dd>${p?.title||'Todas las rutas'}${c?' → '+c.title:''}${state.screen==='lesson'?' → '+state.topic:''}</dd><dt>Avance compartido</dt><dd>${Object.keys(cs).map(id=>cs[id].title+': '+percent(state,id)+'%').join(' · ')}</dd><dt>Último tema por curso</dt><dd>${Object.entries(state.last).map(([id,t])=>cs[id].title+': '+t).join(' · ')||'Ninguno'}</dd><dt>Evaluaciones</dt><dd>${Object.entries(state.assessment).map(([id,r])=>cs[id].title+': '+r).join(' · ')||'Sin resultados'}</dd><dt>Catálogo</dt><dd>Revisión ${state.revision} · ${$('catalog').querySelector(`[value="${state.catalog}"]`).textContent}</dd></dl>${state.message?'<p class="notice">'+state.message+'</p>':''}`;
+ $('catalog').value=state.catalog;
+ $('guides').innerHTML=scenarios.map((s,i)=>`<button role="tab" aria-selected="${guide===i}" data-guide="${i}">${s.title}</button>`).join('');
+ $('guideText').textContent=scenarios[guide].text;
+ $('steps').innerHTML=scenarios[guide].steps.map(([label],i)=>`<button data-step="${i}" ${i!==step?'disabled':''}>${i+1}. ${label}</button>`).join('');
+ if(['loading','error'].includes(state.catalog)){
+ $('app').innerHTML=`<section><h2>${state.catalog==='loading'?'Cargando catálogo…':'No pudimos cargar el catálogo'}</h2><p>${state.catalog==='loading'?'Preparando cursos para tu primera visita.':'Revisa tu conexión y vuelve a intentarlo.'}</p>${button(state.catalog==='loading'?'Simular descarga completada':'Reintentar',{type:'retry'})}</section>`;return;
+ }
+ const messages={cached:'No pudimos actualizar el contenido. Puedes continuar con la copia guardada.',new:'Hay contenido nuevo. Recargar para actualizar.',temporary:'Este contenido no pudo guardarse; al recargar necesitarás volver a descargarlo.',damaged:'Recuperamos parte de tus datos. Conservamos una copia de lo que no pudimos recuperar.'};
+ let html=messages[state.catalog]?`<div class="notice warn">${messages[state.catalog]} ${['cached','new'].includes(state.catalog)?button(state.catalog==='new'?'Recargar para actualizar':'Reintentar',{type:state.catalog==='new'?'reload':'retry'}):''}</div>`:'';
+ html+=`<nav>${button('Todas las rutas',{type:'paths'})}${state.screen!=='paths'?button('← '+(['lesson','assessment'].includes(state.screen)?'Temas':state.screen==='topics'?'Cursos de '+p.title:'Rutas'),{type:'back'}):''}</nav>`;
+ if(state.screen==='paths')html+='<section><h2>Rutas de aprendizaje</h2><div class="grid">'+paths.map(p=>`<article><h3>${p.title}</h3><p>${status(state,p.courses)} · ${p.courses.length} cursos</p>${button('Ver cursos',{type:'path',id:p.id})}</article>`).join('')+'</div></section>';
+ if(state.screen==='courses')html+=`<section><h2>${p.title}</h2><p>${status(state,p.courses)}</p><div class="grid">`+p.courses.map(id=>`<article><h3>${cs[id].title}</h3><p>${percent(state,id)}% · ${count(state,id)} de ${cs[id].topics.length} ejercicios</p><progress value="${percent(state,id)}" max="100"></progress><p>${status(state,[id])}${id==='basics'?'<small>Curso compartido con '+paths.find(x=>x.id!==p.id).title+'</small>':''}</p>${button('Ver temas',{type:'course',id})}${button(resumeLabel(id),{type:'resume',id})}</article>`).join('')+'</div></section>';
+ if(state.screen==='topics')html+=`<section><h2>${c.title}</h2><p>${percent(state,state.course)}% · ${status(state,[state.course])}</p>${button(resumeLabel(state.course),{type:'resume',id:state.course})}<h3>Temas · acceso libre</h3>`+c.topics.map(t=>`<article><h3>${t}</h3><p>${state.passed.includes(key(state.course,t))?'1 de 1 ejercicios aprobados':'0 de 1 ejercicios aprobados'}</p>${button('Abrir tema',{type:'topic',id:t})}</article>`).join('')+(c.assessment?`<article><h3>Evaluación final · opcional</h3><p>Separada del avance por ejercicios. ${state.assessment[state.course]||'Sin resultado.'}</p>${button('Abrir evaluación',{type:'assessment'})}</article>`:'')+'<button data-action="courseReset">Reiniciar este curso…</button></section>';
+ if(state.screen==='lesson')html+=`<section><p class="muted">${p.title} → ${c.title} → ${state.topic}</p><h2>${state.topic}</h2><p>Espacio simulado para la lección, el ejercicio y el tutor.</p><p>${state.passed.includes(key(state.course,state.topic))?'Ejercicio aprobado':'Ejercicio pendiente'}</p>${button('Simular aprobación del ejercicio',{type:'pass'})}<p>Visitar este tema guarda la posición del curso, aunque todavía no apruebes ejercicios.</p>${c.topics.indexOf(state.topic)<c.topics.length-1?button('Siguiente tema',{type:'topic',id:c.topics[c.topics.indexOf(state.topic)+1]}):button('Volver a temas',{type:'back'})}${button('Ver todos los temas',{type:'back'})}</section>`;
+ if(state.screen==='assessment')html+=`<section><h2>Evaluación final · ${c.title}</h2><p>Opcional. No altera el porcentaje del curso.</p><p>${state.assessment[state.course]||'Sin resultado'}</p>${button('Simular resultado de evaluación',{type:'result'})}${button('Volver a temas',{type:'back'})}</section>`;
+ $('app').innerHTML=html;
+}
+const view=()=>({screen:state.screen,path:state.path,course:state.course,topic:state.topic});
+function recordView(replace=false){history[replace?'replaceState':'pushState'](view(),'');}
+recordView(true);
+window.addEventListener('popstate',e=>{if(!e.state)return;Object.assign(state,e.state);if(state.screen==='lesson'){const ts=courses(state)[state.course].topics;if(!ts.includes(state.topic)){state=reduce(state,{type:'resume',id:state.course});}else state.last[state.course]=state.topic;}state.message=state.message||'Navegación del navegador: el aprendizaje conserva sus datos.';render();});
+function send(a){const before=JSON.stringify(view());state=reduce(state,a);if(['reload','retire'].includes(a.type))recordView(true);else if(JSON.stringify(view())!==before)recordView();render();}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.json)send(JSON.parse(b.dataset.json));
+ if(b.dataset.guide!==undefined){guide=Number(b.dataset.guide);step=0;state=initial();recordView();render();}
+ if(b.dataset.step!==undefined){const a=scenarios[guide].steps[step][1];step++;send(a);}
+ if(b.dataset.action==='resetDemo'){state=initial();step=0;recordView();render();}
+ if(['courseReset','globalReset'].includes(b.dataset.action)){
+ pendingReset=b.dataset.action==='courseReset'?state.course:null;
+ $('confirmTitle').textContent=pendingReset?'Reiniciar '+courses(state)[pendingReset].title:'Reiniciar todo el aprendizaje';
+ $('confirmText').textContent=(pendingReset?'Se borrarán aprobaciones, evaluación final y conversaciones de este curso en todas las rutas que lo incluyen.':'Se borrarán aprobaciones, evaluaciones y conversaciones de todos los cursos, incluidos los retirados del catálogo.')+' Se conserva la configuración del tutor y el catálogo descargado. Se olvida también la posición de reanudación del alcance elegido. Esta acción no se puede deshacer.';
+ $('confirm').showModal();
+ }
+});
+ $('catalog').onchange=e=>send({type:'catalog',id:e.target.value});
+ $('cancel').onclick=()=>$('confirm').close();
+ $('confirmReset').onclick=()=>{$('confirm').close();send({type:'reset',id:pendingReset});};
+render();
+</script>
+</html>
