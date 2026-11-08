@@ -89,3 +89,11 @@ Course files must be relative references inside the source directory and origin.
 `CatalogBootstrap.jsx` owns initial loading, errors and Retry. `App.jsx` receives the publication and keeps tutor access and conversation services alive while navigating paths, courses, topics and learning. Browser history stores screen snapshots separately from learner changes. Reload always opens all learning paths.
 
 The former production course is only in `tests/fixtures/content/`. `tests/fixtures/catalog.js` serves complete HTTP publications, computes digests from the exact returned bytes, offers `updateCourse` for coherent changed documents, and provides `enterCourse` through the visible UI. Its two paths share a course; the other course deliberately reuses topic and exercise IDs to exercise identity isolation in later features.
+
+## Saved publications and activation
+
+The complete catalog and exact `courseFiles` texts are stored together under `python-tutor:catalog:v1`. Loading a backup validates the catalog, hashes the UTF-8 source texts again, and reconstructs each course from those verified texts; a separately stored parsed course object is never trusted. Replacement uses one atomic `localStorage.setItem`, so quota or permission failures preserve the previous complete value. This storage is independent of learner progress and tutor settings.
+
+A valid backup opens immediately while all remote courses download in parallel. A new revision is saved for the next reload and announced without changing the running session. The consumer rejects changes to a known immutable file and changes to a publication with the same revision. Publishers must use both a new revision and a new file for changed course content.
+
+Failed writes display the temporary-content warning and allow retry. When an update could not be saved, the Reload action uses a one-use `catalog-update` URL parameter to download fresh content before starting the new session, even if browser storage writes are blocked. The parameter is consumed immediately; if that download fails, the previous valid backup remains available. Ordinary reloads continue to open the saved complete publication immediately. This backup covers course content, not offline delivery of the application or Python runtime.
