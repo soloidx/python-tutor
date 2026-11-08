@@ -15,6 +15,7 @@ export function TutorPanel({
   topicTitle,
   capture,
 }) {
+  const scope = { courseId, topicId };
   const state = useSyncExternalStore(
     conversation.subscribe,
     conversation.getSnapshot,
@@ -31,8 +32,7 @@ export function TutorPanel({
   async function send() {
     if (!ready || busy || !message.trim()) return;
     const pending = conversation.send({
-      courseId,
-      topicId,
+      scope,
       message,
       capture: capture(),
       config: access.config,
@@ -82,7 +82,7 @@ export function TutorPanel({
               <button
                 className="primary"
                 onClick={() => {
-                  conversation.deleteTopic(courseId, topicId);
+                  conversation.deleteTopic(scope);
                   setCopied("");
                   closeDelete();
                 }}
@@ -173,8 +173,7 @@ export function TutorPanel({
                     disabled={!ready || busy}
                     onClick={() =>
                       conversation.retry({
-                        courseId,
-                        topicId,
+                        scope,
                         exchangeId: exchange.id,
                         config: access.config,
                         onAccessIssue: access.reportIssue,

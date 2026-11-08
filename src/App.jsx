@@ -5,11 +5,9 @@ import {
   courseProgress,
   resumeLabel,
   loadProgress,
-  removeProgress,
-  progressStoragePrefix,
   saveProgress,
 } from "./progress.js";
-import { removeRecoveryCopies } from "./learnerRecovery.js";
+import { resetLearner } from "./learnerReset.js";
 import { useTutorAccess } from "./tutorAccess.js";
 import { TutorPanel, TutorSettings } from "./TutorAccess.jsx";
 import { createConversationService } from "./tutorConversation.js";
@@ -174,40 +172,15 @@ export default function App({ publication }) {
   }
   function resetProgress() {
     const global = confirmReset === "all";
-    const historyWarning = conversation.reset(global ? undefined : course.id);
-    const ids = new Set(global ? Object.keys(progressByCourse) : [course.id]);
-    let enumerationFailed = false;
-    if (global) {
-      try {
-        for (const key of Object.keys(localStorage)) {
-          if (key.startsWith(progressStoragePrefix)) {
-            // Include retired courses that are absent from the active publication.
-            try {
-              ids.add(decodeURIComponent(key.slice(progressStoragePrefix.length)));
-            } catch {
-              enumerationFailed = true;
-            }
-          }
-        }
-      } catch {
-        enumerationFailed = true;
-      }
-    }
-    let progressFailed = false;
-    const cleared = {};
-    for (const id of ids) {
-      const saved = removeProgress({ id });
-      progressFailed ||= !saved;
-      if (courses[id]) cleared[id] = { progress: emptyProgress(), message: "" };
-    }
-    const copiesRemoved = removeRecoveryCopies(global ? undefined : course.id);
+    const { cleared, warning } = resetLearner({
+      all: global,
+      courseId: global ? undefined : course.id,
+      progressByCourse,
+      courses,
+      conversation,
+    });
     setProgressByCourse((previous) => ({ ...previous, ...cleared }));
-    setResetError([
-      progressFailed ? "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador." : "",
-      historyWarning,
-      !copiesRemoved ? "No se pudieron borrar todas las copias de recuperación; los datos anteriores podrían seguir guardados. Borra los datos del sitio en tu navegador." : "",
-      enumerationFailed ? "No se pudo comprobar todo el almacenamiento. Podrían quedar datos de cursos retirados; borra los datos del sitio en tu navegador para completar el reinicio global." : "",
-    ].filter(Boolean).join(" "));
+    setResetError(warning);
     navigate(global ? rootLocation : { screen: "topics", topicId: null });
     setWorkspaceVersion((value) => value + 1);
     setConfirmReset(false);

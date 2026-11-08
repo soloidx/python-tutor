@@ -30,6 +30,7 @@ Instala Google Chrome, o cambia `channel` en `playwright.config.js` y usa `npx p
 - `src/assessment.js`: cálculo del resultado de la evaluación opcional del curso remoto mediante IDs de pregunta y opción.
 - `src/App.jsx`: rutas → cursos → temas → aprendizaje, con navegación Atrás, contexto visible y acceso libre a cualquier tema.
 - `src/progress.js`: lectura validada y escritura del progreso en el almacenamiento local del navegador.
+- `src/learnerReset.js`: reinicio del progreso, conversaciones y copias de recuperación por curso o de forma global.
 - `src/usePython.js`: estados de carga, ejecución y recuperación del intérprete.
 - `public/python-worker.js`: Pyodide en un Web Worker, con un diccionario Python nuevo para cada ejecución. No es un servidor ni un entorno para ejecutar código de otras personas.
 - `tests/learning.spec.js`: un recorrido completo mediante la interfaz real y Pyodide, con recarga, reapertura y reinicio del progreso.
