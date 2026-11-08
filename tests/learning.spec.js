@@ -466,7 +466,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
     await expect(
       page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
     ).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText("No se pudo recuperar");
+    await expect(page.getByRole("alert")).toContainText("recuperación parcial");
     await enterCourse(page);
     await expect(
       page.getByText("0 / 12 ejercicios", { exact: true }),

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { assessAnswers, assessmentReview } from "./assessment.js";
 import {
   emptyProgress,
@@ -47,6 +47,10 @@ function Icon({ name, ...props }) {
 export default function App({ publication }) {
   const { catalog, courses } = publication;
   const [conversation] = useState(createConversationService);
+  const recoveryWarning = useSyncExternalStore(
+    conversation.subscribe,
+    () => conversation.getSnapshot().recoveryWarning,
+  );
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [learningTab, setLearningTab] = useState("lesson");
@@ -122,7 +126,12 @@ export default function App({ publication }) {
           progress,
           message: saved
             ? previous[id].message
-            : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
+            : [
+                previous[id].message,
+                previous[id].message.includes("No se pudo guardar el progreso")
+                  ? ""
+                  : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
+              ].filter(Boolean).join(" "),
         },
       };
     });
@@ -268,6 +277,9 @@ export default function App({ publication }) {
           )}
           {view === "learn" && <span>{topic.title}</span>}
         </nav>
+        {recoveryWarning && (
+          <p className="storage-warning" role="alert">{recoveryWarning}</p>
+        )}
         {resumeNotice && (
           <p className="storage-warning" role="alert">{resumeNotice}</p>
         )}

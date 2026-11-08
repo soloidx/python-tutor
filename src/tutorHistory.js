@@ -1,5 +1,12 @@
+import {
+  preserveLearnerRecord,
+  writeLearnerRecord,
+  forgetProtectedRecord,
+} from "./learnerRecovery.js";
+
 export const historyKeyPrefix = "python-tutor:course-conversations:v1:";
-const courseKey = (courseId) => historyKeyPrefix + encodeURIComponent(courseId);
+export const historyStorageKey = (courseId) =>
+  historyKeyPrefix + encodeURIComponent(courseId);
 export const historyStorageWarning =
   "No se pudo guardar o recuperar el historial del tutor. Puedes continuar temporalmente; los mensajes no guardados se perderán al recargar. Esto no cambia la configuración del tutor.";
 
@@ -16,31 +23,42 @@ function validExchange(item, courseId) {
     typeof item.capture?.exercise?.title === "string" &&
     Array.isArray(item.attempts) &&
     item.attempts.length > 0 &&
-    item.attempts.every(
-      (attempt) =>
-        attempt &&
-        typeof attempt.id === "string" &&
-        typeof attempt.text === "string" &&
-        ["complete", "incomplete", "generating"].includes(attempt.status),
-    )
+    item.attempts.every(validAttempt)
+  );
+}
+
+function validAttempt(attempt) {
+  return (
+    attempt &&
+    typeof attempt.id === "string" &&
+    attempt.id.length &&
+    typeof attempt.text === "string" &&
+    ["complete", "incomplete", "generating"].includes(attempt.status) &&
+    (attempt.error === undefined ||
+      attempt.error === null ||
+      typeof attempt.error === "string")
   );
 }
 
 export function saveHistory(exchanges, courseId) {
-  try {
-    localStorage.setItem(courseKey(courseId), JSON.stringify(
-      exchanges.filter((item) => item.courseId === courseId),
-    ));
-    return "";
-  } catch {
-    return historyStorageWarning;
-  }
+  return writeLearnerRecord(
+    historyStorageKey(courseId),
+    JSON.stringify(exchanges.filter((item) => item.courseId === courseId)),
+  )
+    ? ""
+    : historyStorageWarning;
 }
 
-function storedCourseIds() {
+export function storedCourseIds() {
   return Object.keys(localStorage)
     .filter((key) => key.startsWith(historyKeyPrefix))
-    .map((key) => decodeURIComponent(key.slice(historyKeyPrefix.length)));
+    .flatMap((key) => {
+      try {
+        return [decodeURIComponent(key.slice(historyKeyPrefix.length))];
+      } catch {
+        return [];
+      }
+    });
 }
 
 export function removeHistory(courseId) {
@@ -49,7 +67,8 @@ export function removeHistory(courseId) {
     let warning = "";
     for (const id of ids) {
       try {
-        localStorage.removeItem(courseKey(id));
+        localStorage.removeItem(historyStorageKey(id));
+        forgetProtectedRecord(historyStorageKey(id));
       } catch {
         // A browser may reject deletion while still allowing replacement.
         warning = saveHistory([], id) || warning;
@@ -64,33 +83,76 @@ export function removeHistory(courseId) {
 export function loadHistory() {
   const exchanges = [];
   let storageWarning = "";
+  const recoveryWarnings = [];
   try {
     for (const courseId of storedCourseIds()) {
       try {
-        const stored = JSON.parse(localStorage.getItem(courseKey(courseId)));
-        if (!Array.isArray(stored) || !stored.every((item) => validExchange(item, courseId)))
-          throw new Error();
-        let recovered = false;
+        const key = historyStorageKey(courseId);
+        const raw = localStorage.getItem(key);
+        if (raw === null) continue;
+        let stored;
+        try {
+          stored = JSON.parse(raw);
+        } catch {
+          stored = null;
+        }
+        let damaged = !Array.isArray(stored);
+        let interrupted = false;
+        const valid = [];
+        for (const item of Array.isArray(stored) ? stored : []) {
+          const attempts = Array.isArray(item?.attempts)
+            ? item.attempts.map((attempt, index) => {
+                if (validAttempt(attempt)) return attempt;
+                damaged = true;
+                // Keep its place: dropping a damaged final retry would promote an
+                // older completed response into the confirmed request history.
+                return {
+                  id: `recovered-${index}`,
+                  text: typeof attempt?.text === "string" ? attempt.text : "",
+                  status: "incomplete",
+                  errorKind: "interrupted",
+                  error: "No se pudo recuperar este intento de respuesta.",
+                };
+              })
+            : [];
+          const exchange = item && { ...item, attempts };
+          if (!validExchange(exchange, courseId)) {
+            damaged = true;
+            continue;
+          }
+          if (attempts.length !== item.attempts.length) damaged = true;
+          valid.push({
+            ...exchange,
+            attempts: attempts.map((attempt) => {
+              if (attempt.status !== "generating") return attempt;
+              interrupted = true;
+              return {
+                ...attempt,
+                status: "incomplete",
+                errorKind: "interrupted",
+                error:
+                  "Respuesta interrumpida al recargar. El parcial guardado está incompleto.",
+              };
+            }),
+          });
+        }
         const counts = new Map();
-        const courseExchanges = stored.toReversed().filter((item) => {
-          const count = counts.get(item.topicId) || 0;
-          counts.set(item.topicId, count + 1);
-          return count < 50;
-        }).reverse().map((exchange) => ({
-          ...exchange,
-          attempts: exchange.attempts.map((attempt) => {
-            if (attempt.status !== "generating") return attempt;
-            recovered = true;
-            return {
-              ...attempt,
-              status: "incomplete",
-              errorKind: "interrupted",
-              error: "Respuesta interrumpida al recargar. El parcial guardado está incompleto.",
-            };
-          }),
-        }));
+        const courseExchanges = valid
+          .toReversed()
+          .filter((item) => {
+            const count = counts.get(item.topicId) || 0;
+            counts.set(item.topicId, count + 1);
+            return count < 50;
+          })
+          .reverse();
         exchanges.push(...courseExchanges);
-        if (recovered) storageWarning = saveHistory(courseExchanges, courseId) || storageWarning;
+        if (damaged)
+          recoveryWarnings.push(
+            preserveLearnerRecord(key, courseId, "history", raw),
+          );
+        if (damaged || interrupted)
+          storageWarning =
+            saveHistory(courseExchanges, courseId) || storageWarning;
       } catch {
         storageWarning = historyStorageWarning;
       }
@@ -98,20 +160,31 @@ export function loadHistory() {
   } catch {
     storageWarning = historyStorageWarning;
   }
-  return { exchanges, storageWarning };
+  return {
+    exchanges,
+    storageWarning,
+    recoveryWarning: [...new Set(recoveryWarnings)].join(" "),
+  };
 }
 
 // Only the latest confirmed answer of a completed exchange can be an antecedent.
 // A retry uses the original position of its question, never later exchanges.
 export function requestHistory(exchanges, courseId, topicId, beforeId) {
   const before = beforeId
-    ? exchanges.findIndex((item) => item.courseId === courseId && item.topicId === topicId && item.id === beforeId)
+    ? exchanges.findIndex(
+        (item) =>
+          item.courseId === courseId &&
+          item.topicId === topicId &&
+          item.id === beforeId,
+      )
     : exchanges.length;
   const complete = exchanges
     .slice(0, Math.max(0, before))
     .filter(
       (item) =>
-        item.courseId === courseId && item.topicId === topicId && item.attempts.at(-1)?.status === "complete",
+        item.courseId === courseId &&
+        item.topicId === topicId &&
+        item.attempts.at(-1)?.status === "complete",
     );
   return {
     omitted: Math.max(0, complete.length - 10),
