@@ -10,6 +10,7 @@ export function TutorPanel({
   onConfigure,
   access,
   conversation,
+  courseId,
   topicId,
   topicTitle,
   capture,
@@ -30,6 +31,7 @@ export function TutorPanel({
   async function send() {
     if (!ready || busy || !message.trim()) return;
     const pending = conversation.send({
+      courseId,
       topicId,
       message,
       capture: capture(),
@@ -80,7 +82,7 @@ export function TutorPanel({
               <button
                 className="primary"
                 onClick={() => {
-                  conversation.deleteTopic(topicId);
+                  conversation.deleteTopic(courseId, topicId);
                   setCopied("");
                   closeDelete();
                 }}
@@ -120,7 +122,7 @@ export function TutorPanel({
         )}
         <div className="tutor-conversation" aria-label="Conversación de tema">
           {state.exchanges
-            .filter((item) => item.topicId === topicId)
+            .filter((item) => item.courseId === courseId && item.topicId === topicId)
             .map((exchange) => (
               <article key={exchange.id} className="tutor-exchange">
                 <p>
@@ -171,6 +173,8 @@ export function TutorPanel({
                     disabled={!ready || busy}
                     onClick={() =>
                       conversation.retry({
+                        courseId,
+                        topicId,
                         exchangeId: exchange.id,
                         config: access.config,
                         onAccessIssue: access.reportIssue,
