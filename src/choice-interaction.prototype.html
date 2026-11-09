@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipo · Ejercicios de selección</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f8fafc;color:#172033;font:15px/1.5 system-ui,sans-serif}main{max-width:1180px;margin:auto;padding:24px}h1{font-size:25px}h2{font-size:21px}h3{font-size:17px}p{margin:10px 0}button,select,textarea{font:inherit}button,select{padding:9px 13px;border:1px solid #cbd5e1;border-radius:7px;background:white;color:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #7c3aed;outline-offset:3px}button[aria-pressed=true],button[aria-selected=true],.primary{background:#6d28d9;color:white;border-color:#6d28d9}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.workspace{display:grid;grid-template-columns:1fr 1.04fr;gap:20px;margin:20px 0}.panel{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:22px;min-width:0}.intro,.lab{background:#f1edf9}.muted,small{color:#586477}.label{text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:#6d28d9}pre{background:#f1f5f9;padding:18px;border-radius:8px;overflow:auto}code{font:14px/1.6 ui-monospace,monospace}fieldset{border:0;margin:20px 0;padding:0;min-width:0}legend{font-weight:600;margin-bottom:10px}.option{display:flex;gap:12px;align-items:baseline;border:1px solid #cbd5e1;padding:13px;margin:10px 0;border-radius:8px;cursor:pointer;overflow-wrap:anywhere}.option:has(input:checked){border-color:#6d28d9;background:#f5f3ff}input{accent-color:#6d28d9}.feedback{border-left:4px solid #6d28d9;background:#f5f3ff;padding:14px;margin:16px 0}.approved{color:#166534;font-weight:600}.state{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.state p{background:white;padding:12px;border-radius:6px;margin:0;overflow-wrap:anywhere}.state strong{display:block;font-size:12px;color:#586477}textarea{width:100%;min-height:130px;padding:12px}#scenarioDescription{min-height:46px}#steps button{margin:5px}hr{border:0;border-top:1px solid #e2e8f0;margin:22px 0}[hidden]{display:none!important}@media(max-width:720px){main{padding:14px}.workspace{grid-template-columns:1fr}.panel{padding:16px}.state{grid-template-columns:1fr 1fr}}
+</style>
+<main>
+<section class="panel intro"><span class="label">Prototipo descartable · propuesta por contrastar</span>
+<h1>Elegir, comprobar y volver a intentar</h1>
+<p>¿Se entiende qué respuesta se comprobó cuando cambias de opción o repasas un ejercicio aprobado? Esta demo explora las transiciones dentro del espacio de práctica; propone mantener el enunciado y las pistas visibles junto a Lección o Tutor.</p>
+<p class="muted">Todo ocurre en memoria. «Simular recarga» conserva las aprobaciones solo dentro de esta demo; recargar realmente el archivo borra todo. El tutor y la ejecución de Python son simulaciones.</p></section>
+<div class="workspace">
+<section class="panel" aria-label="Panel de aprendizaje">
+<div class="row" role="tablist" aria-label="Panel de aprendizaje"><button id="lessonTab" role="tab" aria-controls="lesson" aria-selected="true">Lección</button><button id="tutorTab" role="tab" aria-controls="tutor" aria-selected="false" tabindex="-1">Tutor</button></div>
+<div id="lesson" role="tabpanel" aria-labelledby="lessonTab"><h2>Valores y variables</h2><p>Una variable guarda un valor. El signo <code>=</code> asigna y <code>print()</code> muestra un valor.</p><pre><code>nombre = "Ada"
+print(nombre)</code></pre><p>Los ejercicios de este tema mezclan interpretación y escritura de código.</p></div>
+<div id="tutor" role="tabpanel" aria-labelledby="tutorTab" hidden><h2>Tutor</h2><p>Conversación simulada del tema.</p><p>¿En qué parte del ejercicio necesitas ayuda?</p><label for="message">Tu mensaje</label><textarea id="message" placeholder="Escribe aquí…"></textarea><p class="muted">El envío y la captura de contexto se decidirán en otro ticket.</p></div>
+</section>
+<section class="panel" aria-label="Espacio de práctica">
+<div class="row" id="exerciseNav" aria-label="Ejercicios del tema"></div>
+<hr><span class="label" id="kind"></span><h2 id="title" tabindex="-1"></h2><p id="approval" class="approved"></p>
+<p id="prompt"></p><pre id="snippet"><code></code></pre>
+<div id="choice"><fieldset><legend>Elige una respuesta</legend><div id="options"></div></fieldset><button id="check" class="primary" disabled>Comprobar</button><div id="feedback" role="status" aria-live="polite" aria-atomic="true"></div></div>
+<div id="coding" hidden><label for="editor">main.py</label><textarea id="editor" spellcheck="false">edad = 0
+print(edad)</textarea><p id="runtimeMessage"></p><button id="run">Ejecutar (simulado)</button><p id="console" role="status"></p></div>
+<hr><button id="hint">Dame una pista</button><div id="hints"></div>
+</section>
+</div>
+<section class="panel lab"><h2>Estado de la demo</h2><div class="state" id="state"></div>
+<h3>Exploración libre</h3><div class="row"><button id="reload">Simular recarga</button><button id="clear">Reiniciar toda la demo</button><label for="runtime">Estado de Python</label><select id="runtime"><option value="loading">Cargando</option><option value="error">Falló la carga</option><option value="ready">Disponible</option></select></div>
+<h3>Recorridos guiados</h3><div class="row" id="scenarios" role="tablist" aria-label="Recorridos guiados"></div><div id="walkthrough" role="tabpanel"><p id="scenarioDescription"></p><div id="steps"></div></div>
+<p class="muted">Teclado: Tab para recorrer controles; flechas para elegir una opción o cambiar de pestaña; Espacio para seleccionar; Enter en Comprobar. El resultado se anuncia en una región de estado. Reducir la ventana permite contrastar la disposición en una columna.</p>
+</section>
+</main>
+<script>
+const exercises=[
+{id:'assignment',title:'Interpretar una asignación',prompt:'¿Qué hace esta instrucción?',code:'edad = 7',options:['Guarda 7 en edad','Compara edad con 7','Muestra 7 en pantalla'],answer:0,retry:['','Piensa qué símbolo usarías para comprobar si dos valores son iguales.','Asignar un valor y mostrarlo son acciones diferentes.'],explanation:'El signo = asigna el valor de la derecha a la variable de la izquierda: edad queda con el valor 7.',hints:['Distingue entre guardar, comparar y mostrar.']},
+{id:'text',title:'Reconocer un nombre',prompt:'¿Cuál de estos nombres de variable es válido en Python?',options:['2nombres','nombre_usuario','nombre-usuario'],answer:1,retry:['Un nombre de variable no puede empezar con un número.','','Revisa qué significado tiene el guion en una expresión.'],explanation:'nombre_usuario es válido: combina letras con un guion bajo y no empieza por un número.',hints:[]},
+{id:'write',title:'Mostrar una variable',prompt:'Guarda 7 en edad y muestra su valor.',hints:['Asigna el valor antes de mostrarlo.']}
+];
+// Modelo puro de la propuesta. No es código de producción.
+const initial=()=>({exercise:0,selected:null,result:null,approved:[],hints:0,runtime:'loading',panel:'lesson',notice:''});
+function transition(s,a){
+ const e=exercises[s.exercise];
+ if(a.type==='select')return {...s,selected:a.value,result:null,notice:s.result?'Cambiaste la selección. Comprueba esta nueva respuesta.':''};
+ if(a.type==='check'&&s.selected!==null&&e.options){const correct=s.selected===e.answer;return {...s,result:{option:s.selected,correct},approved:correct?[...new Set([...s.approved,e.id])]:s.approved,notice:''};}
+ if(a.type==='exercise'||a.type==='reload')return {...s,exercise:a.type==='reload'?0:a.value,selected:null,result:null,hints:0,notice:''};
+ if(a.type==='hint')return {...s,hints:Math.min(s.hints+1,e.hints.length)};
+ if(a.type==='runtime')return {...s,runtime:a.value};
+ if(a.type==='panel')return {...s,panel:a.value};
+ return s;
+}
+</script>
+<script>
+const $=id=>document.getElementById(id);let state=initial(),scenarioIndex=0,stepIndex=0;
+function dispatch(a){state=transition(state,a);render();if(a.type==='exercise'||a.type==='reload'){$('editor').value='edad = 0\nprint(edad)';$('console').textContent='';$('title').focus();}}
+function render(){const e=exercises[state.exercise];
+ $('exerciseNav').replaceChildren(...exercises.map((x,i)=>{const b=document.createElement('button');b.textContent=`${i+1}. ${x.title}${state.approved.includes(x.id)?' · Aprobado':''}`;b.setAttribute('aria-pressed',state.exercise===i);b.onclick=()=>dispatch({type:'exercise',value:i});return b;}));
+ $('kind').textContent=e.options?'Ejercicio de selección':'Ejercicio de código';$('title').textContent=e.title;$('prompt').textContent=e.prompt;$('approval').textContent=state.approved.includes(e.id)?'✓ Ejercicio aprobado · puedes seguir practicando':'';
+ $('snippet').hidden=!e.code;$('snippet').firstElementChild.textContent=e.code||'';$('choice').hidden=!e.options;$('coding').hidden=!!e.options;
+ if(e.options){if($('options').dataset.exercise!==e.id){$('options').dataset.exercise=e.id;$('options').replaceChildren(...e.options.map((text,i)=>{const label=document.createElement('label');label.className='option';const input=document.createElement('input');input.type='radio';input.name='answer';input.value=i;input.onchange=()=>dispatch({type:'select',value:i});label.append(input,document.createTextNode(text));return label;}));}for(const input of $('options').querySelectorAll('input'))input.checked=Number(input.value)===state.selected;}
+ $('check').disabled=state.selected===null;
+ const f=$('feedback');f.className=state.result||state.notice?'feedback':'';
+ f.textContent=state.result?`Respuesta comprobada: «${e.options[state.result.option]}». ${state.result.correct?'¡Correcto! '+e.explanation:'Todavía no. '+e.retry[state.result.option]}`:state.notice;
+ $('hint').hidden=e.hints.length===0;$('hint').disabled=state.hints>=e.hints.length;$('hint').textContent=state.hints?'Todas las pistas mostradas':'Dame una pista';$('hints').replaceChildren(...e.hints.slice(0,state.hints).map(h=>{const p=document.createElement('p');p.textContent=h;return p;}));
+ for(const name of ['lesson','tutor']){$(name).hidden=state.panel!==name;$(name+'Tab').setAttribute('aria-selected',state.panel===name);$(name+'Tab').tabIndex=state.panel===name?0:-1;}
+ $('runtime').value=state.runtime;$('runtimeMessage').textContent={loading:'Python está cargando…',error:'No se pudo cargar Python.',ready:'Python disponible.'}[state.runtime];$('run').disabled=state.runtime!=='ready';
+ const fields={'Ejercicio':e.title,'Selección actual':state.selected===null?'Sin elegir':e.options[state.selected],'Última comprobación visible':state.result?`${state.result.correct?'Correcta':'Incorrecta'}: ${e.options[state.result.option]}`:'Sin resultado','Aprobaciones':state.approved.length+' de 3','Pistas visibles':state.hints,'Python':{loading:'Cargando',error:'Falló la carga',ready:'Disponible'}[state.runtime]};
+ $('state').replaceChildren(...Object.entries(fields).map(([k,v])=>{const p=document.createElement('p'),b=document.createElement('strong');b.textContent=k;p.append(b,document.createTextNode(v));return p;}));
+}
+const scenarios=[
+['Fallo → cambio → acierto','Comprueba una opción incorrecta. Al elegir otra, desaparece su orientación; la nueva selección aún no está comprobada.',[['Elegir «Compara»',{type:'select',value:1}],['Comprobar el fallo',{type:'check'}],['Elegir «Guarda»',{type:'select',value:0}],['Comprobar el acierto',{type:'check'}]]],
+['Repasar un aprobado','Acertar aprueba. Equivocarse después o volver al ejercicio no retira esa aprobación.',[['Elegir «Guarda»',{type:'select',value:0}],['Aprobar',{type:'check'}],['Elegir «Muestra»',{type:'select',value:2}],['Comprobar el fallo',{type:'check'}],['Ir al ejercicio de código',{type:'exercise',value:2}],['Volver al aprobado',{type:'exercise',value:0}],['Simular recarga',{type:'reload'}]]],
+['Tutor y pistas','Abrir Tutor conserva el ejercicio y permite consultar la pista sin ocultar las opciones.',[['Elegir una opción',{type:'select',value:1}],['Abrir Tutor',{type:'panel',value:'tutor'}],['Mostrar pista',{type:'hint'}],['Comprobar',{type:'check'}]]],
+['Sin fragmento ni pistas','El segundo ejercicio contiene solo texto y no ofrece pistas. Python puede fallar y aun así puedes responder.',[['Abrir pregunta de texto',{type:'exercise',value:1}],['Simular fallo de Python',{type:'runtime',value:'error'}],['Elegir nombre_usuario',{type:'select',value:1}],['Comprobar',{type:'check'}]]],
+['Cambiar de formato','Cambiar de ejercicio reinicia selección, resultado y pistas. La pregunta funciona aunque Python esté cargando.',[['Elegir «Compara»',{type:'select',value:1}],['Comprobar',{type:'check'}],['Cambiar a código',{type:'exercise',value:2}],['Volver a selección',{type:'exercise',value:0}],['Elegir «Guarda»',{type:'select',value:0}],['Comprobar sin Python',{type:'check'}]]]
+];
+function showScenario(i){scenarioIndex=i;stepIndex=0;state=initial();$('console').textContent='';$('editor').value='edad = 0\nprint(edad)';render();renderScenarios();}
+function renderScenarios(){
+ $('scenarios').replaceChildren(...scenarios.map((s,i)=>{const b=document.createElement('button');b.id='scenario'+i;b.role='tab';b.setAttribute('aria-selected',i===scenarioIndex);b.setAttribute('aria-controls','walkthrough');b.tabIndex=i===scenarioIndex?0:-1;b.textContent=s[0];b.onclick=()=>showScenario(i);b.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?scenarios.length-1:(i+(event.key==='ArrowRight'?1:scenarios.length-1))%scenarios.length;showScenario(n);$('scenario'+n).focus();}};return b;}));
+ $('walkthrough').setAttribute('aria-labelledby','scenario'+scenarioIndex);$('scenarioDescription').textContent=scenarios[scenarioIndex][1];
+ $('steps').replaceChildren(...scenarios[scenarioIndex][2].map(([label,a],i)=>{const b=document.createElement('button');b.textContent=`${i<stepIndex?'✓ ':''}${i+1}. ${label}`;b.disabled=i!==stepIndex;b.onclick=()=>{dispatch(a);stepIndex++;renderScenarios();const next=$('steps').children[stepIndex];if(next)next.focus();else $('scenario'+scenarioIndex).focus();};return b;}));
+}
+for(const name of ['lesson','tutor']){$(name+'Tab').onclick=()=>dispatch({type:'panel',value:name});$(name+'Tab').onkeydown=e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'lesson':e.key==='End'?'tutor':name==='lesson'?'tutor':'lesson';dispatch({type:'panel',value:next});$(next+'Tab').focus();}};}
+ $('check').onclick=()=>dispatch({type:'check'});$('hint').onclick=()=>dispatch({type:'hint'});$('reload').onclick=()=>dispatch({type:'reload'});$('clear').onclick=()=>showScenario(scenarioIndex);$('runtime').onchange=e=>dispatch({type:'runtime',value:e.target.value});$('run').onclick=()=>{$('console').textContent='Ejecución simulada: el prototipo no ejecuta ni evalúa Python.';};
+render();renderScenarios();
+</script>
+</html>
