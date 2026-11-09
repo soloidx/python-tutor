@@ -961,7 +961,12 @@ function ChoicePractice({
           Comprobar
         </button>
       </form>
-      <div className={`feedback choice-feedback ${feedbackTone}`} role="status" aria-live="polite">
+      <div
+        className={`feedback choice-feedback ${feedbackTone}`}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {feedback || "Elige una opción para comprobar tu respuesta."}
       </div>
       {approved && (

@@ -8,6 +8,7 @@ export default defineConfig({
     channel: "chrome",
     trace: "retain-on-failure",
   },
+  testIgnore: ["publisher-publication.spec.js"],
   webServer: {
     command: `npm run ${process.env.PLAYWRIGHT_PREVIEW ? "preview" : "dev"} -- --port ${port}`,
     url: `http://127.0.0.1:${port}`,

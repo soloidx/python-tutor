@@ -13,7 +13,11 @@ test("consumes the generated publisher publication through the real catalog boun
   page,
   context,
 }) => {
-  test.skip(!publisherPublicDir, "set PUBLISHER_PUBLIC_DIR to run against generated publisher output");
+  if (!publisherPublicDir) {
+    throw new Error(
+      "Publisher verification requires PUBLISHER_PUBLIC_DIR; run PUBLISHER_PUBLIC_DIR=/path/to/publisher/public npm run test:publisher",
+    );
+  }
   const root = path.resolve(publisherPublicDir);
   await context.unroute(`${sourceBase}**`);
   await context.route(`${sourceBase}**`, async (route) => {

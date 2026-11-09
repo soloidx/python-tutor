@@ -112,6 +112,53 @@ test("loads a mixed publication and presents a choice exercise", async ({
   await expect(practice.getByText("edad = 7", { exact: true })).toBeVisible();
 });
 
+test("choice controls support keyboard navigation and announce an accessible result", async ({
+  page,
+  context,
+}) => {
+  await serveCatalog(context, mixedPublication("choice-accessibility"));
+  await page.goto("/");
+  await enterCourse(page);
+
+  const lessonTab = page.getByRole("tab", { name: "Lección", exact: true });
+  const tutorTab = page.getByRole("tab", { name: "Tutor", exact: true });
+  await lessonTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(tutorTab).toBeFocused();
+  await expect(tutorTab).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowLeft");
+  await expect(lessonTab).toBeFocused();
+  await expect(lessonTab).toHaveAttribute("aria-selected", "true");
+
+  const practice = page.getByLabel("Espacio de práctica");
+  await practice
+    .getByRole("button", { name: /2\. Interpretar una asignación/ })
+    .click();
+  const choices = practice.getByRole("radio");
+  await expect(practice.getByRole("group", { name: "Elige una opción" })).toBeVisible();
+  await expect(choices.nth(0)).toHaveAccessibleName("Guarda 7 en edad");
+  await expect(choices.nth(1)).toHaveAccessibleName("Compara edad con 7");
+
+  await choices.nth(0).focus();
+  await expect(choices.nth(0)).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(choices.nth(1)).toBeChecked();
+  await expect(choices.nth(1)).toBeFocused();
+
+  const check = practice.getByRole("button", { name: "Comprobar", exact: true });
+  await page.keyboard.press("Tab");
+  await expect(check).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  const feedback = practice.locator(".choice-feedback");
+  await expect(feedback).toHaveAttribute("role", "status");
+  await expect(feedback).toHaveAttribute("aria-live", "polite");
+  await expect(feedback).toHaveAttribute("aria-atomic", "true");
+  await expect(feedback).toContainText(
+    "Busca el operador que compara valores.",
+  );
+});
+
 test("checks one choice at a time and keeps approval separate from feedback", async ({
   page,
   context,

@@ -8,6 +8,7 @@
     "build": "node scripts/prepare-runtime.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "playwright test",
+    "test:publisher": "playwright test --config=playwright.publisher.config.js",
     "postinstall": "patch-package && node scripts/prepare-runtime.mjs"
   },
   "dependencies": {

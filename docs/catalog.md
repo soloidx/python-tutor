@@ -122,6 +122,21 @@ The static SVG subset allows `svg`, `g`, `path`, `circle`, `ellipse`, `rect`, `l
 
 For authoring, the content repository stores SVG originals in `content/icons/`. There `icon` is a source string, e.g. `"icon": "icons/functions.svg"`; `npm run build` validates the SVG, emits `public/icons/functions.<sha256>.svg`, and converts the source string into the published object. Keep previously generated SVG files, just like course files.
 
+## Verification with the publisher
+
+The generated-publication integration was verified against publisher commit `d490eb68` on branch `codex/selection-57-content` in `../python-tutor-content`. That commit's generated output is revision `087095b4868dd7fcd0fd3029b162feccb85a157d6a802f7a3d3161280ecc9b9e`, including `public/courses/python-fundamentos.8d9ec0199012d8cf9d3303b76397540c2ffbf8be2b786cdb40d4c2bd5cfeda39.json`, whose first topic contains the typed `asignacion` choice exercise. The publisher also retains the generated `python-practica` course and hashed SVG resources.
+
+From the application repository root, verify that exact coordination with:
+
+```sh
+(cd ../python-tutor-content && npm ci && npm run build && npm run check)
+PUBLISHER_PUBLIC_DIR=../python-tutor-content/public npm run test:publisher
+```
+
+From an application worktree under `.worktrees/<name>`, use `../../python-tutor-content/public` for `PUBLISHER_PUBLIC_DIR`. The app's ordinary `npm test` intentionally excludes `tests/publisher-publication.spec.js` because it depends on a separately checked-out generated publication; `npm run test:publisher` is the explicit command and fails when `PUBLISHER_PUBLIC_DIR` is missing. It loads the generated files over the catalog HTTP boundary and exercises both a code and a choice exercise.
+
+The Playwright accessibility coverage verifies native radio semantics, accessible labels, keyboard focus, arrow navigation across the Lección/Tutor tabs, and the polite atomic live result. It does not run a screen reader; manual screen-reader verification remains required before release, and this suite makes no claim to replace it.
+
 ## Coordinated publication order
 
 Prepare and release a contract-compatible consumer first. In the publisher, validate editable sources, run `npm run build`, and verify the complete publication with `npm run check`. Upload newly generated immutable course and icon files before replacing `catalog.json`; update the catalog last so every referenced byte is already available. The consumer activates a new revision on the next reload, while preserving the prior complete backup if any download, hash, or validation fails. Do not rewrite or delete historical hashed files, deploy a second content channel, or treat this order as a deployment performed by the application repository.
