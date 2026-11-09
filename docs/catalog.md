@@ -52,6 +52,7 @@ Course files must be relative references inside the source directory and origin.
       "exercises": [
         {
           "id": "saludo",
+          "type": "code",
           "title": "Tu primera variable",
           "prompt": "Guarda Ada en nombre y muestra Hola, Ada.",
           "starter": "nombre = \"\"\nprint(\"Hola, \" + nombre)",
@@ -80,7 +81,11 @@ Course files must be relative references inside the source directory and origin.
 }
 ```
 
-`duration`, `assessment`, and question `code` are optional. An assessment has questions; every question has at least two options and an `answerId` naming one of them. IDs use lowercase ASCII letters, numbers and single separating hyphens. Path IDs and course IDs are unique within their respective collections. Topic IDs and exercise IDs are unique within their course, including exercises in different topics. Question IDs are unique within an assessment; option IDs within a question. A course document ID must match its registry entry. IDs are independent of titles and filenames and must never be reused for different pedagogical content. Content corrections keep their identity; a substantially different exercise objective requires a new ID.
+`duration`, `assessment`, and question `code` are optional. Exercises share `id`, `title`, `prompt`, and `hints`, and declare `type: "code"` or `type: "choice"` in new content. Code exercises require `starter`, `check`, `success`, and `retry`; choice exercises require at least two `{id, text}` options, one `answerId`, `retry`, and `explanation`, and may include a nonempty `code` fragment. A wrong option may include its own `retry`; the correct option may not. Fields belonging to the other format are rejected. The consumer treats an omitted exercise type in retained historical documents as `code`, but an explicit unknown, empty, or null type is invalid.
+
+An assessment has questions; every question has at least two options and an `answerId` naming one of them. IDs use lowercase ASCII letters, numbers and single separating hyphens. Path IDs and course IDs are unique within their respective collections. Topic IDs and exercise IDs are unique within their course, including exercises in different topics. Question IDs are unique within an assessment; option IDs within a question. A course document ID must match its registry entry. IDs are independent of titles and filenames and must never be reused for different pedagogical content. Content corrections keep their identity; a substantially different exercise objective or format requires a new ID.
+
+Editable sources use the same exercise representation and require the type discriminator on every exercise. The publisher validates sources before converting icon paths to hashed published objects; it retains old hashed course and icon files and validates them as historical publications.
 
 ## Consumer boundaries
 
@@ -116,3 +121,7 @@ All referenced icons are downloaded and checked before the publication activates
 The static SVG subset allows `svg`, `g`, `path`, `circle`, `ellipse`, `rect`, `line`, `polyline`, `polygon`, `title` and `desc`. The root requires `xmlns="http://www.w3.org/2000/svg"` and `viewBox`; the document must contain geometry and be at most 100 KiB. Use presentation attributes for fill/stroke, geometry, transforms and opacity (the exact allowlist is `src/svgIcon.js`). Colors are plain named/hex colors, `none`, `transparent` or `currentColor`; author explicit colors because image SVGs do not inherit the page theme. Scripts, event attributes, CSS/style, animation, links, embedded images, external references, DOCTYPE and processing instructions are rejected. Export outlined/static shapes from design tools rather than SVGs with embedded CSS or fonts.
 
 For authoring, the content repository stores SVG originals in `content/icons/`. There `icon` is a source string, e.g. `"icon": "icons/functions.svg"`; `npm run build` validates the SVG, emits `public/icons/functions.<sha256>.svg`, and converts the source string into the published object. Keep previously generated SVG files, just like course files.
+
+## Coordinated publication order
+
+Prepare and release a contract-compatible consumer first. In the publisher, validate editable sources, run `npm run build`, and verify the complete publication with `npm run check`. Upload newly generated immutable course and icon files before replacing `catalog.json`; update the catalog last so every referenced byte is already available. The consumer activates a new revision on the next reload, while preserving the prior complete backup if any download, hash, or validation fails. Do not rewrite or delete historical hashed files, deploy a second content channel, or treat this order as a deployment performed by the application repository.

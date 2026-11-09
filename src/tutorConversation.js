@@ -41,7 +41,8 @@ export function createConversationService() {
       const changedCourses = new Set(
         [...state.exchanges, ...next.exchanges]
           .filter(
-            (item) => !state.exchanges.includes(item) || !next.exchanges.includes(item),
+            (item) =>
+              !state.exchanges.includes(item) || !next.exchanges.includes(item),
           )
           .map((item) => item.courseId),
       );
@@ -98,13 +99,12 @@ export function createConversationService() {
   }) {
     if (state.active || !message.trim()) return false;
     const { courseId, topicId } = topicScope;
-    const antecedents = requestHistory(
-      state.exchanges, topicScope, exchangeId,
-    );
+    const captured = structuredClone(capture);
+    const antecedents = requestHistory(state.exchanges, topicScope, exchangeId);
     let request;
     try {
       request = buildRequest({
-        capture,
+        capture: captured,
         message,
         model: config.model,
         history: antecedents.history,
@@ -126,7 +126,7 @@ export function createConversationService() {
       courseId,
       topicId,
       message,
-      capture: structuredClone(capture),
+      capture: captured,
       attempts: [attempt],
     };
     const current = new AbortController();
@@ -159,8 +159,12 @@ export function createConversationService() {
           )
         : [
             ...state.exchanges.filter(
-              (item) => !(item.courseId === courseId &&
-                item.topicId === topicId && item.id === removedId),
+              (item) =>
+                !(
+                  item.courseId === courseId &&
+                  item.topicId === topicId &&
+                  item.id === removedId
+                ),
             ),
             exchange,
           ],
@@ -168,7 +172,9 @@ export function createConversationService() {
       notice: notices.join(" "),
     });
     const valid = () =>
-      !current.signal.aborted && controller === current && state.active === scope;
+      !current.signal.aborted &&
+      controller === current &&
+      state.active === scope;
     try {
       const { finishReason } = await streamTutor({
         config,
@@ -176,7 +182,9 @@ export function createConversationService() {
         signal: current.signal,
         onText(text) {
           if (valid()) {
-            const entry = state.exchanges.find((item) => sameExchange(item, scope));
+            const entry = state.exchanges.find((item) =>
+              sameExchange(item, scope),
+            );
             update(scope, { text: entry.attempts.at(-1).text + text });
           }
         },
@@ -236,28 +244,30 @@ export function createConversationService() {
       if (courseId === undefined || active?.courseId === courseId) cancel();
       deletionWarning =
         "Se borraron todas las conversaciones en esta sesión, pero no se pudo borrar el historial guardado: podría reaparecer al recargar. La Configuración del tutor se conserva. Puedes seguir aprendiendo; permite el almacenamiento o borra los datos del sitio en tu navegador.";
-      publish({
-        ...state,
-        exchanges: state.exchanges.filter(
-          (item) => courseId !== undefined && item.courseId !== courseId,
-        ),
-        notice: "",
-      }, () => removeHistory(courseId));
+      publish(
+        {
+          ...state,
+          exchanges: state.exchanges.filter(
+            (item) => courseId !== undefined && item.courseId !== courseId,
+          ),
+          notice: "",
+        },
+        () => removeHistory(courseId),
+      );
       return state.storageWarning;
     },
     deleteTopic({ courseId, topicId }) {
       const active = state.active;
-      if (active?.courseId === courseId && active.topicId === topicId)
-        cancel();
+      if (active?.courseId === courseId && active.topicId === topicId) cancel();
       const exchanges = state.exchanges.filter(
         (item) => item.courseId !== courseId || item.topicId !== topicId,
       );
       deletionWarning =
         "Se borró la conversación de este tema en esta sesión, pero no se pudo guardar el borrado: el historial borrado podría reaparecer al recargar. Los demás temas, el progreso y la Configuración del tutor se conservan. Puedes seguir aprendiendo; permite el almacenamiento o borra los datos del sitio en tu navegador.";
-      publish(
-        { ...state, exchanges, notice: "" },
-        () => exchanges.some((item) => item.courseId === courseId)
-          ? saveHistory(exchanges, courseId) : removeHistory(courseId),
+      publish({ ...state, exchanges, notice: "" }, () =>
+        exchanges.some((item) => item.courseId === courseId)
+          ? saveHistory(exchanges, courseId)
+          : removeHistory(courseId),
       );
     },
   };
