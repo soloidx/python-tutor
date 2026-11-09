@@ -10,7 +10,7 @@ export function PracticeTutor({ entry, access, conversation, onConfigure }) {
       {!access.config?.key && (
         <div className="practice-tutor-notice">
           <p>El tutor no está configurado.</p>
-          <p>Puedes resolver los ejercicios y consultar las pistas.</p>
+          <p>Puedes continuar con el ejercicio sin configurar el tutor.</p>
         </div>
       )}
       <TutorPanel

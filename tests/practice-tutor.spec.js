@@ -127,3 +127,57 @@ test('practice isolates topic conversations and keeps them when drawing another 
   await rail(page).getByRole('button', { name: /Actividad de otro tema/ }).click();
   await expect(page.getByText('Mensaje del segundo tema', { exact: true })).toBeVisible();
 });
+
+function revisionPublication(revision, exerciseId, summary) {
+  const value = tutorPublication(revision);
+  for (const courseId of ['python-fundamentos', 'python-practica']) {
+    updateCourse(value, courseId, course => {
+      const original = JSON.parse(value.files[value.catalog.courses[0].file]).topics[0].exercises.find(exercise => exercise.type === 'choice');
+      course.topics[0].summary = summary;
+      course.topics[0].exercises = [{ ...original, id: exerciseId }];
+    });
+  }
+  return value;
+}
+async function activateRevision(page, context, value) {
+  await serveCatalog(context, value);
+  await page.reload();
+  await page.getByRole('button', { name: 'Recargar para actualizar', exact: true }).click();
+  await practice(page).click();
+}
+
+test('topic conversation survives invalidated rounds and completed review keeps its original tutor context', async ({ page, context }) => {
+  await serveCatalog(context, revisionPublication('tutor-one', 'first-choice', 'Contenido del tema original'));
+  const requests = await setup(page);
+  await practice(page).click();
+  await page.getByLabel('Guarda otra cosa', { exact: true }).check();
+  await page.getByRole('button', { name: 'Comprobar', exact: true }).click();
+  await send(page, 'Antes de cambiar el catálogo');
+  await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(1);
+  await activateRevision(page, context, revisionPublication('tutor-two', 'second-choice', 'Contenido conservado de la segunda revisión'));
+  await expect(page.getByRole('alert')).toContainText('El catálogo cambió');
+  await expect(page.getByText('Antes de cambiar el catálogo', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Guarda otra cosa', { exact: true })).not.toBeChecked();
+  await send(page, 'Después de invalidar la ronda');
+  await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(2);
+  expect(requests[1].messages[1].content).toContain('Antes de cambiar el catálogo');
+  expect(JSON.parse(requests[1].messages.at(-1).content).capture).toMatchObject({ exercise: { id: 'second-choice' }, selectionStatus: 'none' });
+  await page.getByLabel('Guarda siete', { exact: true }).check();
+  await page.getByRole('button', { name: 'Comprobar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Ronda completada', exact: true })).toBeVisible();
+  await activateRevision(page, context, revisionPublication('tutor-three', 'third-choice', 'Contenido nuevo que no pertenece a la ronda completada'));
+  await page.getByRole('button', { name: 'Revisar ejercicios', exact: true }).click();
+  await expect(page.getByText('Antes de cambiar el catálogo', { exact: true })).toBeVisible();
+  await expect(page.getByText('Después de invalidar la ronda', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Guarda siete', { exact: true })).toBeDisabled();
+  await send(page, 'Revisar la ronda completada');
+  await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(3);
+  const capture = JSON.parse(requests[2].messages.at(-1).content).capture;
+  expect(capture).toMatchObject({ topic: { summary: 'Contenido conservado de la segunda revisión' }, exercise: { id: 'second-choice' }, selectedOptionId: 'seven', selectionStatus: 'checked', lastResult: { optionId: 'seven', correct: true }, feedback: 'Guarda el valor siete' });
+  expect(JSON.stringify(requests)).not.toMatch(/INTERNAL_|answerId|"check"/);
+  await page.getByRole('button', { name: 'Nueva ronda', exact: true }).click();
+  await expect(page.getByText('Revisar la ronda completada', { exact: true })).toBeVisible();
+  await send(page, 'Ayuda con la nueva ronda');
+  await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(4);
+  expect(JSON.parse(requests[3].messages.at(-1).content).capture).toMatchObject({ topic: { summary: 'Contenido nuevo que no pertenece a la ronda completada' }, exercise: { id: 'third-choice' } });
+});
