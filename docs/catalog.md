@@ -97,3 +97,22 @@ The complete catalog and exact `courseFiles` texts are stored together under `py
 A valid backup opens immediately while all remote courses download in parallel. A new revision is saved for the next reload and announced without changing the running session. The consumer rejects changes to a known immutable file and changes to a publication with the same revision. Publishers must use both a new revision and a new file for changed course content.
 
 Failed writes display the temporary-content warning and allow retry. When an update could not be saved, the Reload action uses a one-use `catalog-update` URL parameter to download fresh content before starting the new session, even if browser storage writes are blocked. The parameter is consumed immediately; if that download fails, the previous valid backup remains available. Ordinary reloads continue to open the saved complete publication immediately. This backup covers course content, not offline delivery of the application or Python runtime.
+
+## Optional SVG resource icons
+
+A learning path, course document or topic may contain `icon`:
+
+```json
+"icon": {
+  "file": "icons/functions.<sha256>.svg",
+  "sha256": "<64 lowercase hexadecimal characters of the exact SVG bytes>"
+}
+```
+
+The course registry continues to describe course JSON files; the course's icon belongs inside its document. Icons are optional under `schemaVersion: 1`. Omitting the field uses the app's local category icon. Files must end in `.svg` and satisfy the same relative origin/directory confinement as course files. All references to the same file must agree on its hash. Changing an icon requires a new immutable filename and publication revision; course/topic icon changes also produce a new course file.
+
+All referenced icons are downloaded and checked before the publication activates. Missing files, bad hashes or unsupported SVG reject the entire update and preserve the previous backup. The original UTF-8 SVG text is included in `iconFiles`, keyed by relative filename, and revalidated on backup restore. Icon-free earlier backups remain supported. Images use data URLs derived from verified text, never inline SVG injection or direct remote object/embed elements. No new icon download is needed to display a saved publication.
+
+The static SVG subset allows `svg`, `g`, `path`, `circle`, `ellipse`, `rect`, `line`, `polyline`, `polygon`, `title` and `desc`. The root requires `xmlns="http://www.w3.org/2000/svg"` and `viewBox`; the document must contain geometry and be at most 100 KiB. Use presentation attributes for fill/stroke, geometry, transforms and opacity (the exact allowlist is `src/svgIcon.js`). Colors are plain named/hex colors, `none`, `transparent` or `currentColor`; author explicit colors because image SVGs do not inherit the page theme. Scripts, event attributes, CSS/style, animation, links, embedded images, external references, DOCTYPE and processing instructions are rejected. Export outlined/static shapes from design tools rather than SVGs with embedded CSS or fonts.
+
+For authoring, the content repository stores SVG originals in `content/icons/`. There `icon` is a source string, e.g. `"icon": "icons/functions.svg"`; `npm run build` validates the SVG, emits `public/icons/functions.<sha256>.svg`, and converts the source string into the published object. Keep previously generated SVG files, just like course files.

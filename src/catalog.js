@@ -1,3 +1,4 @@
+import { validateSvgIcon } from "./svgIcon.js";
 // One predetermined public source; publishing and operating it are external to this app.
 export const catalogBaseUrl = "https://www.ider.ninja/python-tutor-content/";
 
@@ -60,6 +61,29 @@ export function courseFileUrl(file) {
   );
   return url.href;
 }
+function validateIcon(icon) {
+  if (icon === undefined) return;
+  object(icon, "icon");
+  courseFileUrl(icon.file);
+  requireValue(icon.file.endsWith(".svg"), "icon.file debe terminar en .svg");
+  requireValue(typeof icon.sha256 === "string" && /^[a-f0-9]{64}$/.test(icon.sha256), "icon.sha256 incorrecto");
+}
+export function publicationIcons(catalog, courses) {
+  const icons = [...catalog.learningPaths, ...Object.values(courses).flatMap(course => [course, ...course.topics])].flatMap(item => item.icon ? [item.icon] : []);
+  const files = new Map();
+  for (const icon of icons) {
+    validateIcon(icon);
+    requireValue(!files.has(icon.file) || files.get(icon.file).sha256 === icon.sha256, "huellas de icono contradictorias");
+    files.set(icon.file, icon);
+  }
+  return [...files.values()];
+}
+export async function verifyIconSource(icon, source) {
+  validateSvgIcon(source);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+  const actual = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  requireValue(actual === icon.sha256, `huella SVG incorrecta para ${icon.file}`);
+}
 export function validateCatalog(catalog) {
   version(catalog, "catalog");
   text(catalog.revision, "catalog.revision");
@@ -87,6 +111,7 @@ export function validateCatalog(catalog) {
   for (const path of catalog.learningPaths) {
     object(path, "learningPath");
     slug(path.id, "learningPath.id");
+    validateIcon(path.icon);
     fields(path, ["title", "description"], "learningPath");
     list(path.courseIds, "learningPath.courseIds");
     unique(path.courseIds, "learningPath.courseIds");
@@ -109,6 +134,7 @@ export function validateCatalog(catalog) {
 export function validateCourse(course, expectedId) {
   version(course, "course");
   slug(course.id, "course.id");
+  validateIcon(course.icon);
   requireValue(
     course.id === expectedId,
     "ID del documento de curso no coincide con el registro",
@@ -119,6 +145,7 @@ export function validateCourse(course, expectedId) {
   for (const topic of course.topics) {
     object(topic, "topic");
     slug(topic.id, "topic.id");
+    validateIcon(topic.icon);
     fields(topic, ["title", "summary", "example", "takeaway"], "topic");
     if (topic.duration !== undefined) text(topic.duration, "topic.duration");
     list(topic.explanation, "topic.explanation");
@@ -240,5 +267,12 @@ export async function loadCatalog({ signal } = {}) {
       return [record.id, course];
     }),
   );
-  return { catalog, courses: Object.fromEntries(courses), courseFiles };
+  const courseMap = Object.fromEntries(courses);
+  const iconFiles = Object.fromEntries(await Promise.all(publicationIcons(catalog, courseMap).map(async icon => {
+    const bytes = await (await download(courseFileUrl(icon.file), signal)).arrayBuffer();
+    const source = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    await verifyIconSource(icon, source);
+    return [icon.file, source];
+  })));
+  return { catalog, courses: courseMap, courseFiles, iconFiles };
 }

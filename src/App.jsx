@@ -18,8 +18,9 @@ import pathArt from "./assets/resources/path.svg";
 import courseArt from "./assets/resources/course.svg";
 import topicArt from "./assets/resources/topic.svg";
 
-function ResourceArt({ kind }) {
-  return <span className={`resource-art resource-art-${kind}`} aria-hidden="true"><img src={{ path: pathArt, course: courseArt, topic: topicArt }[kind]} alt="" /></span>;
+function ResourceArt({ kind, icon, iconFiles }) {
+  const source = icon && iconFiles?.[icon.file];
+  return <span className={`resource-art resource-art-${kind}`} aria-hidden="true"><img src={source ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}` : { path: pathArt, course: courseArt, topic: topicArt }[kind]} alt="" /></span>;
 }
 
 function Icon({ name, ...props }) {
@@ -298,7 +299,7 @@ export default function App({ publication }) {
                 const status = summaries.every(s => s.status === "Completado") ? "Completado" : summaries.some(s => s.approved > 0) ? "En progreso" : "Sin iniciar";
                 const done = summaries.filter(s => s.status === "Completado").length;
                 return <article className="resource-card path-card" key={item.id}>
-                  <div className="resource-card-top"><ResourceArt kind="path" /><span className="resource-type">RUTA {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${status === "Completado" ? "complete" : ""}`}>{status}</span></div>
+                  <div className="resource-card-top"><ResourceArt kind="path" icon={item.icon} iconFiles={publication.iconFiles} /><span className="resource-type">RUTA {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${status === "Completado" ? "complete" : ""}`}>{status}</span></div>
                   <h2>{item.title}</h2><p className="resource-description">{item.description}</p>
                   <div className="resource-meta"><span>{item.courseIds.length} {item.courseIds.length === 1 ? "curso" : "cursos"}</span><span>{done} completados</span></div>
                   <div className="path-course-preview">{item.courseIds.map(id => <span key={id}><Icon name="book" />{courses[id].title}</span>)}</div>
@@ -316,7 +317,7 @@ export default function App({ publication }) {
                 const item = courses[id];
                 const summary = courseProgress(item, progressByCourse[id].progress);
                 return <article className="resource-card" key={id}>
-                  <div className="resource-card-top"><ResourceArt kind="course" /><span className="resource-type">CURSO {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${summary.status === "Completado" ? "complete" : ""}`}>{summary.status}</span></div>
+                  <div className="resource-card-top"><ResourceArt kind="course" icon={item.icon} iconFiles={publication.iconFiles} /><span className="resource-type">CURSO {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${summary.status === "Completado" ? "complete" : ""}`}>{summary.status}</span></div>
                   <h2>{item.title}</h2><p className="resource-description">{item.description}</p>
                   <div className="resource-meta"><span>{item.topics.length} temas</span><span>{summary.total} ejercicios</span></div>
                   <div className="card-progress"><p>{summary.percentage}% · {summary.approved} / {summary.total} ejercicios aprobados</p><progress aria-label={`Progreso de ${item.title}`} value={summary.approved} max={summary.total} /></div>
@@ -328,14 +329,14 @@ export default function App({ publication }) {
         )}
         {view === "topics" && (
           <main className="courses catalog-page">
-            <header className="course-overview"><ResourceArt kind="course" /><div><div className="eyebrow">TU CURSO</div><h1>{course.title}</h1><p>{course.description}</p><span className="status-badge">{currentProgress.status}</span></div><button className="primary" onClick={() => startCourse(course)}>{resumeLabel(course, state.progress)} curso <Icon name="arrow" /></button></header>
+            <header className="course-overview"><ResourceArt kind="course" icon={course.icon} iconFiles={publication.iconFiles} /><div><div className="eyebrow">TU CURSO</div><h1>{course.title}</h1><p>{course.description}</p><span className="status-badge">{currentProgress.status}</span></div><button className="primary" onClick={() => startCourse(course)}>{resumeLabel(course, state.progress)} curso <Icon name="arrow" /></button></header>
             <div className="course-progress-overview"><p>{currentProgress.percentage}% · {currentProgress.approved} / {currentProgress.total} ejercicios aprobados</p><progress aria-label="Progreso del curso" value={currentProgress.approved} max={currentProgress.total} /></div>
             <div className="catalog-section-heading"><h2>Temas del curso</h2><span>{course.topics.length} temas · Sin desbloqueos</span></div>
             <div className="topic-list">
               {course.topics.map((item, index) => {
                 const approved = item.exercises.filter(e => completed.includes(e.id)).length;
                 return <article className="topic-row" key={item.id}>
-                  <span className="topic-number">{String(index + 1).padStart(2, "0")}</span><ResourceArt kind="topic" />
+                  <span className="topic-number">{String(index + 1).padStart(2, "0")}</span><ResourceArt kind="topic" icon={item.icon} iconFiles={publication.iconFiles} />
                   <div className="topic-row-content"><h3>{item.title}</h3><p>{item.summary}</p><div className="resource-meta"><span>{approved} / {item.exercises.length} ejercicios aprobados</span>{item.duration && <span>{item.duration}</span>}</div></div>
                   {approved === item.exercises.length && <span className="topic-done"><Icon name="check" />Completado</span>}
                   <button className="secondary" aria-label={`${String(index + 1).padStart(2, "0")} ${item.title}`} onClick={() => openTopic(course, item)}>Abrir tema <Icon name="arrow" /></button>
