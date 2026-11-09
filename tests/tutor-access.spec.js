@@ -1,11 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 test.use({ actionTimeout: 5000 });
 
 test("Tutor tabs and configuration preserve practice and keyboard focus", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Comenzar ruta" }).click();
+  await enterCourse(page);
   await page.getByLabel("Código Python").fill('print("mi borrador")');
   await expect(
     page.getByRole("button", { name: "Ejecutar", exact: true }),
@@ -155,7 +155,7 @@ test("validates without generation, explicitly selects and persists a checked mo
     },
   ]);
   await page.goto("/");
-  await page.getByRole("button", { name: "Comenzar ruta" }).click();
+  await enterCourse(page);
   await page.getByLabel("Código Python").fill("# conservado");
   await configure(page);
   const dialog = page.getByRole("dialog");
@@ -193,6 +193,7 @@ test("validates without generation, explicitly selects and persists a checked mo
   await expect(page.getByText(/Acceso listo/)).toBeVisible();
   await expect(page.getByLabel("Código Python")).toHaveValue("# conservado");
   await page.reload();
+  await enterCourse(page);
   await page.getByRole("tab", { name: "Tutor", exact: true }).click();
   await expect(page.getByText(/Acceso listo/)).toBeVisible();
   await page
@@ -222,6 +223,7 @@ test("validates without generation, explicitly selects and persists a checked mo
 
 async function saveAccess(page) {
   await page.goto("/");
+  await enterCourse(page);
   await configure(page);
   await page.getByRole("button", { name: /Texto claro/ }).click();
   await page.getByRole("button", { name: "Guardar y volver al tutor" }).click();
@@ -276,6 +278,7 @@ test("reload checks access before enabling messages and network failure preserve
     await route.abort("failed");
   });
   await page.reload();
+  await enterCourse(page);
   await page.getByRole("tab", { name: "Tutor", exact: true }).click();
   await expect(
     page.getByText("Comprobando acceso…", { exact: true }),
@@ -313,6 +316,7 @@ test("a retired model requires a new explicit selection and never substitutes an
     route.fulfill({ json: { data: [replacement] } }),
   );
   await page.reload();
+  await enterCourse(page);
   await page.getByRole("tab", { name: "Tutor", exact: true }).click();
   await expect(
     page.getByText(/El modelo guardado ya no está disponible/),
@@ -347,6 +351,7 @@ test("a browser storage failure requires explicit choice for session-only access
     };
   });
   await page.goto("/");
+  await enterCourse(page);
   await configure(page);
   await page.getByRole("button", { name: /Texto claro/ }).click();
   await page.getByRole("button", { name: "Guardar y volver al tutor" }).click();
@@ -365,6 +370,7 @@ test("a browser storage failure requires explicit choice for session-only access
   ).toBeVisible();
   await expect(page.getByText(/Acceso listo/)).toBeVisible();
   await page.reload();
+  await enterCourse(page);
   await page.getByRole("button", { name: "Aprender", exact: true }).click();
   await page.getByRole("tab", { name: "Tutor", exact: true }).click();
   await expect(
@@ -386,6 +392,7 @@ test("an unavailable account catalog falls back to public models but incompatibl
     route.fulfill({ status: 404 }),
   );
   await page.goto("/");
+  await enterCourse(page);
   await configure(page);
   await expect(
     page.getByText(/No hay modelos compatibles en este catálogo/),
@@ -410,6 +417,7 @@ test("a rejected recovered key blocks access and asks for correction without cha
     route.fulfill({ status: 401, json: { error: { message: "invalid" } } }),
   );
   await page.reload();
+  await enterCourse(page);
   await page.getByRole("tab", { name: "Tutor", exact: true }).click();
   await expect(page.getByText(/Clave rechazada/)).toBeVisible();
   await expect(

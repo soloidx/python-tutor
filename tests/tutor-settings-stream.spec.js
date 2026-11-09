@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 import { setup, frame, model } from "./fixtures/tutor.js";
 import { streamingOpenRouter } from "./fixtures/openrouter.js";
 
@@ -54,6 +54,7 @@ test("confirmed key removal interrupts streaming, blocks access and preserves mo
       page.getByText("Tardío no permitido", { exact: true }),
     ).toHaveCount(0);
     await page.reload();
+    await enterCourse(page);
     await tutor(page);
     await expect(
       page.getByText("Mi pregunta conservada", { exact: true }),
@@ -119,6 +120,7 @@ test("failed key removal reports possible return after reload while blocking thi
     .click();
   await expect(page.getByText(/^Clave eliminada\./)).toBeVisible();
   await page.reload();
+  await enterCourse(page);
   await tutor(page);
   await expect(
     page.getByRole("button", { name: "Enviar", exact: true }),
@@ -220,6 +222,7 @@ test("pending, failed and cancelled settings leave streaming intact; a valid sav
       0,
     );
     await page.reload();
+    await enterCourse(page);
     await tutor(page);
     await expect(
       page.getByText(/Acceso listo · Modelo elegido después/),
@@ -288,6 +291,7 @@ test("failed persistence during streaming applies access only after explicit ses
     );
     await page.keyboard.press("Escape");
     await page.reload();
+    await enterCourse(page);
     await tutor(page);
     await expect(
       page.getByText("Parcial en memoria", { exact: true }),
@@ -378,6 +382,7 @@ test("a failed removal warns honestly when saved access returns after reload", a
     page.getByRole("button", { name: "Enviar", exact: true }),
   ).toBeDisabled();
   await page.reload();
+  await enterCourse(page);
   await tutor(page);
   await expect(page.getByText(/Acceso listo · Tutor de prueba/)).toBeVisible();
   await configure(page);

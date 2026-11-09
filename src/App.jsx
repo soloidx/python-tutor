@@ -1,17 +1,27 @@
-import React, { useEffect, useRef, useState } from "react";
-import { assessmentQuestions, assessAnswers } from "./assessment.js";
-import { topics } from "./curriculum.js";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { assessAnswers, assessmentReview } from "./assessment.js";
 import {
   emptyProgress,
+  courseProgress,
+  resumeLabel,
   loadProgress,
-  removeProgress,
   saveProgress,
 } from "./progress.js";
+import { resetLearner } from "./learnerReset.js";
 import { useTutorAccess } from "./tutorAccess.js";
 import { TutorPanel, TutorSettings } from "./TutorAccess.jsx";
 import { createConversationService } from "./tutorConversation.js";
 import { captureContext } from "./tutorContext.js";
 import { usePython } from "./usePython.js";
+
+import pathArt from "./assets/resources/path.svg";
+import courseArt from "./assets/resources/course.svg";
+import topicArt from "./assets/resources/topic.svg";
+
+function ResourceArt({ kind, icon, iconFiles }) {
+  const source = icon && iconFiles?.[icon.file];
+  return <span className={`resource-art resource-art-${kind}`} aria-hidden="true"><img src={source ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}` : { path: pathArt, course: courseArt, topic: topicArt }[kind]} alt="" /></span>;
+}
 
 function Icon({ name, ...props }) {
   const paths = {
@@ -43,90 +53,149 @@ function Icon({ name, ...props }) {
   );
 }
 
-export default function App() {
+export default function App({ publication }) {
+  const { catalog, courses } = publication;
   const [conversation] = useState(createConversationService);
+  const recoveryWarning = useSyncExternalStore(
+    conversation.subscribe,
+    () => conversation.getSnapshot().recoveryWarning,
+  );
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [learningTab, setLearningTab] = useState("lesson");
   const focusTutorAfterSettings = useRef(false);
+  const rootLocation = {
+    screen: "paths",
+    pathId: null,
+    courseId: null,
+    topicId: null,
+  };
+  const [location, setLocation] = useState(rootLocation);
+  const [progressByCourse, setProgressByCourse] = useState(() =>
+    Object.fromEntries(
+      Object.values(courses).map((course) => [course.id, loadProgress(course)]),
+    ),
+  );
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [workspaceVersion, setWorkspaceVersion] = useState(0);
+  const resetButton = useRef(null);
+  const [resetError, setResetError] = useState("");
+  const [resumeNotice, setResumeNotice] = useState("");
+  useEffect(() => {
+    history.replaceState(rootLocation, "");
+    const onBack = (event) => {
+      conversation.cancel();
+      setResumeNotice("");
+      setLocation(event.state?.screen ? event.state : rootLocation);
+    };
+    window.addEventListener("popstate", onBack);
+    return () => window.removeEventListener("popstate", onBack);
+  }, []);
   useEffect(() => {
     if (!settingsOpen && focusTutorAfterSettings.current) {
-      // Run after the dialog cleanup has restored its original opener.
       focusTutorAfterSettings.current = false;
       document.getElementById("tutor-tab")?.focus();
     }
   }, [settingsOpen]);
-  const [initial] = useState(loadProgress);
-  const [view, updateView] = useState(initial.progress.view);
-  const [selectedRoute, setSelectedRoute] = useState(
-    initial.progress.selectedRoute,
-  );
-  const [topicId, setTopicId] = useState(initial.progress.topicId);
-  const [completed, setCompleted] = useState(initial.progress.completed);
-  const [assessmentResult, setAssessmentResult] = useState(
-    initial.progress.assessmentResult,
-  );
-  const [storageMessage, setStorageMessage] = useState(initial.message);
-  const [resetError, setResetError] = useState("");
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [workspaceVersion, setWorkspaceVersion] = useState(0);
-  const resetButton = useRef(null);
-  function resetProgress() {
-    const historyWarning = conversation.reset();
-    const cleared = {
-      ...emptyProgress,
-      selectedRoute: "python-fundamentos",
-      view: "learn",
-    };
-    // Remove the old record first: a full store may reject writes but allow deletion.
-    const removed = removeProgress();
-    const saved = saveProgress(cleared);
-    const progressWarning =
-      !removed && !saved
-        ? "No se pudo borrar el progreso guardado. Se reinició esta sesión, pero el progreso anterior podría reaparecer al recargar. Permite el almacenamiento o borra los datos del sitio en tu navegador."
-        : "";
-    setStorageMessage("");
-    setResetError([progressWarning, historyWarning].filter(Boolean).join(" "));
-    setSelectedRoute(cleared.selectedRoute);
-    updateView(cleared.view);
-    setTopicId(cleared.topicId);
-    setCompleted([]);
-    setAssessmentResult(null);
-    setWorkspaceVersion((version) => version + 1);
+  function navigate(next) {
     setConfirmReset(false);
-    resetButton.current?.focus();
+    conversation.cancel();
+    setResumeNotice("");
+    const value = { ...location, ...next };
+    if (value.screen === "paths") Object.assign(value, rootLocation);
+    else if (value.screen === "courses")
+      Object.assign(value, { courseId: null, topicId: null });
+    history.pushState(value, "");
+    setLocation(value);
     window.scrollTo(0, 0);
   }
-
+  const path = catalog.learningPaths.find(
+    (item) => item.id === location.pathId,
+  );
+  const course = courses[location.courseId];
+  const state = course ? progressByCourse[course.id] : null;
+  const assessmentResult = assessmentReview(course?.assessment?.questions, state?.progress.assessmentResult);
+  const completed = state?.progress.completed || [];
+  const topic =
+    course?.topics.find((item) => item.id === location.topicId) ||
+    course?.topics[0];
+  const view = location.screen;
+  const storageMessage =
+    state?.message ||
+    (!course
+      ? Object.values(progressByCourse).find((item) => item.message)?.message
+      : "") ||
+    "";
+  function updateProgress(id, change) {
+    setProgressByCourse((previous) => {
+      const progress = { ...previous[id].progress, ...change };
+      const saved = saveProgress(courses[id], progress);
+      return {
+        ...previous,
+        [id]: {
+          progress,
+          message: saved
+            ? previous[id].message
+            : [
+                previous[id].message,
+                previous[id].message.includes("No se pudo guardar el progreso")
+                  ? ""
+                  : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
+              ].filter(Boolean).join(" "),
+        },
+      };
+    });
+  }
   useEffect(() => {
-    if (
-      !saveProgress({
-        selectedRoute,
-        view,
-        topicId,
-        completed,
-        assessmentResult,
-      })
-    ) {
-      setStorageMessage(
-        "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
+    if (location.screen === "learn" && course && topic) {
+      updateProgress(course.id, { topicId: topic.id });
+    }
+  }, [location.screen, location.courseId, location.topicId]);
+  function openTopic(selectedCourse, selectedTopic) {
+    navigate({
+      screen: "learn",
+      courseId: selectedCourse.id,
+      topicId: selectedTopic.id,
+    });
+  }
+  function startCourse(selectedCourse) {
+    const progress = progressByCourse[selectedCourse.id].progress;
+    const previous = selectedCourse.topics.find(
+      (item) => item.id === progress.topicId,
+    );
+    const retired = progress.topicId && !previous;
+    const destination = previous ||
+      (retired && selectedCourse.topics.find((item) =>
+        item.exercises.some((exercise) => !progress.completed.includes(exercise.id)),
+      )) || selectedCourse.topics[0];
+    openTopic(selectedCourse, destination);
+    if (retired) {
+      setResumeNotice(
+        `Tu último tema ya no está disponible. Abrimos «${destination.title}», ${
+          courseProgress(selectedCourse, progress).status === "Completado"
+            ? "el primer tema del curso porque todos sus ejercicios vigentes están aprobados"
+            : "el primer tema con ejercicios pendientes"
+        }.`,
       );
     }
-  }, [selectedRoute, view, topicId, completed, assessmentResult]);
-  function setView(next) {
-    if (next !== "courses") setSelectedRoute("python-fundamentos");
-    updateView(next);
   }
-  const topic = topics.find((item) => item.id === topicId) || topics[0];
-  const exerciseCount = topics.reduce(
-    (count, item) => count + item.exercises.length,
-    0,
-  );
-  function complete(id) {
-    setCompleted((previous) =>
-      previous.includes(id) ? previous : [...previous, id],
-    );
+  function resetProgress() {
+    const global = confirmReset === "all";
+    const { cleared, warning } = resetLearner({
+      all: global,
+      courseId: global ? undefined : course.id,
+      progressByCourse,
+      courses,
+      conversation,
+    });
+    setProgressByCourse((previous) => ({ ...previous, ...cleared }));
+    setResetError(warning);
+    navigate(global ? rootLocation : { screen: "topics", topicId: null });
+    setWorkspaceVersion((value) => value + 1);
+    setConfirmReset(false);
+    resetButton.current?.focus();
   }
+  const currentProgress = course ? courseProgress(course, state.progress) : null;
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -135,7 +204,7 @@ export default function App() {
           href="#"
           onClick={(event) => {
             event.preventDefault();
-            setView("courses");
+            navigate(rootLocation);
           }}
         >
           <span className="brand-icon">
@@ -145,20 +214,16 @@ export default function App() {
         </a>
         <div className="nav-label">TU ESPACIO DE APRENDIZAJE</div>
         <nav aria-label="Navegación principal">
-          <button
-            className={view === "courses" ? "nav active" : "nav"}
-            onClick={() => setView("courses")}
-          >
+          <button className="nav" onClick={() => navigate(rootLocation)}>
             <Icon name="grid" />
             Cursos y rutas
           </button>
-          <button
-            className={view !== "courses" ? "nav active" : "nav"}
-            onClick={() => setView("learn")}
-          >
-            <Icon name="book" />
-            Aprender
-          </button>
+          {course && (
+            <button className="nav" onClick={() => startCourse(course)}>
+              <Icon name="book" />
+              Aprender
+            </button>
+          )}
           <button
             className="nav configuration-nav"
             aria-label="Configuración"
@@ -169,7 +234,6 @@ export default function App() {
           </button>
         </nav>
         <div className="sidebar-note">
-          <span className="tiny-code">&lt;/&gt;</span>
           <strong>Un paso a la vez.</strong>
           <p>La mejor forma de aprender a programar es programando.</p>
         </div>
@@ -180,185 +244,150 @@ export default function App() {
       </aside>
       <div className="main-shell">
         <header className="topbar">
-          <div>
-            <span className="muted">Tu aprendizaje</span>
-            <span className="slash">/</span>
-            <strong>
-              {view === "courses" ? "Cursos y rutas" : "Python Fundamentos"}
-            </strong>
-          </div>
+          <span>Tu aprendizaje</span>
           <span className="topbar-tag">
             <Icon name="code" /> Python en tu navegador
           </span>
         </header>
-        <section className="progress-controls" aria-label="Progreso guardado">
-          <div className="progress-summary">
-            {resetError || storageMessage ? (
-              <p className="storage-warning" role="alert">
-                {resetError || storageMessage}
-              </p>
-            ) : (
-              <p>Tu progreso se guarda en este navegador.</p>
-            )}
+        <nav className="learning-breadcrumbs" aria-label="Contexto de aprendizaje">
+          <button
+            className="text-button"
+            onClick={() => navigate(rootLocation)}
+          >
+            Todas las rutas
+          </button>
+          {path && (
             <button
-              ref={resetButton}
-              className="secondary"
-              onClick={() => setConfirmReset(true)}
+              aria-label={path.title}
+              className="text-button"
+              onClick={() => navigate({ screen: "courses" })}
             >
-              Reiniciar progreso
+              {path.title}
             </button>
-          </div>
-          {confirmReset && (
-            <div
-              className="reset-confirmation"
-              role="group"
-              aria-label="Confirmar reinicio"
-            >
-              <p>
-                ¿Empezar de nuevo? Se borrarán los ejercicios completados y el
-                resultado de la evaluación final y todas las conversaciones del
-                tutor, incluidas sus capturas. Se detendrá la respuesta activa.
-                Se conserva la Configuración del tutor (clave, modelo y su
-                condición de persistencia).
-              </p>
-              <div className="reset-actions">
-                <button
-                  className="secondary"
-                  autoFocus
-                  onClick={() => {
-                    setConfirmReset(false);
-                    resetButton.current?.focus();
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button className="primary" onClick={resetProgress}>
-                  Sí, reiniciar
-                </button>
-              </div>
-            </div>
           )}
-        </section>
-        {view === "courses" ? (
-          <main className="courses">
-            <div className="eyebrow">APRENDE. PRUEBA. DESCUBRE.</div>
-            <h1>Cursos y rutas de aprendizaje</h1>
-            <p className="page-subtitle">
-              Tu próximo paso empieza con una línea de código.
-            </p>
-            <section className="welcome-banner">
-              <div>
-                <span className="pill">DESDE CERO</span>
-                <h2>
-                  Pequeños pasos.
-                  <br />
-                  Grandes posibilidades.
-                </h2>
-                <p>
-                  Aprende Python con explicaciones claras y ejercicios
-                  <br className="desktop-break" /> que puedes resolver aquí
-                  mismo.
-                </p>
-              </div>
-              <div className="banner-code" aria-hidden="true">
-                <div className="window-dots">
-                  ● ● ● <span>primeros_pasos.py</span>
-                </div>
-                <pre>
-                  <span># Todo comienza con una idea</span>
-                  {"\n"}nombre = <em>"Ada"</em>
-                  {"\n"}print(<em>"Hola, "</em> + nombre)
-                </pre>
-                <div className="code-result">
-                  ↳ Hola, Ada<span>✓</span>
-                </div>
-              </div>
-            </section>
-            <div className="section-heading">
-              <h2>Tu ruta de aprendizaje</h2>
-              <span>Diseñada para empezar</span>
-            </div>
-            <article className="course-card">
-              <div className="course-art">
-                <span className="python-symbol">
-                  Py<span>_</span>
-                </span>
-                <div className="art-grid" />
-              </div>
-              <div className="course-body">
-                <div className="course-tags">
-                  <span className="pill">PRINCIPIANTE</span>
-                  <span className="muted">Ruta guiada</span>
-                </div>
-                <h2>Python Fundamentos</h2>
-                <p>
-                  De tus primeras variables a tus propias funciones. Construye
-                  una base sólida, practicando en cada paso.
-                </p>
-                <div className="course-meta">
-                  <span>
-                    <Icon name="book" />6 temas
-                  </span>
-                  <span>
-                    <Icon name="code" />
-                    Ejercicios interactivos
-                  </span>
-                </div>
-                <div className="course-bottom">
-                  <span>{completed.length} ejercicios completados</span>
-                  <button className="primary" onClick={() => setView("learn")}>
-                    {completed.length ? "Continuar ruta" : "Comenzar ruta"}
-                    <Icon name="arrow" />
-                  </button>
-                </div>
-              </div>
-            </article>
-            <div className="course-footer">
-              <Icon name="check" />
-              Todo lo que necesitas está aquí: lee, escribe código y observa qué
-              sucede.
+          {course && (
+            <button
+              aria-label={course.title}
+              className="text-button"
+              onClick={() => navigate({ screen: "topics" })}
+            >
+              {course.title}
+            </button>
+          )}
+          {view === "learn" && <span>{topic.title}</span>}
+        </nav>
+        {recoveryWarning && (
+          <p className="storage-warning" role="alert">{recoveryWarning}</p>
+        )}
+        {resumeNotice && (
+          <p className="storage-warning" role="alert">{resumeNotice}</p>
+        )}
+        {(resetError || storageMessage) && (
+          <p className="storage-warning learning-notice" role="alert">{resetError || storageMessage}</p>
+        )}
+        {view === "paths" && (
+          <main className="courses catalog-page">
+            <header className="catalog-heading">
+              <div className="eyebrow">TU PRÓXIMO PASO</div>
+              <h1>Cursos y rutas de aprendizaje</h1>
+              <p className="page-subtitle">Elige un objetivo y aprende a tu ritmo, practicando desde el primer tema.</p>
+              <span className="catalog-count">{catalog.learningPaths.length} rutas disponibles · Acceso libre a todos los temas</span>
+            </header>
+            <div className="resource-grid">
+              {catalog.learningPaths.map((item, index) => {
+                const summaries = item.courseIds.map(id => courseProgress(courses[id], progressByCourse[id].progress));
+                const status = summaries.every(s => s.status === "Completado") ? "Completado" : summaries.some(s => s.approved > 0) ? "En progreso" : "Sin iniciar";
+                const done = summaries.filter(s => s.status === "Completado").length;
+                return <article className="resource-card path-card" key={item.id}>
+                  <div className="resource-card-top"><ResourceArt kind="path" icon={item.icon} iconFiles={publication.iconFiles} /><span className="resource-type">RUTA {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${status === "Completado" ? "complete" : ""}`}>{status}</span></div>
+                  <h2>{item.title}</h2><p className="resource-description">{item.description}</p>
+                  <div className="resource-meta"><span>{item.courseIds.length} {item.courseIds.length === 1 ? "curso" : "cursos"}</span><span>{done} completados</span></div>
+                  <div className="path-course-preview">{item.courseIds.map(id => <span key={id}><Icon name="book" />{courses[id].title}</span>)}</div>
+                  <button className="primary" aria-label={`Explorar ${item.title}`} onClick={() => navigate({ screen: "courses", pathId: item.id, courseId: null, topicId: null })}>Explorar ruta <Icon name="arrow" /></button>
+                </article>;
+              })}
             </div>
           </main>
-        ) : (
+        )}
+        {view === "courses" && (
+          <main className="courses catalog-page">
+            <header className="catalog-heading"><div className="eyebrow">RUTA DE APRENDIZAJE</div><h1>{path.title}</h1><p>{path.description}</p><span className="catalog-count">{path.courseIds.length} {path.courseIds.length === 1 ? "curso" : "cursos"} · Puedes comenzar por cualquiera</span></header>
+            <div className="resource-grid">
+              {path.courseIds.map((id, index) => {
+                const item = courses[id];
+                const summary = courseProgress(item, progressByCourse[id].progress);
+                return <article className="resource-card" key={id}>
+                  <div className="resource-card-top"><ResourceArt kind="course" icon={item.icon} iconFiles={publication.iconFiles} /><span className="resource-type">CURSO {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${summary.status === "Completado" ? "complete" : ""}`}>{summary.status}</span></div>
+                  <h2>{item.title}</h2><p className="resource-description">{item.description}</p>
+                  <div className="resource-meta"><span>{item.topics.length} temas</span><span>{summary.total} ejercicios</span></div>
+                  <div className="card-progress"><p>{summary.percentage}% · {summary.approved} / {summary.total} ejercicios aprobados</p><progress aria-label={`Progreso de ${item.title}`} value={summary.approved} max={summary.total} /></div>
+                  <div className="resource-actions"><button className="primary" aria-label={`${resumeLabel(item, progressByCourse[id].progress)} ${item.title}`} onClick={() => startCourse(item)}>{resumeLabel(item, progressByCourse[id].progress)} <Icon name="arrow" /></button><button className="secondary" aria-label={`Ver temas de ${item.title}`} onClick={() => navigate({ screen: "topics", courseId: id, topicId: null })}>Ver temas</button></div>
+                </article>;
+              })}
+            </div>
+          </main>
+        )}
+        {view === "topics" && (
+          <main className="courses catalog-page">
+            <header className="course-overview"><ResourceArt kind="course" icon={course.icon} iconFiles={publication.iconFiles} /><div><div className="eyebrow">TU CURSO</div><h1>{course.title}</h1><p>{course.description}</p><span className="status-badge">{currentProgress.status}</span></div><button className="primary" onClick={() => startCourse(course)}>{resumeLabel(course, state.progress)} curso <Icon name="arrow" /></button></header>
+            <div className="course-progress-overview"><p>{currentProgress.percentage}% · {currentProgress.approved} / {currentProgress.total} ejercicios aprobados</p><progress aria-label="Progreso del curso" value={currentProgress.approved} max={currentProgress.total} /></div>
+            <div className="catalog-section-heading"><h2>Temas del curso</h2><span>{course.topics.length} temas · Sin desbloqueos</span></div>
+            <div className="topic-list">
+              {course.topics.map((item, index) => {
+                const approved = item.exercises.filter(e => completed.includes(e.id)).length;
+                return <article className="topic-row" key={item.id}>
+                  <span className="topic-number">{String(index + 1).padStart(2, "0")}</span><ResourceArt kind="topic" icon={item.icon} iconFiles={publication.iconFiles} />
+                  <div className="topic-row-content"><h3>{item.title}</h3><p>{item.summary}</p><div className="resource-meta"><span>{approved} / {item.exercises.length} ejercicios aprobados</span>{item.duration && <span>{item.duration}</span>}</div></div>
+                  {approved === item.exercises.length && <span className="topic-done"><Icon name="check" />Completado</span>}
+                  <button className="secondary" aria-label={`${String(index + 1).padStart(2, "0")} ${item.title}`} onClick={() => openTopic(course, item)}>Abrir tema <Icon name="arrow" /></button>
+                </article>;
+              })}
+            </div>
+            {course.assessment && <section className="course-assessment-link"><Icon name="check" /><div><h3>Evaluación final</h3><p>Opcional. Comprueba lo aprendido cuando quieras.</p></div><button className="secondary" onClick={() => navigate({ screen: "assessment" })}>{assessmentResult ? "Ver evaluación final" : "Comenzar evaluación final"}</button></section>}
+          </main>
+        )}
+        {(view === "learn" || view === "assessment") && (
           <main className="learning">
             <div className="lesson-heading">
               <div>
                 <button
                   className="text-button"
-                  onClick={() => setView("courses")}
+                  onClick={() => navigate({ screen: "topics" })}
                 >
-                  <Icon name="back" />
-                  Volver a cursos
+                  Volver a temas
                 </button>
-                <div className="eyebrow">PYTHON FUNDAMENTOS</div>
-                <h1>Aprender haciendo</h1>
+                <div className="eyebrow">{course.title.toUpperCase()}</div>
+                <h1>{view === "assessment" ? "Evaluación del curso" : `Tema ${String(course.topics.indexOf(topic) + 1).padStart(2, "0")} · ${topic.title}`}</h1>
               </div>
               <div className="route-progress">
                 <span>
-                  {completed.length} / {exerciseCount} ejercicios
+                  {currentProgress.approved} / {currentProgress.total} ejercicios
                 </span>
-                <progress value={completed.length} max={exerciseCount} />
+                <progress value={currentProgress.approved} max={currentProgress.total} />
               </div>
             </div>
             {view === "assessment" ? (
               <FinalAssessment
+                course={course}
                 result={assessmentResult}
-                onResult={setAssessmentResult}
-                onBack={() => setView("learn")}
+                onResult={(assessmentResult) =>
+                  updateProgress(course.id, { assessmentResult })
+                }
+                onBack={() => navigate({ screen: "learn" })}
               />
             ) : (
               <>
-                <div className="topic-strip" aria-label="Temas de la ruta">
-                  {topics.map((item, index) => (
+                <div className="topic-strip" aria-label="Temas del curso">
+                  {course.topics.map((item, index) => (
                     <button
                       className={
-                        topicId === item.id
+                        topic.id === item.id
                           ? "topic-chip selected"
                           : "topic-chip"
                       }
                       key={item.id}
-                      aria-current={topicId === item.id ? "step" : undefined}
-                      onClick={() => setTopicId(item.id)}
+                      aria-current={topic.id === item.id ? "step" : undefined}
+                      onClick={() => openTopic(course, item)}
                     >
                       <span>{String(index + 1).padStart(2, "0")}</span>
                       {item.title}
@@ -368,22 +397,30 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-                {(topicId === topics.at(-1).id ||
-                  completed.length === exerciseCount) && (
-                  <section className="assessment-invite panel">
-                    <div>
-                      <h2>Pon a prueba lo aprendido</h2>
-                      <p>
-                        6 preguntas sobre los seis temas. Sin límite de tiempo;
-                        puedes volver a las lecciones cuando quieras.
-                      </p>
-                    </div>
+                <LearningWorkspace
+                  course={course}
+                  key={`${course.id}:${topic.id}:${workspaceVersion}`}
+                  topic={topic}
+                  completed={completed}
+                  onComplete={(id) =>
+                    updateProgress(course.id, {
+                      completed: completed.includes(id)
+                        ? completed
+                        : [...completed, id],
+                    })
+                  }
+                  access={access}
+                  conversation={conversation}
+                  learningTab={learningTab}
+                  setLearningTab={setLearningTab}
+                  onConfigure={() => setSettingsOpen(true)}
+                />
+                {course.assessment && (
+                  <section className="assessment-invite">
+                    <span>Evaluación final <span className="muted">· Opcional, independiente del avance</span></span>
                     <button
-                      className="primary"
-                      onClick={() => {
-                        setView("assessment");
-                        window.scrollTo(0, 0);
-                      }}
+                      className="secondary"
+                      onClick={() => navigate({ screen: "assessment" })}
                     >
                       {assessmentResult
                         ? "Ver evaluación final"
@@ -392,21 +429,72 @@ export default function App() {
                     </button>
                   </section>
                 )}
-                <LearningWorkspace
-                  key={`${topic.id}:${workspaceVersion}`}
-                  topic={topic}
-                  completed={completed}
-                  onComplete={complete}
-                  access={access}
-                  conversation={conversation}
-                  learningTab={learningTab}
-                  setLearningTab={setLearningTab}
-                  onConfigure={() => setSettingsOpen(true)}
-                />
+                <button
+                  className="primary"
+                  onClick={() => {
+                    const index = course.topics.indexOf(topic);
+                    if (index < course.topics.length - 1)
+                      openTopic(course, course.topics[index + 1]);
+                    else navigate({ screen: "topics" });
+                  }}
+                >
+                  {topic === course.topics.at(-1)
+                    ? "Volver a temas"
+                    : "Siguiente tema"}
+                </button>
               </>
             )}
           </main>
         )}
+        <section className="progress-controls learning-data" aria-label="Progreso guardado">
+          <div className="progress-summary">
+            <p>Progreso y conversaciones de este navegador.</p>
+            {course && (
+              <button
+                ref={resetButton}
+                className="secondary"
+                onClick={() => setConfirmReset("course")}
+              >
+                Reiniciar este curso
+              </button>
+            )}
+            <button className="secondary" onClick={() => setConfirmReset("all")}>
+              Reiniciar todo el aprendizaje
+            </button>
+          </div>
+          {confirmReset && (
+            <div
+              className="reset-confirmation"
+              role="group"
+              aria-label="Confirmar reinicio"
+            >
+              <p>
+                {confirmReset === "all"
+                  ? "¿Reiniciar todo el aprendizaje de todos los cursos, incluidos los retirados del catálogo?"
+                  : `¿Reiniciar «${course.title}»? El curso se reinicia en todas sus rutas.`}
+                {" "}Se borrarán todas las aprobaciones, incluidas las de ejercicios
+                retirados, el resultado de la evaluación final, todas las conversaciones
+                del tutor (preguntas, respuestas, parciales y capturas), la posición
+                y las copias de recuperación del ámbito elegido. Se detendrá la respuesta
+                activa afectada. Se conserva la Configuración del tutor (clave, modelo
+                y su condición de persistencia) y el catálogo descargado.
+              </p>
+              <button
+                className="secondary"
+                autoFocus
+                onClick={() => {
+                  setConfirmReset(false);
+                  resetButton.current?.focus();
+                }}
+              >
+                Cancelar
+              </button>
+              <button className="primary" onClick={resetProgress}>
+                Sí, reiniciar
+              </button>
+            </div>
+          )}
+        </section>
       </div>
       {settingsOpen && (
         <TutorSettings
@@ -416,7 +504,7 @@ export default function App() {
             focusTutorAfterSettings.current = true;
             setSettingsOpen(false);
             setLearningTab("tutor");
-            setView("learn");
+            if (course && view !== "learn") startCourse(course);
           }}
         />
       )}
@@ -425,6 +513,7 @@ export default function App() {
 }
 
 function LearningWorkspace({
+  course,
   topic,
   completed,
   onComplete,
@@ -626,10 +715,17 @@ function LearningWorkspace({
             onConfigure={onConfigure}
             access={access}
             conversation={conversation}
+            courseId={course.id}
             topicId={topic.id}
             topicTitle={topic.title}
             capture={() =>
-              captureContext({ topic, exercise, draft: code, lastResult })
+              captureContext({
+                course,
+                topic,
+                exercise,
+                draft: code,
+                lastResult,
+              })
             }
           />
         </div>
@@ -766,7 +862,8 @@ function LearningWorkspace({
   );
 }
 
-function FinalAssessment({ result, onResult, onBack }) {
+function FinalAssessment({ course, result, onResult, onBack }) {
+  const assessmentQuestions = course.assessment.questions;
   const [answers, setAnswers] = useState(result?.answers || {});
   const resultHeading = useRef(null);
   useEffect(() => {
@@ -775,12 +872,12 @@ function FinalAssessment({ result, onResult, onBack }) {
   function submit(event) {
     event.preventDefault();
     if (!assessmentQuestions.every((question) => answers[question.id])) return;
-    onResult(assessAnswers(answers));
+    onResult(assessAnswers(assessmentQuestions, answers));
   }
   return (
     <section className="assessment panel">
       <div className="lesson-content">
-        <div className="eyebrow">EL ÚLTIMO PASO DE TU RUTA</div>
+        <div className="eyebrow">EVALUACIÓN OPCIONAL DEL CURSO</div>
         <h2>Evaluación final</h2>
         <p>
           Elige una respuesta por pregunta y revisa tu resultado. Puedes
@@ -806,7 +903,7 @@ function FinalAssessment({ result, onResult, onBack }) {
               disabled={Boolean(result)}
             >
               <legend>
-                {index + 1}. {question.topic}
+                {index + 1}. {question.prompt}
               </legend>
               <p>{question.prompt}</p>
               {question.code && (
@@ -816,29 +913,29 @@ function FinalAssessment({ result, onResult, onBack }) {
               )}
               <div className="assessment-options">
                 {question.options.map((option) => (
-                  <label key={option}>
+                  <label key={option.id}>
                     <input
                       type="radio"
                       name={question.id}
-                      value={option}
-                      checked={answers[question.id] === option}
+                      value={option.id}
+                      checked={answers[question.id] === option.id}
                       onChange={() =>
-                        setAnswers({ ...answers, [question.id]: option })
+                        setAnswers({ ...answers, [question.id]: option.id })
                       }
                       required
                     />
-                    {option}
+                    {option.text}
                   </label>
                 ))}
               </div>
               {result && (
                 <div
-                  className={`answer-explanation ${result.answers[question.id] === question.answer ? "correct" : "incorrect"}`}
+                  className={`answer-explanation ${result.answers[question.id] === question.answerId ? "correct" : "incorrect"}`}
                 >
                   <strong>
-                    {result.answers[question.id] === question.answer
+                    {result.answers[question.id] === question.answerId
                       ? "¡Correcto!"
-                      : `Respuesta correcta: ${question.answer}`}
+                      : `Respuesta correcta: ${question.options.find((option) => option.id === question.answerId).text}`}
                   </strong>
                   <p>{question.explanation}</p>
                 </div>

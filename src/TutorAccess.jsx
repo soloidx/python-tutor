@@ -4,16 +4,19 @@ import React, {
   useState,
   useSyncExternalStore,
 } from "react";
+import { TutorMarkdown } from "./TutorMarkdown.jsx";
 import { checkAccess, modelIncompatibility } from "./openRouterAccess.js";
 
 export function TutorPanel({
   onConfigure,
   access,
   conversation,
+  courseId,
   topicId,
   topicTitle,
   capture,
 }) {
+  const scope = { courseId, topicId };
   const state = useSyncExternalStore(
     conversation.subscribe,
     conversation.getSnapshot,
@@ -22,6 +25,19 @@ export function TutorPanel({
   const [copied, setCopied] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteButton = useRef(null);
+  const transcript = useRef(null);
+  const followLatest = useRef(true);
+  useEffect(() => {
+    if (followLatest.current && transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight;
+  }, [state.exchanges]);
+  async function copyCode(code) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied("Código copiado");
+    } catch {
+      setCopied("No se pudo copiar el código. Selecciónalo y cópialo manualmente.");
+    }
+  }
   function closeDelete() {
     setConfirmDelete(false);
     deleteButton.current?.focus();
@@ -29,8 +45,9 @@ export function TutorPanel({
   const busy = !!state.active;
   async function send() {
     if (!ready || busy || !message.trim()) return;
+    followLatest.current = true;
     const pending = conversation.send({
-      topicId,
+      scope,
       message,
       capture: capture(),
       config: access.config,
@@ -53,7 +70,11 @@ export function TutorPanel({
           Configuración
         </button>
       </div>
-      <div className="lesson-content" aria-live="polite">
+      <div className="tutor-body">
+        <div className="tutor-scroll" ref={transcript} role="region" aria-label="Historial del tutor" tabIndex={0} onScroll={() => {
+          const node = transcript.current;
+          followLatest.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
+        }}>
         <button
           ref={deleteButton}
           className="secondary"
@@ -80,7 +101,7 @@ export function TutorPanel({
               <button
                 className="primary"
                 onClick={() => {
-                  conversation.deleteTopic(topicId);
+                  conversation.deleteTopic(scope);
                   setCopied("");
                   closeDelete();
                 }}
@@ -118,9 +139,9 @@ export function TutorPanel({
             recargar.
           </p>
         )}
-        <div className="tutor-conversation" aria-label="Conversación de tema">
+        <div className="tutor-conversation" aria-live="polite" aria-label="Conversación de tema">
           {state.exchanges
-            .filter((item) => item.topicId === topicId)
+            .filter((item) => item.courseId === courseId && item.topicId === topicId)
             .map((exchange) => (
               <article key={exchange.id} className="tutor-exchange">
                 <p>
@@ -129,33 +150,7 @@ export function TutorPanel({
                 <p className="tutor-question">{exchange.message}</p>
                 {exchange.attempts.map((attempt) => (
                   <div key={attempt.id}>
-                    <p className="tutor-answer">{attempt.text}</p>
-                    {Array.from(
-                      attempt.text.matchAll(
-                        /```(?:[a-zA-Z]+)?\n([\s\S]*?)```/g,
-                      ),
-                    ).map((match, index) => (
-                      <div key={index}>
-                        <pre>
-                          <code>{match[1]}</code>
-                        </pre>
-                        <button
-                          className="secondary"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(match[1]);
-                              setCopied("Código copiado");
-                            } catch {
-                              setCopied(
-                                "No se pudo copiar el código. Selecciónalo y cópialo manualmente.",
-                              );
-                            }
-                          }}
-                        >
-                          Copiar código
-                        </button>
-                      </div>
-                    ))}
+                    <TutorMarkdown text={attempt.text} onCopy={copyCode} />
                     <p>
                       {attempt.status === "complete"
                         ? "Respuesta completa"
@@ -171,6 +166,7 @@ export function TutorPanel({
                     disabled={!ready || busy}
                     onClick={() =>
                       conversation.retry({
+                        scope,
                         exchangeId: exchange.id,
                         config: access.config,
                         onAccessIssue: access.reportIssue,
@@ -190,6 +186,8 @@ export function TutorPanel({
             {state.storageWarning}
           </p>
         )}
+        </div>
+        <div className="tutor-composer">
         <label className="tutor-message">
           Mensaje al tutor
           <textarea
@@ -216,6 +214,7 @@ export function TutorPanel({
             Detener
           </button>
         )}
+        </div>
       </div>
     </div>
   );

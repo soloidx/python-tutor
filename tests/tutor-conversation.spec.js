@@ -1,6 +1,6 @@
 import { model, frame, setup } from "./fixtures/tutor.js";
 import { streamingOpenRouter } from "./fixtures/openrouter.js";
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 
 test.use({ actionTimeout: 8000, ignoreHTTPSErrors: true });
 
@@ -31,6 +31,7 @@ test("sends a Spanish tutor policy and allowed context through real LangChain; c
   const sent = JSON.parse(requests[0].messages.at(-1).content);
   expect(sent.message).toBe("No entiendo\n");
   expect(sent.capture).toMatchObject({
+    course: { id: "python-fundamentos", title: "Python Fundamentos" },
     topic: { id: "valores-variables" },
     exercise: { id: "saludo" },
     draft: '# mi borrador\nprint("borrador")',
@@ -269,7 +270,9 @@ test("preserves partial text and rejects an HTTP 200 SSE error even if it claims
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByText("Ayuda parcial", { exact: true })).toBeVisible();
   await expect(
-    page.getByText(/Respuesta incompleta: OpenRouter indica saldo insuficiente/),
+    page.getByText(
+      /Respuesta incompleta: OpenRouter indica saldo insuficiente/,
+    ),
   ).toBeVisible();
   await expect(
     page.getByText("Respuesta completa", { exact: true }),

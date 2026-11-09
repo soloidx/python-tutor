@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 
 test("a beginner progresses through fundamentals with real Python", async ({
   page,
@@ -7,7 +7,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Comenzar ruta" }).click();
+  await enterCourse(page);
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
@@ -84,6 +84,10 @@ test("a beginner progresses through fundamentals with real Python", async ({
     .fill("# borrador que no debe guardarse");
   await page.getByRole("button", { name: "Dame una pista" }).click();
   await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
+  ).toBeVisible();
+  await enterCourse(page);
   await expect(
     page.getByRole("heading", { name: "Expresiones y salida", exact: true }),
   ).toBeVisible();
@@ -299,18 +303,24 @@ test("a beginner progresses through fundamentals with real Python", async ({
       page.getByRole("button", { name: /2\..*Completado/ }),
     ).toBeVisible();
   }
-  await page.getByRole("button", { name: "Volver a cursos" }).click();
+  await page.getByRole("navigation", { name: "Contexto de aprendizaje" }).getByRole("button").nth(1).click();
   await expect(
-    page.getByText("12 ejercicios completados", { exact: true }),
+    page.getByText("100% · 12 / 12 ejercicios aprobados", { exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Explorar Primeros pasos con Python" })
+    .click();
   await expect(
-    page.getByText("12 ejercicios completados", { exact: true }),
+    page.getByText("100% · 12 / 12 ejercicios aprobados", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Continuar ruta" }).click();
+  await page
+    .getByRole("button", { name: "Ver temas de Python Fundamentos" })
+    .click();
+  await page.getByRole("button", { name: "Repasar curso" }).click();
   await expect(
     page.getByRole("heading", { name: "Listas y diccionarios", exact: true }),
   ).toBeVisible();
@@ -349,6 +359,11 @@ test("a beginner progresses through fundamentals with real Python", async ({
   ).toBeVisible();
   await page.reload();
   await expect(
+    page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
+  ).toBeVisible();
+  await enterCourse(page);
+  await page.getByRole("button", { name: "Ver evaluación final" }).click();
+  await expect(
     page.getByRole("heading", { name: "Tu resultado: 5 de 6", exact: true }),
   ).toBeVisible();
   await expect(
@@ -380,6 +395,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   page = await page.context().newPage();
   await previousPage.close();
   await page.goto("/");
+  await enterCourse(page);
   await expect(
     page.getByRole("heading", { name: "Listas y diccionarios", exact: true }),
   ).toBeVisible();
@@ -391,18 +407,20 @@ test("a beginner progresses through fundamentals with real Python", async ({
     page.getByRole("heading", { name: "Tu resultado: 6 de 6", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Tu resultado: 6 de 6", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
@@ -411,6 +429,10 @@ test("a beginner progresses through fundamentals with real Python", async ({
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /Completado/ })).toHaveCount(0);
   await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
+  ).toBeVisible();
+  await enterCourse(page);
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
@@ -427,6 +449,11 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page.getByRole("group").first().getByRole("radio").first().check();
   await page.reload();
   await expect(
+    page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
+  ).toBeVisible();
+  await enterCourse(page);
+  await page.getByRole("button", { name: "Comenzar evaluación final" }).click();
+  await expect(
     page.getByRole("heading", { name: "Evaluación final", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
@@ -434,18 +461,21 @@ test("a beginner progresses through fundamentals with real Python", async ({
   // Fault injection stays at the browser-storage boundary; assertions use the UI.
   for (const damaged of ["{damaged JSON", "{}"]) {
     await page.evaluate(
-      (value) => localStorage.setItem(Object.keys(localStorage)[0], value),
+      (value) => localStorage.setItem("python-tutor:course-progress:v1:python-fundamentos", value),
       damaged,
     );
     await page.reload();
     await expect(
       page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
     ).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText("No se pudo recuperar");
-    await page.getByRole("button", { name: "Comenzar ruta" }).click();
+    await expect(page.getByRole("alert")).toContainText("recuperación parcial");
+    await enterCourse(page);
     await expect(
       page.getByText("0 / 12 ejercicios", { exact: true }),
     ).toBeVisible();
+    // Leave the topic before corrupting storage again: entering it saves the
+    // resume position, which must finish before the next fault injection.
+    await page.getByRole("button", { name: "Todas las rutas", exact: true }).click();
   }
   // A full or blocked store must leave the learning flow usable and report failure.
   await page.addInitScript(() => {
@@ -454,20 +484,24 @@ test("a beginner progresses through fundamentals with real Python", async ({
     };
   });
   await page.reload();
-  await expect(page.getByRole("alert")).toContainText("No se pudo guardar");
+  await expect(
+    page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
+  ).toBeVisible();
+  await enterCourse(page);
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo guardar el progreso" })).toBeVisible();
   await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
   await expect(
     page.getByRole("heading", { name: "Expresiones y salida", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
-  await expect(page.getByRole("alert")).not.toContainText(
-    "el progreso anterior podría reaparecer",
-  );
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
@@ -487,20 +521,20 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
   ).toBeVisible();
-  await expect(page.getByRole("alert")).toBeVisible();
-  await page.getByRole("button", { name: "Comenzar ruta" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo recuperar el progreso" })).toBeVisible();
+  await enterCourse(page);
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Reiniciar progreso", exact: true })
+    .getByRole("button", { name: "Reiniciar este curso", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
-  await expect(page.getByRole("alert")).toContainText(
-    "el progreso anterior podría reaparecer",
-  );
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();

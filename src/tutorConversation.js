@@ -7,6 +7,11 @@ import {
 } from "./tutorHistory.js";
 import { streamTutor } from "./openRouterTutor.js";
 
+const sameExchange = (item, scope) =>
+  item.id === scope.id &&
+  item.courseId === scope.courseId &&
+  item.topicId === scope.topicId;
+
 const recovery = {
   key: "OpenRouter rechazó la clave. Corrígela en Configuración del tutor.",
   balance:
@@ -31,9 +36,20 @@ export function createConversationService() {
   let controller = null;
   const listeners = new Set();
   let deletionWarning = "";
-  const publish = (next, persist = saveHistory) => {
+  const publish = (next, persist) => {
     if (next.exchanges !== state.exchanges) {
-      const warning = persist(next.exchanges);
+      const changedCourses = new Set(
+        [...state.exchanges, ...next.exchanges]
+          .filter(
+            (item) => !state.exchanges.includes(item) || !next.exchanges.includes(item),
+          )
+          .map((item) => item.courseId),
+      );
+      const warning = persist
+        ? persist(next.exchanges)
+        : [...changedCourses]
+            .map((courseId) => saveHistory(next.exchanges, courseId))
+            .find(Boolean) || "";
       if (!warning) deletionWarning = "";
       next = {
         ...next,
@@ -43,11 +59,11 @@ export function createConversationService() {
     state = next;
     listeners.forEach((listener) => listener());
   };
-  function update(id, change) {
+  function update(scope, change) {
     publish({
       ...state,
       exchanges: state.exchanges.map((exchange) =>
-        exchange.id === id
+        sameExchange(exchange, scope)
           ? {
               ...exchange,
               attempts: exchange.attempts.map((attempt, index) =>
@@ -62,9 +78,9 @@ export function createConversationService() {
   }
   function cancel() {
     if (!state.active) return;
-    const id = state.active;
+    const scope = state.active;
     controller?.abort();
-    update(id, {
+    update(scope, {
       status: "incomplete",
       error:
         "Respuesta interrumpida. El parcial está incompleto. Cancelar el transporte no garantiza detener la facturación del proveedor.",
@@ -73,7 +89,7 @@ export function createConversationService() {
     publish({ ...state, active: null });
   }
   async function send({
-    topicId,
+    scope: topicScope,
     message,
     capture,
     config,
@@ -81,7 +97,10 @@ export function createConversationService() {
     onAccessIssue,
   }) {
     if (state.active || !message.trim()) return false;
-    const antecedents = requestHistory(state.exchanges, topicId, exchangeId);
+    const { courseId, topicId } = topicScope;
+    const antecedents = requestHistory(
+      state.exchanges, topicScope, exchangeId,
+    );
     let request;
     try {
       request = buildRequest({
@@ -95,6 +114,7 @@ export function createConversationService() {
       return false;
     }
     const id = exchangeId || crypto.randomUUID();
+    const scope = { id, courseId, topicId };
     const attempt = {
       id: crypto.randomUUID(),
       text: "",
@@ -103,6 +123,7 @@ export function createConversationService() {
     };
     const exchange = {
       id,
+      courseId,
       topicId,
       message,
       capture: structuredClone(capture),
@@ -111,7 +132,7 @@ export function createConversationService() {
     const current = new AbortController();
     controller = current;
     const topicExchanges = state.exchanges.filter(
-      (item) => item.topicId === topicId,
+      (item) => item.courseId === courseId && item.topicId === topicId,
     );
     const removedId =
       !exchangeId && topicExchanges.length >= 50 ? topicExchanges[0].id : null;
@@ -132,19 +153,22 @@ export function createConversationService() {
       ...state,
       exchanges: exchangeId
         ? state.exchanges.map((item) =>
-            item.id === id
+            sameExchange(item, scope)
               ? { ...item, attempts: [...item.attempts, attempt] }
               : item,
           )
         : [
-            ...state.exchanges.filter((item) => item.id !== removedId),
+            ...state.exchanges.filter(
+              (item) => !(item.courseId === courseId &&
+                item.topicId === topicId && item.id === removedId),
+            ),
             exchange,
           ],
-      active: id,
+      active: scope,
       notice: notices.join(" "),
     });
     const valid = () =>
-      !current.signal.aborted && controller === current && state.active === id;
+      !current.signal.aborted && controller === current && state.active === scope;
     try {
       const { finishReason } = await streamTutor({
         config,
@@ -152,13 +176,13 @@ export function createConversationService() {
         signal: current.signal,
         onText(text) {
           if (valid()) {
-            const entry = state.exchanges.find((item) => item.id === id);
-            update(id, { text: entry.attempts.at(-1).text + text });
+            const entry = state.exchanges.find((item) => sameExchange(item, scope));
+            update(scope, { text: entry.attempts.at(-1).text + text });
           }
         },
       });
       if (valid())
-        update(id, {
+        update(scope, {
           status: finishReason === "stop" ? "complete" : "incomplete",
           errorKind:
             finishReason === "stop"
@@ -176,7 +200,7 @@ export function createConversationService() {
     } catch (error) {
       if (valid()) {
         const explanation = recovery[error.kind] || recovery.service;
-        update(id, {
+        update(scope, {
           status: "incomplete",
           error: `Respuesta incompleta: ${explanation}`,
           errorKind: error.kind,
@@ -186,7 +210,7 @@ export function createConversationService() {
       }
     } finally {
       current.abort();
-      if (controller === current && state.active === id)
+      if (controller === current && state.active === scope)
         publish({ ...state, active: null });
     }
     return true;
@@ -198,34 +222,42 @@ export function createConversationService() {
       return () => listeners.delete(listener);
     },
     send,
-    retry({ exchangeId, config, onAccessIssue }) {
-      const exchange = state.exchanges.find((item) => item.id === exchangeId);
+    retry({ scope, exchangeId, config, onAccessIssue }) {
+      const exchange = state.exchanges.find((item) =>
+        sameExchange(item, { id: exchangeId, ...scope }),
+      );
       if (!exchange || exchange.attempts.at(-1).status !== "incomplete")
         return false;
-      return send({ ...exchange, exchangeId, config, onAccessIssue });
+      return send({ ...exchange, scope, exchangeId, config, onAccessIssue });
     },
     cancel,
-    reset() {
-      cancel();
+    reset(courseId) {
+      const active = state.active;
+      if (courseId === undefined || active?.courseId === courseId) cancel();
       deletionWarning =
         "Se borraron todas las conversaciones en esta sesión, pero no se pudo borrar el historial guardado: podría reaparecer al recargar. La Configuración del tutor se conserva. Puedes seguir aprendiendo; permite el almacenamiento o borra los datos del sitio en tu navegador.";
-      publish({ ...state, exchanges: [], notice: "" }, removeHistory);
+      publish({
+        ...state,
+        exchanges: state.exchanges.filter(
+          (item) => courseId !== undefined && item.courseId !== courseId,
+        ),
+        notice: "",
+      }, () => removeHistory(courseId));
       return state.storageWarning;
     },
-    deleteTopic(topicId) {
-      if (
-        state.exchanges.find((item) => item.id === state.active)?.topicId ===
-        topicId
-      )
+    deleteTopic({ courseId, topicId }) {
+      const active = state.active;
+      if (active?.courseId === courseId && active.topicId === topicId)
         cancel();
       const exchanges = state.exchanges.filter(
-        (item) => item.topicId !== topicId,
+        (item) => item.courseId !== courseId || item.topicId !== topicId,
       );
       deletionWarning =
         "Se borró la conversación de este tema en esta sesión, pero no se pudo guardar el borrado: el historial borrado podría reaparecer al recargar. Los demás temas, el progreso y la Configuración del tutor se conservan. Puedes seguir aprendiendo; permite el almacenamiento o borra los datos del sitio en tu navegador.";
       publish(
         { ...state, exchanges, notice: "" },
-        exchanges.length ? saveHistory : removeHistory,
+        () => exchanges.some((item) => item.courseId === courseId)
+          ? saveHistory(exchanges, courseId) : removeHistory(courseId),
       );
     },
   };

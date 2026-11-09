@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, enterCourse } from "./fixtures/catalog.js";
 import { setup, frame } from "./fixtures/tutor.js";
 import { streamingOpenRouter } from "./fixtures/openrouter.js";
 
@@ -26,6 +26,7 @@ test("retry after reload preserves captures and partials without borrowing later
       page.getByText("Respuesta completa", { exact: true }),
     ).toHaveCount(1);
     await page.reload();
+    await enterCourse(page);
     await page.getByRole("tab", { name: "Tutor", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Enviar", exact: true }),
@@ -41,6 +42,7 @@ test("retry after reload preserves captures and partials without borrowing later
       page.getByText("Respuesta completa", { exact: true }),
     ).toHaveCount(2);
     await page.reload();
+    await enterCourse(page);
     await page.getByRole("tab", { name: "Tutor", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Enviar", exact: true }),
