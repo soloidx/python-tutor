@@ -98,13 +98,14 @@ export function createConversationService() {
   }) {
     if (state.active || !message.trim()) return false;
     const { courseId, topicId } = topicScope;
+    const captured = structuredClone(capture);
     const antecedents = requestHistory(
       state.exchanges, topicScope, exchangeId,
     );
     let request;
     try {
       request = buildRequest({
-        capture,
+        capture: captured,
         message,
         model: config.model,
         history: antecedents.history,
@@ -126,7 +127,7 @@ export function createConversationService() {
       courseId,
       topicId,
       message,
-      capture: structuredClone(capture),
+      capture: captured,
       attempts: [attempt],
     };
     const current = new AbortController();

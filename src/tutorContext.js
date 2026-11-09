@@ -94,10 +94,9 @@ export function buildRequest({ capture, message, model, history = [] }) {
   };
   const base = [{ role: "system", content: tutorPolicy }, current];
   if (estimateTokens(base) > inputLimit) {
-    const fixedCapture = {
-      ...capture,
-      draft: "",
-    };
+    const fixedCapture = Object.hasOwn(capture, "draft")
+      ? { ...capture, draft: "" }
+      : capture;
     const fixed = [
       { role: "system", content: tutorPolicy },
       {
@@ -107,8 +106,12 @@ export function buildRequest({ capture, message, model, history = [] }) {
     ];
     throw new Error(
       estimateTokens(fixed) > inputLimit
-        ? "El contenido fijo del tema, el enunciado o el resultado anterior supera la capacidad de este modelo. Elige un modelo con mayor ventana; reducir el borrador no basta."
-        : "El mensaje y la captura de contexto superan la capacidad de este modelo. Reduce el mensaje o el borrador, o elige un modelo con mayor ventana. No se ha recortado ningún contenido.",
+        ? Object.hasOwn(capture, "draft")
+          ? "El contenido fijo del tema, el enunciado o el resultado anterior supera la capacidad de este modelo. Elige un modelo con mayor ventana; reducir el borrador no basta."
+          : "El contenido fijo de la selección, el fragmento o las opciones supera la capacidad de este modelo. Elige un modelo con mayor ventana o una publicación con menos contenido."
+        : Object.hasOwn(capture, "draft")
+          ? "El mensaje y la captura de contexto superan la capacidad de este modelo. Reduce el mensaje o el borrador, o elige un modelo con mayor ventana. No se ha recortado ningún contenido."
+          : "El mensaje y la captura de selección superan la capacidad de este modelo. Reduce el mensaje o elige un modelo con mayor ventana. No se ha recortado ningún contenido.",
     );
   }
   // Historical selection is supplied by the conversation service.
