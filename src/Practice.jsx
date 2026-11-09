@@ -3,6 +3,7 @@ import { ExerciseWorkspace } from "./ExerciseWorkspace.jsx";
 
 export function Practice({
   round,
+  saved,
   onChange,
   onNewRound,
   onCourses,
@@ -31,7 +32,8 @@ export function Practice({
           <h1>Práctica</h1>
           <p>Una ronda a tu ritmo. Tu progreso de curso es independiente.</p>
           <span className="muted">
-            Revisión del catálogo: {round.revision} · Ronda en esta sesión
+            Revisión del catálogo: {round.revision} ·{" "}
+            {saved ? "Ronda guardada" : "Ronda en esta sesión"}
           </span>
         </div>
         {current && (

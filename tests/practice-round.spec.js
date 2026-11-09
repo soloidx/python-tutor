@@ -4,6 +4,7 @@ import {
   publication,
   serveCatalog,
   updateCourse,
+  enterCourse,
 } from "./fixtures/catalog.js";
 
 function practicePublication(count = 3) {
@@ -142,6 +143,57 @@ function mixedRound() {
   return value;
 }
 
+test("reload restores mixed partial work, selected exercise, order and visible feedback", async ({
+  page,
+  context,
+}) => {
+  await openPractice(page, context, mixedRound());
+  const rail = page.getByRole("navigation", { name: "Ejercicios de la ronda" });
+  const titles = await rail.locator("strong").allTextContents();
+  await page.getByRole("button", { name: "Dame una pista" }).click();
+  await page.getByLabel("Compara edad con 7").check();
+  await page.getByRole("button", { name: "Comprobar", exact: true }).click();
+  await rail.getByRole("button").nth(1).click();
+  await page.getByLabel("Código Python").fill('nombre = "Guardado"');
+  // A fresh draw would select a different first exercise. Reload must restore.
+  await page.addInitScript(() => {
+    Math.random = () => 0.999;
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Práctica", exact: true }).click();
+  expect(await rail.locator("strong").allTextContents()).toEqual(titles);
+  await expect(rail.getByRole("button").nth(1)).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await expect(page.getByLabel("Código Python")).toHaveValue(
+    'nombre = "Guardado"',
+  );
+  await expect(rail.getByRole("button").nth(1)).toContainText("En progreso");
+  await rail.getByRole("button").nth(0).click();
+  await expect(page.getByLabel("Compara edad con 7")).toBeChecked();
+  await expect(page.getByRole("status").first()).toContainText(
+    "Busca el operador de comparación.",
+  );
+  await expect(page.getByRole("region", { name: "Pistas" })).toContainText(
+    "Piensa en el signo igual.",
+  );
+  await expect(
+    page.getByText("Ronda guardada", { exact: false }),
+  ).toBeVisible();
+  await page.getByLabel("Guarda 7 en edad").check();
+  await page.reload();
+  await page.getByRole("button", { name: "Práctica", exact: true }).click();
+  await expect(page.getByLabel("Guarda 7 en edad")).toBeChecked();
+  await expect(page.getByRole("status").first()).toContainText(
+    "Elige una opción para comprobar tu respuesta.",
+  );
+  await expect(page.getByLabel("Progreso de la ronda")).toHaveAttribute(
+    "value",
+    "0",
+  );
+});
+
 for (const mobile of [false, true])
   test(`resolves both formats independently and retains completed review${mobile ? " on mobile" : " on desktop"}`, async ({
     page,
@@ -198,6 +250,15 @@ for (const mobile of [false, true])
       "value",
       "2",
     );
+    await page.reload();
+    await page.getByRole("button", { name: "Práctica", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Ronda completada", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Progreso de la ronda")).toHaveAttribute(
+      "value",
+      "2",
+    );
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
       path: `/tmp/python-tutor-spec64/practice-completed-${mobile ? "mobile" : "desktop"}.png`,
@@ -213,14 +274,12 @@ for (const mobile of [false, true])
       })
       .click();
     await expect(
-      page
-        .getByRole("article")
-        .filter({
-          has: page.getByRole("heading", {
-            name: "Python Fundamentos",
-            exact: true,
-          }),
+      page.getByRole("article").filter({
+        has: page.getByRole("heading", {
+          name: "Python Fundamentos",
+          exact: true,
         }),
+      }),
     ).toContainText("0 / 2 ejercicios aprobados");
     await page.getByRole("button", { name: "Práctica", exact: true }).click();
     await expect(
@@ -249,6 +308,13 @@ for (const mobile of [false, true])
     );
     await expect(page.getByLabel("Guarda 7 en edad")).not.toBeChecked();
     await expect(page.getByRole("region", { name: "Pistas" })).toHaveCount(0);
+    await page.reload();
+    await page.getByRole("button", { name: "Práctica", exact: true }).click();
+    await expect(page.getByLabel("Progreso de la ronda")).toHaveAttribute(
+      "value",
+      "0",
+    );
+    await expect(page.getByLabel("Guarda 7 en edad")).not.toBeChecked();
   });
 
 for (const count of [1, 10, 14])
@@ -395,4 +461,55 @@ test("empty practice offers Courses on a narrow screen", async ({ page }) => {
       exact: true,
     }),
   ).toBeVisible();
+});
+
+// localStorage is the external persistence boundary: inspect only what the app
+// writes, never inject or call the internal serializer to manufacture the result.
+test("practice saves visible work without authored answers or making course drafts persistent", async ({
+  page,
+  context,
+}) => {
+  await openPractice(page, context, mixedRound());
+  await page.getByRole("button", { name: "Dame una pista" }).click();
+  await page.getByLabel("Compara edad con 7").check();
+  await page.getByRole("button", { name: "Comprobar", exact: true }).click();
+  const record = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("python-tutor:practice:v1")),
+  );
+  const serialized = JSON.stringify(record);
+  for (const secret of [
+    '"answerId"',
+    '"check"',
+    '"hints"',
+    '"retry"',
+    '"success"',
+    "Piensa en el signo igual.",
+    "El signo igual asigna un valor.",
+  ])
+    expect(serialized).not.toContain(secret);
+  expect(record.entries[0].snapshot.exercise).not.toHaveProperty("explanation");
+  expect(record.entries[0].snapshot.topic.explanation).toHaveLength(3);
+  expect(record.entries[0].snapshot.exercise.options).toEqual([
+    { id: "assign", text: "Guarda 7 en edad" },
+    { id: "compare", text: "Compara edad con 7" },
+  ]);
+  expect(record.entries[0].work.selectionFeedback).toBe(
+    "Busca el operador de comparación.",
+  );
+  await page
+    .getByRole("button", { name: "Cursos y rutas", exact: true })
+    .click();
+  await enterCourse(page);
+  await page.getByLabel("Código Python").fill('nombre = "Solo curso"');
+  await page.reload();
+  await enterCourse(page);
+  await expect(page.getByLabel("Código Python")).not.toHaveValue(
+    'nombre = "Solo curso"',
+  );
+  await page.getByRole("button", { name: "Práctica", exact: true }).click();
+  await expect(page.getByLabel("Compara edad con 7")).toBeChecked();
+  await expect(page.getByLabel("Progreso de la ronda")).toHaveAttribute(
+    "value",
+    "0",
+  );
 });
