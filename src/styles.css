@@ -767,6 +767,80 @@ button svg {
 .practice-exercise .exercise-prompt p {
   margin-bottom: 16px;
 }
+.choice-practice {
+  padding: 22px;
+}
+.choice-code:empty {
+  display: none;
+}
+.choice-code pre {
+  margin: 0 0 20px;
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #475569;
+  font: 12px/1.8 "JetBrains Mono", monospace;
+  white-space: pre;
+  overflow: auto;
+}
+.choice-practice fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.choice-practice legend {
+  font-size: 12px;
+  font-weight: 650;
+  margin-bottom: 12px;
+}
+.choice-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  margin: 8px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.choice-option:has(input:checked) {
+  border-color: #fda4af;
+  background: #fff1f2;
+  color: #9f1239;
+}
+.choice-option input {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  accent-color: #dc2626;
+}
+.choice-option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.choice-check {
+  margin-top: 14px;
+}
+.choice-feedback {
+  margin-top: 16px;
+}
+.choice-approved {
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  border: 1px solid #a7f3d0;
+  border-radius: 9px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 11px;
+  line-height: 1.6;
+}
 .editor-toolbar {
   display: flex;
   align-items: center;

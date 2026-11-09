@@ -525,17 +525,22 @@ function LearningWorkspace({
 }) {
   useEffect(() => () => conversation.cancel(), [conversation]);
   const execution = useRef(null);
-  const [lastResult, setLastResult] = useState(null);
+  const [lastCodeResult, setLastCodeResult] = useState(null);
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const exercise = topic.exercises[exerciseIndex];
-  const [code, setCode] = useState(exercise.starter);
+  const isChoice = exercise.type === "choice";
+  const [code, setCode] = useState(exercise.starter || "");
   const [hintCount, setHintCount] = useState(0);
   const [result, setResult] = useState(null);
   const [feedback, setFeedback] = useState("");
+  const [selectedOptionId, setSelectedOptionId] = useState(null);
+  const [selectionStatus, setSelectionStatus] = useState("none");
+  const [selectionResult, setSelectionResult] = useState(null);
+  const [selectionFeedback, setSelectionFeedback] = useState(null);
   const python = usePython((received) => {
     setResult(received);
     if (execution.current)
-      setLastResult({
+      setLastCodeResult({
         ...execution.current,
         output: received.output || "",
         error: received.error || null,
@@ -554,10 +559,29 @@ function LearningWorkspace({
   });
   function selectExercise(index) {
     setExerciseIndex(index);
-    setCode(topic.exercises[index].starter);
+    setCode(topic.exercises[index].starter || "");
     setHintCount(0);
     setResult(null);
     setFeedback("");
+    setSelectedOptionId(null);
+    setSelectionStatus("none");
+    setSelectionResult(null);
+    setSelectionFeedback(null);
+  }
+  function selectOption(optionId) {
+    setSelectedOptionId(optionId);
+    setSelectionStatus("pending");
+    setSelectionFeedback(null);
+  }
+  function checkChoice() {
+    if (!selectedOptionId) return;
+    const correct = selectedOptionId === exercise.answerId;
+    const checked = { optionId: selectedOptionId, correct };
+    const option = exercise.options.find((item) => item.id === selectedOptionId);
+    setSelectionResult(checked);
+    setSelectionStatus("checked");
+    setSelectionFeedback(correct ? exercise.explanation : option.retry || exercise.retry);
+    if (correct) onComplete(exercise.id);
   }
   const topicCompleted = topic.exercises.filter((item) =>
     completed.includes(item.id),
@@ -654,7 +678,11 @@ function LearningWorkspace({
                 topic,
                 exercise,
                 draft: code,
-                lastResult,
+                lastResult: lastCodeResult,
+                selectedOptionId,
+                selectionStatus,
+                selectionResult,
+                feedback: selectionFeedback,
               })
             }
           />
@@ -738,6 +766,18 @@ function LearningWorkspace({
             </>
           )}
         </section>
+        {isChoice ? (
+          <ChoicePractice
+            exercise={exercise}
+            selectedOptionId={selectedOptionId}
+            selectionStatus={selectionStatus}
+            selectionResult={selectionResult}
+            feedback={selectionFeedback}
+            approved={completed.includes(exercise.id)}
+            onSelect={selectOption}
+            onCheck={checkChoice}
+          />
+        ) : <>
         <div className="editor-panel panel">
           <div className="editor-toolbar">
             <span className="file-tab">
@@ -864,8 +904,72 @@ function LearningWorkspace({
           <Icon name="check" />
           Cada intento es una oportunidad para aprender.
         </p>
+        </>}
       </section>
     </div>
+  );
+}
+
+function ChoicePractice({
+  exercise,
+  selectedOptionId,
+  selectionStatus,
+  selectionResult,
+  feedback,
+  approved,
+  onSelect,
+  onCheck,
+}) {
+  const feedbackTone =
+    selectionStatus === "checked"
+      ? selectionResult?.correct
+        ? "success"
+        : "retry"
+      : "";
+  return (
+    <section className="choice-practice panel" aria-labelledby="choice-practice-heading">
+      <div className="choice-code">
+        {exercise.code && (
+          <pre aria-label="Fragmento de código de solo lectura"><code>{exercise.code}</code></pre>
+        )}
+      </div>
+      <form onSubmit={(event) => { event.preventDefault(); onCheck(); }}>
+        <fieldset>
+          <legend id="choice-practice-heading">Elige una opción</legend>
+          {exercise.options.map((option) => {
+            const id = `choice-${exercise.id}-${option.id}`;
+            return (
+              <label className="choice-option" key={option.id} htmlFor={id}>
+                <input
+                  id={id}
+                  type="radio"
+                  name={`choice-${exercise.id}`}
+                  value={option.id}
+                  checked={selectedOptionId === option.id}
+                  onChange={() => onSelect(option.id)}
+                />
+                <span>{option.text}</span>
+              </label>
+            );
+          })}
+        </fieldset>
+        <button
+          className="primary choice-check"
+          type="submit"
+          disabled={!selectedOptionId}
+        >
+          Comprobar
+        </button>
+      </form>
+      <div className={`feedback choice-feedback ${feedbackTone}`} role="status" aria-live="polite">
+        {feedback || "Elige una opción para comprobar tu respuesta."}
+      </div>
+      {approved && (
+        <p className="choice-approved" role="status">
+          Ejercicio aprobado. Tu avance se conserva aunque sigas practicando.
+        </p>
+      )}
+    </section>
   );
 }
 
