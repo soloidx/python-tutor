@@ -53,13 +53,18 @@ export default function App({ publication }) {
   );
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [practiceRound, setPracticeRound] = useState(() =>
-    loadPractice(publication),
+  const [practiceRecovery] = useState(() => loadPractice(publication));
+  const [practiceRound, setPracticeRound] = useState(practiceRecovery.round);
+  const [practiceStorageAvailable, setPracticeStorageAvailable] = useState(
+    practiceRecovery.storageAvailable,
   );
   const [practiceSaved, setPracticeSaved] = useState(false);
   useEffect(() => {
-    if (practiceRound) setPracticeSaved(savePractice(practiceRound));
-  }, [practiceRound]);
+    if (!practiceRound || !practiceStorageAvailable) return;
+    const saved = savePractice(practiceRound);
+    setPracticeSaved(saved);
+    if (!saved) setPracticeStorageAvailable(false);
+  }, [practiceRound, practiceStorageAvailable]);
   const [learningTab, setLearningTab] = useState("lesson");
   const focusTutorAfterSettings = useRef(false);
   const rootLocation = {
@@ -326,7 +331,9 @@ export default function App({ publication }) {
         {view === "practice" && practiceRound && (
           <Practice
             round={practiceRound}
-            saved={practiceSaved}
+            saved={practiceSaved && practiceStorageAvailable}
+            notice={practiceRecovery.notice}
+            storageAvailable={practiceStorageAvailable}
             onChange={setPracticeRound}
             onNewRound={() =>
               setPracticeRound(createPracticeRound(publication))
