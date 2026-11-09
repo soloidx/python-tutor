@@ -21,6 +21,7 @@ import { Icon } from "./Icon.jsx";
 import { ExerciseWorkspace } from "./ExerciseWorkspace.jsx";
 import { Practice } from "./Practice.jsx";
 import { createPracticeRound } from "./practiceRound.js";
+import { loadPractice, savePractice } from "./practiceStorage.js";
 
 import pathArt from "./assets/resources/path.svg";
 import courseArt from "./assets/resources/course.svg";
@@ -51,7 +52,13 @@ export default function App({ publication }) {
   );
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [practiceRound, setPracticeRound] = useState(null);
+  const [practiceRound, setPracticeRound] = useState(() =>
+    loadPractice(publication),
+  );
+  const [practiceSaved, setPracticeSaved] = useState(false);
+  useEffect(() => {
+    if (practiceRound) setPracticeSaved(savePractice(practiceRound));
+  }, [practiceRound]);
   const [learningTab, setLearningTab] = useState("lesson");
   const focusTutorAfterSettings = useRef(false);
   const rootLocation = {
@@ -316,6 +323,7 @@ export default function App({ publication }) {
         {view === "practice" && practiceRound && (
           <Practice
             round={practiceRound}
+            saved={practiceSaved}
             onChange={setPracticeRound}
             onNewRound={() =>
               setPracticeRound(createPracticeRound(publication))
