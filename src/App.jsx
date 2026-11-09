@@ -633,76 +633,6 @@ function LearningWorkspace({
               <Icon name="bulb" />
               <p>{topic.takeaway}</p>
             </div>
-            <div className="exercise-heading">
-              <h3>Ahora te toca a ti</h3>
-              <span>
-                {topicCompleted} de {topic.exercises.length} ejercicios
-                completados
-              </span>
-            </div>
-            <div className="exercise-tabs">
-              {topic.exercises.map((item, index) => (
-                <button
-                  key={item.id}
-                  className={
-                    exerciseIndex === index
-                      ? "exercise-tab selected"
-                      : "exercise-tab"
-                  }
-                  onClick={() => selectExercise(index)}
-                  disabled={python.status === "running"}
-                >
-                  <span
-                    className={
-                      completed.includes(item.id)
-                        ? "exercise-number done"
-                        : "exercise-number"
-                    }
-                  >
-                    {completed.includes(item.id) ? (
-                      <Icon name="check" />
-                    ) : (
-                      index + 1
-                    )}
-                  </span>
-                  <span>
-                    {index + 1}. {item.title}
-                  </span>
-                  {completed.includes(item.id) && (
-                    <span className="completed-label">Completado</span>
-                  )}
-                </button>
-              ))}
-            </div>
-            <div className="exercise-prompt">
-              <span className="eyebrow">EJERCICIO {exerciseIndex + 1}</span>
-              <h3>{exercise.title}</h3>
-              <p>{exercise.prompt}</p>
-            </div>
-            <button
-              className="hint-button"
-              onClick={() =>
-                setHintCount(Math.min(hintCount + 1, exercise.hints.length))
-              }
-              disabled={hintCount === exercise.hints.length}
-            >
-              <Icon name="bulb" />
-              {hintCount === 0
-                ? "Dame una pista"
-                : hintCount < exercise.hints.length
-                  ? "Otra pista"
-                  : "Todas las pistas mostradas"}
-            </button>
-            {hintCount > 0 && (
-              <div className="hints">
-                <strong>
-                  Pista {hintCount} de {exercise.hints.length}
-                </strong>
-                {exercise.hints.slice(0, hintCount).map((hint) => (
-                  <p key={hint}>{hint}</p>
-                ))}
-              </div>
-            )}
           </div>
         </div>
         <div
@@ -731,6 +661,83 @@ function LearningWorkspace({
         </div>
       </section>
       <section className="runner-column" aria-label="Espacio de práctica">
+        <section className="practice-exercise panel" aria-labelledby="practice-exercise-heading">
+          <div className="exercise-heading">
+            <h2 id="practice-exercise-heading">Ahora te toca a ti</h2>
+            <span>
+              {topicCompleted} de {topic.exercises.length} ejercicios
+              completados
+            </span>
+          </div>
+          <nav className="exercise-tabs" aria-label="Ejercicios del tema">
+            {topic.exercises.map((item, index) => (
+              <button
+                key={item.id}
+                className={
+                  exerciseIndex === index
+                    ? "exercise-tab selected"
+                    : "exercise-tab"
+                }
+                onClick={() => selectExercise(index)}
+                disabled={python.status === "running"}
+                aria-current={exerciseIndex === index ? "step" : undefined}
+              >
+                <span
+                  className={
+                    completed.includes(item.id)
+                      ? "exercise-number done"
+                      : "exercise-number"
+                  }
+                >
+                  {completed.includes(item.id) ? (
+                    <Icon name="check" />
+                  ) : (
+                    index + 1
+                  )}
+                </span>
+                <span>
+                  {index + 1}. {item.title}
+                </span>
+                {completed.includes(item.id) && (
+                  <span className="completed-label">Completado</span>
+                )}
+              </button>
+            ))}
+          </nav>
+          <div className="exercise-prompt">
+            <span className="eyebrow">EJERCICIO {exerciseIndex + 1}</span>
+            <h3>{exercise.title}</h3>
+            <p>{exercise.prompt}</p>
+          </div>
+          {exercise.hints.length > 0 && (
+            <>
+              <button
+                className="hint-button"
+                onClick={() =>
+                  setHintCount(Math.min(hintCount + 1, exercise.hints.length))
+                }
+                disabled={hintCount === exercise.hints.length}
+              >
+                <Icon name="bulb" />
+                {hintCount === 0
+                  ? "Dame una pista"
+                  : hintCount < exercise.hints.length
+                    ? "Otra pista"
+                    : "Todas las pistas mostradas"}
+              </button>
+              {hintCount > 0 && (
+                <div className="hints" role="region" aria-label="Pistas">
+                  <strong>
+                    Pista {hintCount} de {exercise.hints.length}
+                  </strong>
+                  {exercise.hints.slice(0, hintCount).map((hint) => (
+                    <p key={hint}>{hint}</p>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
         <div className="editor-panel panel">
           <div className="editor-toolbar">
             <span className="file-tab">
