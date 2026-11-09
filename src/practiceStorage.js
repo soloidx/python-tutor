@@ -1,3 +1,5 @@
+import { createPracticeRound } from "./practiceRound.js";
+
 // Practice owns one record, independent of course progress and conversations.
 export const practiceStorageKey = "python-tutor:practice:v1";
 const identity = (value) => typeof value === "string" && value.length > 0;
@@ -153,9 +155,21 @@ function validWork(work, entry) {
 }
 
 export function loadPractice(publication) {
+  let raw;
   try {
-    const raw = localStorage.getItem(practiceStorageKey);
-    if (raw === null) return null;
+    raw = localStorage.getItem(practiceStorageKey);
+  } catch {
+    return { round: null, notice: null, storageAvailable: false };
+  }
+  const damaged = () => ({
+    round: createPracticeRound(publication),
+    notice:
+      "No pudimos recuperar la ronda guardada porque el registro está dañado. Comenzamos una ronda nueva con los ejercicios disponibles.",
+    storageAvailable: true,
+  });
+  if (raw === null)
+    return { round: null, notice: null, storageAvailable: true };
+  try {
     const saved = JSON.parse(raw);
     if (
       !object(saved) ||
@@ -165,15 +179,19 @@ export function loadPractice(publication) {
       !Array.isArray(saved.entries) ||
       typeof saved.reviewing !== "boolean"
     )
-      return null;
+      return damaged();
     const ids = saved.entries.map((entry) => entry?.id);
     if (
       !ids.every(identity) ||
       new Set(ids).size !== ids.length ||
       (ids.length ? !ids.includes(saved.currentId) : saved.currentId !== null)
     )
-      return null;
-    const entries = [];
+      return damaged();
+    const complete =
+      saved.entries.length > 0 &&
+      saved.entries.every((entry) => entry.status === "resolved");
+    if (saved.reviewing && !complete) return damaged();
+    // Validate the whole record before using any snapshot or live reference.
     for (const entry of saved.entries) {
       if (
         !identity(entry.courseId) ||
@@ -182,30 +200,48 @@ export function loadPractice(publication) {
         !validSnapshot(entry.snapshot, entry) ||
         !validWork(entry.work, entry)
       )
-        return null;
+        return damaged();
+    }
+    const changed = saved.revision !== publication.catalog.revision;
+    if (changed && !complete)
+      return {
+        round: createPracticeRound(publication),
+        notice:
+          "El catálogo cambió. Sustituimos tu ronda incompleta por una nueva, sin trasladar sus respuestas ni su progreso.",
+        storageAvailable: true,
+      };
+    const archived = changed && complete;
+    const entries = [];
+    for (const entry of saved.entries) {
+      const snapshot = snapshotEntry(entry.snapshot);
       const course = publication.courses[entry.courseId];
       const topic = course?.topics.find((item) => item.id === entry.topicId);
       const exercise = topic?.exercises.find((item) => item.id === entry.id);
-      if (!exercise) return null;
+      if (!archived && !exercise) return damaged();
       entries.push({
         id: entry.id,
-        course,
-        topic,
-        exercise,
+        course: archived ? snapshot.course : course,
+        topic: archived ? snapshot.topic : topic,
+        exercise: archived ? snapshot.exercise : exercise,
         status: entry.status,
         work: projectWork(entry.work),
-        snapshot: snapshotEntry(entry.snapshot),
+        snapshot,
       });
     }
     return {
-      id: saved.id,
-      revision: saved.revision,
-      currentId: saved.currentId,
-      reviewing: saved.reviewing,
-      entries,
+      round: {
+        archived,
+        id: saved.id,
+        revision: saved.revision,
+        currentId: saved.currentId,
+        reviewing: saved.reviewing,
+        entries,
+      },
+      notice: null,
+      storageAvailable: true,
     };
   } catch {
-    return null;
+    return damaged();
   }
 }
 
