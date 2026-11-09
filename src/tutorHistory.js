@@ -10,6 +10,103 @@ export const historyStorageKey = (courseId) =>
 export const historyStorageWarning =
   "No se pudo guardar o recuperar el historial del tutor. Puedes continuar temporalmente; los mensajes no guardados se perderán al recargar. Esto no cambia la configuración del tutor.";
 
+const record = (value) =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+const hasOnly = (value, keys) =>
+  record(value) && Object.keys(value).every((key) => keys.includes(key));
+const text = (value) => typeof value === "string";
+const nonEmptyText = (value) => text(value) && value.length > 0;
+
+function validCapture(capture, courseId, topicId) {
+  if (!record(capture) || !hasOnly(capture, ["course", "topic", "exercise", "draft", "lastResult", "selectedOptionId", "selectionStatus", "feedback"])) return false;
+  if (
+    !record(capture.course) ||
+    !hasOnly(capture.course, ["id", "title"]) ||
+    capture.course.id !== courseId ||
+    !nonEmptyText(capture.course.title) ||
+    !record(capture.topic) ||
+    !hasOnly(capture.topic, ["id", "title", "summary", "explanation", "example", "takeaway"]) ||
+    capture.topic.id !== topicId ||
+    !nonEmptyText(capture.topic.title) ||
+    !text(capture.topic.summary) ||
+    !Array.isArray(capture.topic.explanation) ||
+    !capture.topic.explanation.every(text) ||
+    !text(capture.topic.example) ||
+    !text(capture.topic.takeaway) ||
+    !record(capture.exercise) ||
+    !nonEmptyText(capture.exercise.id) ||
+    !nonEmptyText(capture.exercise.title) ||
+    !nonEmptyText(capture.exercise.prompt)
+  ) return false;
+
+  const type = capture.exercise.type;
+  if (type === undefined || type === "code") {
+    if (
+      !hasOnly(capture.exercise, ["id", "title", "prompt", "type"]) ||
+      !hasOnly(capture, ["course", "topic", "exercise", "draft", "lastResult"]) ||
+      !text(capture.draft) ||
+      !validCodeResult(capture.lastResult)
+    ) return false;
+    return true;
+  }
+  if (type !== "choice") return false;
+  if (
+    !hasOnly(capture.exercise, ["id", "title", "prompt", "type", "code", "options"]) ||
+    (Object.hasOwn(capture.exercise, "code") && !nonEmptyText(capture.exercise.code)) ||
+    !Array.isArray(capture.exercise.options) ||
+    capture.exercise.options.length < 2
+  ) return false;
+  const optionIds = capture.exercise.options.map((option) => option?.id);
+  if (
+    !capture.exercise.options.every(
+      (option) =>
+        record(option) &&
+        hasOnly(option, ["id", "text"]) &&
+        nonEmptyText(option.id) &&
+        nonEmptyText(option.text),
+    ) ||
+    new Set(optionIds).size !== optionIds.length ||
+    !hasOnly(capture, ["course", "topic", "exercise", "selectedOptionId", "selectionStatus", "lastResult", "feedback"]) ||
+    !(capture.selectedOptionId === null || optionIds.includes(capture.selectedOptionId)) ||
+    !["none", "pending", "checked"].includes(capture.selectionStatus) ||
+    !validChoiceResult(capture.lastResult, optionIds) ||
+    !(capture.feedback === null || text(capture.feedback))
+  ) return false;
+  if (capture.selectionStatus === "none")
+    return capture.selectedOptionId === null && capture.lastResult === null && capture.feedback === null;
+  if (capture.selectionStatus === "pending")
+    return capture.selectedOptionId !== null && capture.feedback === null;
+  return (
+    capture.selectedOptionId !== null &&
+    capture.lastResult?.optionId === capture.selectedOptionId &&
+    nonEmptyText(capture.feedback)
+  );
+}
+
+function validCodeResult(result) {
+  if (result === null) return true;
+  if (
+    !record(result) ||
+    !hasOnly(result, ["output", "error", "previous", "code"]) ||
+    !text(result.output) ||
+    !(result.error === null || text(result.error)) ||
+    typeof result.previous !== "boolean"
+  ) return false;
+  return result.previous
+    ? nonEmptyText(result.code)
+    : !Object.hasOwn(result, "code");
+}
+
+function validChoiceResult(result, optionIds) {
+  return (
+    result === null ||
+    (record(result) &&
+      hasOnly(result, ["optionId", "correct"]) &&
+      optionIds.includes(result.optionId) &&
+      typeof result.correct === "boolean")
+  );
+}
+
 function validExchange(item, courseId) {
   return (
     item &&
@@ -19,6 +116,7 @@ function validExchange(item, courseId) {
     typeof item.topicId === "string" &&
     typeof item.message === "string" &&
     item.capture?.topic?.id === item.topicId &&
+    validCapture(item.capture, courseId, item.topicId) &&
     typeof item.capture?.exercise?.id === "string" &&
     typeof item.capture?.exercise?.title === "string" &&
     Array.isArray(item.attempts) &&
