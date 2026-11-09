@@ -1951,3 +1951,11 @@ textarea:focus-visible {
     margin: 30px auto;
   }
 }
+
+.practice-tutor {
+  margin: 0 20px 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.practice-tutor .practice-tutor-notice { margin: 16px; }
