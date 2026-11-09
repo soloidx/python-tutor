@@ -284,7 +284,8 @@ test("renders declarative strings as text and optional assessment only when supp
   await expect(
     page.getByText('<img src=x onerror="window.injected=true">'),
   ).toBeVisible();
-  await expect(page.locator("img")).toHaveCount(0);
+  await expect(page.locator('img[src="x"]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.injected)).toBeUndefined();
   await page.getByRole("button", { name: "Comenzar evaluación final" }).click();
   await expect(
     page.getByRole("heading", { name: "Evaluación final", exact: true }),

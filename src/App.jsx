@@ -14,6 +14,14 @@ import { createConversationService } from "./tutorConversation.js";
 import { captureContext } from "./tutorContext.js";
 import { usePython } from "./usePython.js";
 
+import pathArt from "./assets/resources/path.svg";
+import courseArt from "./assets/resources/course.svg";
+import topicArt from "./assets/resources/topic.svg";
+
+function ResourceArt({ kind }) {
+  return <span className={`resource-art resource-art-${kind}`} aria-hidden="true"><img src={{ path: pathArt, course: courseArt, topic: topicArt }[kind]} alt="" /></span>;
+}
+
 function Icon({ name, ...props }) {
   const paths = {
     book: "M4 4h6a3 3 0 0 1 3 2v15a4 4 0 0 0-3-2H4z M13 6a3 3 0 0 1 3-2h5v15h-5a4 4 0 0 0-3 2",
@@ -249,6 +257,7 @@ export default function App({ publication }) {
           </button>
           {path && (
             <button
+              aria-label={path.title}
               className="text-button"
               onClick={() => navigate({ screen: "courses" })}
             >
@@ -257,6 +266,7 @@ export default function App({ publication }) {
           )}
           {course && (
             <button
+              aria-label={course.title}
               className="text-button"
               onClick={() => navigate({ screen: "topics" })}
             >
@@ -275,115 +285,64 @@ export default function App({ publication }) {
           <p className="storage-warning learning-notice" role="alert">{resetError || storageMessage}</p>
         )}
         {view === "paths" && (
-          <main className="courses">
-            <div className="eyebrow">APRENDE. PRUEBA. DESCUBRE.</div>
-            <h1>Cursos y rutas de aprendizaje</h1>
-            <p className="page-subtitle">Elige tu objetivo de aprendizaje.</p>
-            {catalog.learningPaths.map((item) => (
-              <article className="panel course-body" key={item.id}>
-                <h2>{item.title}</h2>
-                <p>{item.description}</p>
-                <p>
-                  {item.courseIds.every((id) =>
-                    courseProgress(courses[id], progressByCourse[id].progress)
-                      .status === "Completado",
-                  )
-                    ? "Completado"
-                    : item.courseIds.some((id) =>
-                        courseProgress(courses[id], progressByCourse[id].progress)
-                          .approved > 0,
-                      )
-                      ? "En progreso"
-                      : "Sin iniciar"}
-                </p>
-                <button
-                  className="primary"
-                  onClick={() =>
-                    navigate({
-                      screen: "courses",
-                      pathId: item.id,
-                      courseId: null,
-                      topicId: null,
-                    })
-                  }
-                >
-                  Explorar {item.title}
-                </button>
-              </article>
-            ))}
+          <main className="courses catalog-page">
+            <header className="catalog-heading">
+              <div className="eyebrow">TU PRÓXIMO PASO</div>
+              <h1>Cursos y rutas de aprendizaje</h1>
+              <p className="page-subtitle">Elige un objetivo y aprende a tu ritmo, practicando desde el primer tema.</p>
+              <span className="catalog-count">{catalog.learningPaths.length} rutas disponibles · Acceso libre a todos los temas</span>
+            </header>
+            <div className="resource-grid">
+              {catalog.learningPaths.map((item, index) => {
+                const summaries = item.courseIds.map(id => courseProgress(courses[id], progressByCourse[id].progress));
+                const status = summaries.every(s => s.status === "Completado") ? "Completado" : summaries.some(s => s.approved > 0) ? "En progreso" : "Sin iniciar";
+                const done = summaries.filter(s => s.status === "Completado").length;
+                return <article className="resource-card path-card" key={item.id}>
+                  <div className="resource-card-top"><ResourceArt kind="path" /><span className="resource-type">RUTA {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${status === "Completado" ? "complete" : ""}`}>{status}</span></div>
+                  <h2>{item.title}</h2><p className="resource-description">{item.description}</p>
+                  <div className="resource-meta"><span>{item.courseIds.length} {item.courseIds.length === 1 ? "curso" : "cursos"}</span><span>{done} completados</span></div>
+                  <div className="path-course-preview">{item.courseIds.map(id => <span key={id}><Icon name="book" />{courses[id].title}</span>)}</div>
+                  <button className="primary" aria-label={`Explorar ${item.title}`} onClick={() => navigate({ screen: "courses", pathId: item.id, courseId: null, topicId: null })}>Explorar ruta <Icon name="arrow" /></button>
+                </article>;
+              })}
+            </div>
           </main>
         )}
         {view === "courses" && (
-          <main className="courses">
-            <h1>{path.title}</h1>
-            <p>{path.description}</p>
-            {path.courseIds.map((id) => {
-              const item = courses[id];
-              const summary = courseProgress(item, progressByCourse[id].progress);
-              return (
-                <article className="panel course-body" key={id}>
-                  <h2>{item.title}</h2>
-                  <p>{item.description}</p>
-                  <p>{item.topics.length} temas</p>
-                  <p>
-                    {summary.percentage}% · {summary.approved} / {summary.total} ejercicios aprobados
-                  </p>
-                  <p>{summary.status}</p>
-                  <button
-                    className="primary"
-                    onClick={() =>
-                      navigate({
-                        screen: "topics",
-                        courseId: id,
-                        topicId: null,
-                      })
-                    }
-                  >
-                    Ver temas de {item.title}
-                  </button>
-                  <button
-                    className="secondary"
-                    onClick={() => startCourse(item)}
-                  >
-                    {resumeLabel(item, progressByCourse[id].progress)} {item.title}
-                  </button>
-                </article>
-              );
-            })}
+          <main className="courses catalog-page">
+            <header className="catalog-heading"><div className="eyebrow">RUTA DE APRENDIZAJE</div><h1>{path.title}</h1><p>{path.description}</p><span className="catalog-count">{path.courseIds.length} {path.courseIds.length === 1 ? "curso" : "cursos"} · Puedes comenzar por cualquiera</span></header>
+            <div className="resource-grid">
+              {path.courseIds.map((id, index) => {
+                const item = courses[id];
+                const summary = courseProgress(item, progressByCourse[id].progress);
+                return <article className="resource-card" key={id}>
+                  <div className="resource-card-top"><ResourceArt kind="course" /><span className="resource-type">CURSO {String(index + 1).padStart(2, "0")}</span><span className={`status-badge ${summary.status === "Completado" ? "complete" : ""}`}>{summary.status}</span></div>
+                  <h2>{item.title}</h2><p className="resource-description">{item.description}</p>
+                  <div className="resource-meta"><span>{item.topics.length} temas</span><span>{summary.total} ejercicios</span></div>
+                  <div className="card-progress"><p>{summary.percentage}% · {summary.approved} / {summary.total} ejercicios aprobados</p><progress aria-label={`Progreso de ${item.title}`} value={summary.approved} max={summary.total} /></div>
+                  <div className="resource-actions"><button className="primary" aria-label={`${resumeLabel(item, progressByCourse[id].progress)} ${item.title}`} onClick={() => startCourse(item)}>{resumeLabel(item, progressByCourse[id].progress)} <Icon name="arrow" /></button><button className="secondary" aria-label={`Ver temas de ${item.title}`} onClick={() => navigate({ screen: "topics", courseId: id, topicId: null })}>Ver temas</button></div>
+                </article>;
+              })}
+            </div>
           </main>
         )}
         {view === "topics" && (
-          <main className="courses">
-            <h1>{course.title}</h1>
-            <p>{course.description}</p>
-            <button className="primary" onClick={() => startCourse(course)}>
-              {resumeLabel(course, state.progress)} curso
-            </button>
-            <p>{currentProgress.percentage}% · {currentProgress.approved} / {currentProgress.total} ejercicios aprobados</p>
-            <p>{currentProgress.status}</p>
-            <h2>Temas del curso</h2>
-            {course.topics.map((item, index) => (
-              <article className="panel course-body" key={item.id}>
-                <h3>{item.title}</h3>
-                <p>{item.summary}</p>
-                <button
-                  className="secondary"
-                  onClick={() => openTopic(course, item)}
-                >
-                  {String(index + 1).padStart(2, "0")} {item.title}
-                </button>
-              </article>
-            ))}
-            {course.assessment && (
-              <button
-                className="primary"
-                onClick={() => navigate({ screen: "assessment" })}
-              >
-                {assessmentResult
-                  ? "Ver evaluación final"
-                  : "Comenzar evaluación final"}
-              </button>
-            )}
+          <main className="courses catalog-page">
+            <header className="course-overview"><ResourceArt kind="course" /><div><div className="eyebrow">TU CURSO</div><h1>{course.title}</h1><p>{course.description}</p><span className="status-badge">{currentProgress.status}</span></div><button className="primary" onClick={() => startCourse(course)}>{resumeLabel(course, state.progress)} curso <Icon name="arrow" /></button></header>
+            <div className="course-progress-overview"><p>{currentProgress.percentage}% · {currentProgress.approved} / {currentProgress.total} ejercicios aprobados</p><progress aria-label="Progreso del curso" value={currentProgress.approved} max={currentProgress.total} /></div>
+            <div className="catalog-section-heading"><h2>Temas del curso</h2><span>{course.topics.length} temas · Sin desbloqueos</span></div>
+            <div className="topic-list">
+              {course.topics.map((item, index) => {
+                const approved = item.exercises.filter(e => completed.includes(e.id)).length;
+                return <article className="topic-row" key={item.id}>
+                  <span className="topic-number">{String(index + 1).padStart(2, "0")}</span><ResourceArt kind="topic" />
+                  <div className="topic-row-content"><h3>{item.title}</h3><p>{item.summary}</p><div className="resource-meta"><span>{approved} / {item.exercises.length} ejercicios aprobados</span>{item.duration && <span>{item.duration}</span>}</div></div>
+                  {approved === item.exercises.length && <span className="topic-done"><Icon name="check" />Completado</span>}
+                  <button className="secondary" aria-label={`${String(index + 1).padStart(2, "0")} ${item.title}`} onClick={() => openTopic(course, item)}>Abrir tema <Icon name="arrow" /></button>
+                </article>;
+              })}
+            </div>
+            {course.assessment && <section className="course-assessment-link"><Icon name="check" /><div><h3>Evaluación final</h3><p>Opcional. Comprueba lo aprendido cuando quieras.</p></div><button className="secondary" onClick={() => navigate({ screen: "assessment" })}>{assessmentResult ? "Ver evaluación final" : "Comenzar evaluación final"}</button></section>}
           </main>
         )}
         {(view === "learn" || view === "assessment") && (

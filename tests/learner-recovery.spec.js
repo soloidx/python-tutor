@@ -5,6 +5,7 @@ import {
   publication,
   updateCourse,
   serveCatalog,
+  sourceBase,
 } from "./fixtures/catalog.js";
 
 test.use({ actionTimeout: 8000 });
@@ -379,7 +380,7 @@ test("an unavailable catalog preserves learner data and never creates recovery c
     .click();
   await page.evaluate(() => localStorage.removeItem("python-tutor:catalog:v1"));
   await context.route(
-    "https://soloidx.github.io/python-tutor-content/**",
+    `${sourceBase}**`,
     (route) => route.abort(),
   );
   await page.reload();

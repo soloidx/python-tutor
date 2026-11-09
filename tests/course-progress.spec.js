@@ -59,7 +59,7 @@ test('visits and legacy data do not approve exercises; completing a shared cours
   await expect(page.getByRole('status')).toContainText('Todavía no');
   await page.getByRole('button', { name: 'Volver a temas', exact: true }).last().click();
   await expect(page.getByText('100% · 1 / 1 ejercicios aprobados', { exact: true })).toBeVisible();
-  await expect(page.getByText('Completado', { exact: true })).toBeVisible();
+  await expect(page.getByText('Completado', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Repasar curso', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Todas las rutas', exact: true }).click();
   const completedPath = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Camino a la automatización', exact: true }) });
