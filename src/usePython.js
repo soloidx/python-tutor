@@ -9,9 +9,11 @@ export function usePython(onResult) {
   const [generation, setGeneration] = useState(0);
   useEffect(() => {
     setStatus("loading");
+    let disposed = false;
     const instance = new Worker(new URL("python-worker.js", document.baseURI));
     worker.current = instance;
     const fail = (message) => {
+      if (disposed) return;
       clearTimeout(timer.current);
       setStatus("error");
       receive.current({ passed: false, output: "", error: message });
@@ -25,6 +27,7 @@ export function usePython(onResult) {
       45000,
     );
     instance.onmessage = ({ data }) => {
+      if (disposed) return;
       clearTimeout(timer.current);
       if (data.type === "load-error")
         fail("No se pudo cargar Python. Vuelve a intentarlo.");
@@ -37,6 +40,7 @@ export function usePython(onResult) {
     instance.onerror = () =>
       fail("No se pudo iniciar Python. Vuelve a intentarlo.");
     return () => {
+      disposed = true;
       clearTimeout(timer.current);
       instance.terminate();
     };

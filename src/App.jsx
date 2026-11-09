@@ -19,6 +19,8 @@ import { createConversationService } from "./tutorConversation.js";
 import { captureContext } from "./tutorContext.js";
 import { Icon } from "./Icon.jsx";
 import { ExerciseWorkspace } from "./ExerciseWorkspace.jsx";
+import { Practice } from "./Practice.jsx";
+import { createPracticeRound } from "./practiceRound.js";
 
 import pathArt from "./assets/resources/path.svg";
 import courseArt from "./assets/resources/course.svg";
@@ -49,6 +51,7 @@ export default function App({ publication }) {
   );
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [practiceRound, setPracticeRound] = useState(null);
   const [learningTab, setLearningTab] = useState("lesson");
   const focusTutorAfterSettings = useRef(false);
   const rootLocation = {
@@ -85,6 +88,8 @@ export default function App({ publication }) {
     }
   }, [settingsOpen]);
   function navigate(next) {
+    if (next.screen === "practice")
+      setPracticeRound((round) => round || createPracticeRound(publication));
     setConfirmReset(false);
     conversation.cancel();
     setResumeNotice("");
@@ -196,7 +201,7 @@ export default function App({ publication }) {
     ? courseProgress(course, state.progress)
     : null;
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${view === "practice" ? "practice-shell" : ""}`}>
       <aside className="sidebar">
         <a
           className="brand"
@@ -216,6 +221,21 @@ export default function App({ publication }) {
           <button className="nav" onClick={() => navigate(rootLocation)}>
             <Icon name="grid" />
             Cursos y rutas
+          </button>
+          <button
+            className={`nav ${view === "practice" ? "active" : ""}`}
+            aria-current={view === "practice" ? "page" : undefined}
+            onClick={() =>
+              navigate({
+                screen: "practice",
+                pathId: null,
+                courseId: null,
+                topicId: null,
+              })
+            }
+          >
+            <Icon name="code" />
+            Práctica
           </button>
           {course && (
             <button className="nav" onClick={() => startCourse(course)}>
@@ -292,6 +312,18 @@ export default function App({ publication }) {
           <p className="storage-warning learning-notice" role="alert">
             {resetError || storageMessage}
           </p>
+        )}
+        {view === "practice" && practiceRound && (
+          <Practice
+            round={practiceRound}
+            onChange={setPracticeRound}
+            onNewRound={() =>
+              setPracticeRound(createPracticeRound(publication))
+            }
+            onCourses={() => navigate(rootLocation)}
+            onConfigure={() => setSettingsOpen(true)}
+            tutorConfigured={!!access.config?.key}
+          />
         )}
         {view === "paths" && (
           <main className="courses catalog-page">
