@@ -1951,3 +1951,13 @@ textarea:focus-visible {
     margin: 30px auto;
   }
 }
+
+.practice-warning {
+  margin: 16px 0;
+  padding: 14px 18px;
+  border: 1px solid #edc895;
+  border-radius: 12px;
+  background: #fff8ed;
+  color: #854616;
+  overflow-wrap: anywhere;
+}

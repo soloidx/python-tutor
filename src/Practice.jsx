@@ -1,9 +1,12 @@
 import React from "react";
+import { ArchivedPracticeExercise } from "./ArchivedPracticeExercise.jsx";
 import { ExerciseWorkspace } from "./ExerciseWorkspace.jsx";
 
 export function Practice({
   round,
   saved,
+  notice,
+  storageAvailable = true,
   onChange,
   onNewRound,
   onCourses,
@@ -42,6 +45,23 @@ export function Practice({
           </button>
         )}
       </header>
+      {notice && (
+        <p className="practice-warning" role="alert">
+          {notice}
+        </p>
+      )}
+      {!storageAvailable && (
+        <p className="practice-warning" role="alert">
+          No se puede guardar la ronda. Puedes seguir practicando en esta
+          sesión, pero tu progreso no sobrevivirá a una recarga.
+        </p>
+      )}
+      {round.archived && (
+        <p className="practice-warning">
+          Esta ronda completada pertenece a una revisión anterior. Puedes
+          consultar tus respuestas en modo de solo lectura.
+        </p>
+      )}
       {!current ? (
         <section className="practice-state panel">
           <h2>Aún no hay ejercicios para practicar</h2>
@@ -125,29 +145,33 @@ export function Practice({
                   <strong>{current.topic.title}</strong>
                   <span>{current.course.title}</span>
                 </div>
-                <ExerciseWorkspace
-                  key={`${round.id}:${current.id}`}
-                  exercise={current.exercise}
-                  state={current.work}
-                  approved={current.status === "resolved"}
-                  label={
-                    current.exercise.type === "choice"
-                      ? "EJERCICIO DE SELECCIÓN"
-                      : "EJERCICIO DE CÓDIGO"
-                  }
-                  onStateChange={(work) =>
-                    updateEntry(current.id, (entry) => ({
-                      work,
-                      status:
-                        entry.status === "resolved"
-                          ? "resolved"
-                          : "in-progress",
-                    }))
-                  }
-                  onComplete={() =>
-                    updateEntry(current.id, () => ({ status: "resolved" }))
-                  }
-                />
+                {round.archived ? (
+                  <ArchivedPracticeExercise entry={current} />
+                ) : (
+                  <ExerciseWorkspace
+                    key={`${round.id}:${current.id}`}
+                    exercise={current.exercise}
+                    state={current.work}
+                    approved={current.status === "resolved"}
+                    label={
+                      current.exercise.type === "choice"
+                        ? "EJERCICIO DE SELECCIÓN"
+                        : "EJERCICIO DE CÓDIGO"
+                    }
+                    onStateChange={(work) =>
+                      updateEntry(current.id, (entry) => ({
+                        work,
+                        status:
+                          entry.status === "resolved"
+                            ? "resolved"
+                            : "in-progress",
+                      }))
+                    }
+                    onComplete={() =>
+                      updateEntry(current.id, () => ({ status: "resolved" }))
+                    }
+                  />
+                )}
                 {!tutorConfigured && (
                   <aside className="practice-tutor-notice">
                     <p>El tutor no está configurado.</p>
