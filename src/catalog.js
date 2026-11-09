@@ -38,6 +38,11 @@ function unique(values, at) {
 function fields(value, names, at) {
   names.forEach((name) => text(value[name], `${at}.${name}`));
 }
+function absent(value, names, at) {
+  names.forEach((name) =>
+    requireValue(!Object.hasOwn(value, name), `${at}.${name} no es válido aquí`),
+  );
+}
 function version(value, at) {
   object(value, at);
   requireValue(value.schemaVersion === 1, `${at}: schemaVersion desconocida`);
@@ -156,17 +161,58 @@ export function validateCourse(course, expectedId) {
     for (const exercise of topic.exercises) {
       object(exercise, "exercise");
       slug(exercise.id, "exercise.id");
-      fields(
-        exercise,
-        ["title", "prompt", "check", "success", "retry"],
-        "exercise",
-      );
-      requireValue(
-        typeof exercise.starter === "string",
-        "exercise.starter debe ser texto",
-      );
+      fields(exercise, ["title", "prompt", "retry"], "exercise");
       list(exercise.hints, "exercise.hints", false);
       exercise.hints.forEach((hint) => text(hint, "exercise.hints"));
+      const type = exercise.type === undefined ? "code" : exercise.type;
+      requireValue(
+        type === "code" || type === "choice",
+        "exercise.type desconocido",
+      );
+      if (type === "code") {
+        absent(
+          exercise,
+          ["code", "options", "answerId", "explanation"],
+          "exercise",
+        );
+        fields(exercise, ["check", "success"], "exercise");
+        requireValue(
+          typeof exercise.starter === "string",
+          "exercise.starter debe ser texto",
+        );
+      } else {
+        absent(exercise, ["starter", "check", "success"], "exercise");
+        list(exercise.options, "exercise.options");
+        requireValue(
+          exercise.options.length >= 2,
+          "exercise.options necesita al menos dos opciones",
+        );
+        for (const option of exercise.options) {
+          object(option, "exercise.option");
+          slug(option.id, "exercise.option.id");
+          text(option.text, "exercise.option.text");
+          if (Object.hasOwn(option, "retry"))
+            text(option.retry, "exercise.option.retry");
+        }
+        unique(
+          exercise.options.map((option) => option.id),
+          "exercise.options",
+        );
+        slug(exercise.answerId, "exercise.answerId");
+        requireValue(
+          exercise.options.some((option) => option.id === exercise.answerId),
+          "exercise.answerId no existe en las opciones",
+        );
+        const correct = exercise.options.find(
+          (option) => option.id === exercise.answerId,
+        );
+        requireValue(
+          !Object.hasOwn(correct, "retry"),
+          "exercise.option.correcta no puede tener retry",
+        );
+        fields(exercise, ["explanation"], "exercise");
+        if (Object.hasOwn(exercise, "code")) text(exercise.code, "exercise.code");
+      }
       exercises.push(exercise.id);
     }
   }
