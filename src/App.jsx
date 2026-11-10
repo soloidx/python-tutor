@@ -20,6 +20,7 @@ import { captureContext } from "./tutorContext.js";
 import { Icon } from "./Icon.jsx";
 import { ExerciseWorkspace } from "./ExerciseWorkspace.jsx";
 import { Practice } from "./Practice.jsx";
+import { PracticeTutor } from "./PracticeTutor.jsx";
 import { createPracticeRound } from "./practiceRound.js";
 import { loadPractice, savePractice } from "./practiceStorage.js";
 
@@ -96,7 +97,9 @@ export default function App({ publication }) {
   useEffect(() => {
     if (!settingsOpen && focusTutorAfterSettings.current) {
       focusTutorAfterSettings.current = false;
-      document.getElementById("tutor-tab")?.focus();
+      if (location.screen === "practice")
+        document.querySelector(".practice-tutor textarea")?.focus();
+      else document.getElementById("tutor-tab")?.focus();
     }
   }, [settingsOpen]);
   function navigate(next) {
@@ -336,8 +339,14 @@ export default function App({ publication }) {
               setPracticeRound(createPracticeRound(publication))
             }
             onCourses={() => navigate(rootLocation)}
-            onConfigure={() => setSettingsOpen(true)}
-            tutorConfigured={!!access.config?.key}
+            renderTutor={(entry) => (
+              <PracticeTutor
+                entry={entry}
+                access={access}
+                conversation={conversation}
+                onConfigure={() => setSettingsOpen(true)}
+              />
+            )}
           />
         )}
         {view === "paths" && (
@@ -777,7 +786,7 @@ export default function App({ publication }) {
             focusTutorAfterSettings.current = true;
             setSettingsOpen(false);
             setLearningTab("tutor");
-            if (course && view !== "learn") startCourse(course);
+            if (course && view !== "learn" && view !== "practice") startCourse(course);
           }}
         />
       )}

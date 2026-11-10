@@ -10,8 +10,7 @@ export function Practice({
   onChange,
   onNewRound,
   onCourses,
-  onConfigure,
-  tutorConfigured,
+  renderTutor,
 }) {
   const resolved = round.entries.filter(
     (entry) => entry.status === "resolved",
@@ -172,17 +171,7 @@ export function Practice({
                     }
                   />
                 )}
-                {!tutorConfigured && (
-                  <aside className="practice-tutor-notice">
-                    <p>El tutor no está configurado.</p>
-                    <p>
-                      Puedes resolver los ejercicios y consultar las pistas.
-                    </p>
-                    <button className="text-button" onClick={onConfigure}>
-                      Configurar tutor
-                    </button>
-                  </aside>
-                )}
+                {renderTutor?.(current)}
               </section>
             </div>
           )}
