@@ -8,6 +8,11 @@ export function Practice({
   saved,
   notice,
   storageAvailable = true,
+  pendingChanges,
+  reviewingChanges,
+  onReviewChanges,
+  onDiscardChanges,
+  onApplyChanges,
   onChange,
   onNewRound,
   onCourses,
@@ -49,6 +54,19 @@ export function Practice({
         <p className="practice-warning" role="alert">
           {notice}
         </p>
+      )}
+      {pendingChanges && (
+        <div className="practice-warning" role="status">
+          {reviewingChanges ? (
+            <>
+              <p>Estás revisando cambios de esta sesión que aún no están guardados.</p>
+              <button className="secondary" onClick={onApplyChanges}>Aplicar cambios revisados</button>
+              <button className="secondary" onClick={onDiscardChanges}>Volver a la ronda guardada</button>
+            </>
+          ) : (
+            <button className="secondary" onClick={onReviewChanges}>Revisar cambios de esta sesión</button>
+          )}
+        </div>
       )}
       {!storageAvailable && (
         <p className="practice-warning" role="alert">

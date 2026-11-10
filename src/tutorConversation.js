@@ -68,6 +68,9 @@ export function createConversationService() {
         state = { ...state, storageWarning: warning ? deletionWarning || warning : "" };
       }
       listeners.forEach((listener) => listener());
+    }).catch(() => {
+      state = { ...state, storageWarning: "No se puede proteger la conversación entre pestañas. Los cambios solo están disponibles en esta sesión." };
+      listeners.forEach((listener) => listener());
     });
   };
   function update(scope, change) {

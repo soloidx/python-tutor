@@ -12,6 +12,8 @@ test("a second tab does not erase recently completed learning", async ({ page, c
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
   await other.getByRole("button", { name: /02 Expresiones y salida/ }).click();
   await expect(other.getByRole("alert")).toContainText("otra pestaña");
+  await expect(other.getByText(/Cambio pendiente en/)).toBeVisible();
+  await other.getByRole("button", { name: "Aplicar cambio revisado" }).click();
   await other.reload();
   await enterCourse(other);
   await expect(other.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
@@ -25,6 +27,20 @@ test("practice detects a round changed by another tab", async ({ page, context }
   await expect(page.getByText("Ronda guardada", { exact: false })).toBeVisible();
   await other.getByRole("button", { name: "Práctica", exact: true }).click();
   await expect(other.getByRole("alert")).toContainText("otra pestaña");
+  await other.getByRole("button", { name: "Revisar cambios de esta sesión" }).click();
+  await expect(other.getByText("Estás revisando cambios de esta sesión que aún no están guardados.")).toBeVisible();
+  await other.getByLabel("Código Python").fill("# cambio revisado");
+  await page.getByLabel("Código Python").fill("# cambio más reciente");
+  await expect(page.getByText("Ronda guardada", { exact: false })).toBeVisible();
+  await other.getByRole("button", { name: "Aplicar cambios revisados" }).click();
+  await other.getByRole("button", { name: "Revisar cambios de esta sesión" }).click();
+  await expect(other.getByLabel("Código Python")).toHaveValue("# cambio revisado");
+  await other.getByRole("button", { name: "Aplicar cambios revisados" }).click();
+  await expect(other.getByText("Ronda guardada", { exact: false })).toBeVisible();
+  await expect(other.getByRole("button", { name: "Revisar cambios de esta sesión" })).toHaveCount(0);
+  await other.reload();
+  await other.getByRole("button", { name: "Práctica", exact: true }).click();
+  await expect(other.getByLabel("Código Python")).toHaveValue("# cambio revisado");
 });
 
 test("a stale tab cannot overwrite a newer tutor conversation", async ({ page, context }) => {
@@ -166,4 +182,18 @@ test("failed migration keeps the legacy learning available", async ({ page }) =>
   await page.reload();
   await enterCourse(page);
   await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+});
+
+test("denied learner locks keep changes in the session with a warning", async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.locks.request = () => Promise.reject(new DOMException("Blocked", "SecurityError"));
+  });
+  await page.goto("/");
+  await enterCourse(page);
+  await expect(page.getByRole("alert")).toContainText("solo está disponible en esta sesión");
+  await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
+  await expect(page.getByRole("heading", { name: "Expresiones y salida", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
+  await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("No se pudo proteger el reinicio");
 });

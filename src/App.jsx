@@ -65,8 +65,11 @@ export default function App({ publication }) {
   );
   const [practiceSaved, setPracticeSaved] = useState(false);
   const [practiceConflict, setPracticeConflict] = useState("");
+  const [pendingPractice, setPendingPractice] = useState(null);
+  const [reviewingPractice, setReviewingPractice] = useState(false);
+  const applyingPractice = useRef(false);
   useEffect(() => {
-    if (!practiceRound || !practiceStorageAvailable) return;
+    if (!practiceRound || !practiceStorageAvailable || reviewingPractice) return;
     let cancelled = false;
     setPracticeSaved(false);
     if (!navigator.locks) { setPracticeStorageAvailable(false); return; }
@@ -75,15 +78,24 @@ export default function App({ publication }) {
       const saved = savePractice(practiceRound);
       if (saved === "conflict") {
         const latest = loadPractice(publication);
+        setPendingPractice(practiceRound);
+        applyingPractice.current = false;
         setPracticeRound(latest.round);
         setPracticeConflict("La ronda cambió en otra pestaña. Se recargó la versión guardada; revisa la operación antes de intentarla de nuevo.");
       } else {
         setPracticeSaved(saved);
+        if (saved && applyingPractice.current) {
+          applyingPractice.current = false;
+          setPendingPractice(null);
+          setPracticeConflict("");
+        }
         if (!saved) setPracticeStorageAvailable(false);
       }
+    }).catch(() => {
+      if (!cancelled) setPracticeStorageAvailable(false);
     });
     return () => { cancelled = true; };
-  }, [practiceRound, practiceStorageAvailable]);
+  }, [practiceRound, practiceStorageAvailable, reviewingPractice]);
   const [learningTab, setLearningTab] = useState("lesson");
   const focusTutorAfterSettings = useRef(false);
   const rootLocation = {
@@ -156,6 +168,7 @@ export default function App({ publication }) {
       ? Object.values(progressByCourse).find((item) => item.message)?.message
       : "") ||
     "";
+  const [pendingProgress, setPendingProgress] = useState(null);
   const progressRef = useRef(progressByCourse);
   progressRef.current = progressByCourse;
   async function updateProgress(id, change) {
@@ -163,17 +176,18 @@ export default function App({ publication }) {
       const previous = progressRef.current;
       const progress = { ...previous[id].progress, ...change };
       const saved = saveProgress(courses[id], progress);
+      if (saved === "conflict") setPendingProgress({ id, change });
+      const latest = saved === "conflict" ? loadProgress(courses[id]) : null;
       const next = saved === "conflict"
-        ? { ...loadProgress(courses[id]), message: "El progreso cambió en otra pestaña. Se recargó la versión guardada; revisa la operación antes de intentarla de nuevo." }
-        : { progress, message: saved ? previous[id].message : [previous[id].message, previous[id].message.includes("No se pudo guardar el progreso") ? "" : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión."].filter(Boolean).join(" ") };
+        ? { ...latest, message: [latest.message, "El progreso cambió en otra pestaña. Se recargó la versión guardada; revisa la operación antes de intentarla de nuevo."].filter(Boolean).join(" ") }
+        : { progress, message: saved ? previous[id].message.replace("El progreso cambió en otra pestaña. Se recargó la versión guardada; revisa la operación antes de intentarla de nuevo.", "").trim() : [previous[id].message, previous[id].message.includes("No se pudo guardar el progreso") ? "" : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión."].filter(Boolean).join(" ") };
       progressRef.current = { ...previous, [id]: next };
       setProgressByCourse(progressRef.current);
     };
-    if (!navigator.locks) {
-      setProgressByCourse((previous) => ({ ...previous, [id]: { progress: { ...previous[id].progress, ...change }, message: "No se pudo guardar el progreso: este navegador no permite protegerlo entre pestañas. Tu avance solo está disponible en esta sesión." } }));
-      return;
-    }
-    await navigator.locks.request("python-tutor:learner", apply);
+    const sessionOnly = () => setProgressByCourse((previous) => ({ ...previous, [id]: { progress: { ...previous[id].progress, ...change }, message: "No se pudo guardar el progreso: este navegador no permite protegerlo entre pestañas. Tu avance solo está disponible en esta sesión." } }));
+    if (!navigator.locks) { sessionOnly(); return; }
+    try { await navigator.locks.request("python-tutor:learner", apply); }
+    catch { sessionOnly(); }
   }
   useEffect(() => {
     if (location.screen === "learn" && course && topic) {
@@ -249,7 +263,7 @@ export default function App({ publication }) {
       } catch {
         setResetError("No se pudo guardar el reinicio. Se conserva la última versión guardada; vuelve a intentarlo.");
       }
-    });
+    }).catch(() => setResetError("No se pudo proteger el reinicio entre pestañas; no se modificaron los datos guardados."));
   }
   const currentProgress = course
     ? courseProgress(course, state.progress)
@@ -367,11 +381,49 @@ export default function App({ publication }) {
             {resetError || storageMessage}
           </p>
         )}
+        {pendingProgress && (
+          <div className="storage-warning learning-notice">
+            <p>
+              Cambio pendiente en {courses[pendingProgress.id]?.title}: {pendingProgress.change.topicId
+                ? `continuar en ${courses[pendingProgress.id]?.topics.find((item) => item.id === pendingProgress.change.topicId)?.title || "el tema seleccionado"}`
+                : pendingProgress.change.completed
+                  ? "actualizar los ejercicios completados"
+                  : "actualizar el resultado de la evaluación"}.
+            </p>
+            <button className="secondary" onClick={() => {
+              const { id, change } = pendingProgress;
+              const completed = change.completed
+                ? [...new Set([...progressRef.current[id].progress.completed, ...change.completed])]
+                : undefined;
+              setPendingProgress(null);
+              updateProgress(id, completed ? { ...change, completed } : change);
+            }}>Aplicar cambio revisado</button>
+            <button className="secondary" onClick={() => setPendingProgress(null)}>Descartar cambio</button>
+          </div>
+        )}
         {view === "practice" && practiceRound && (
           <Practice
             round={practiceRound}
             saved={practiceSaved && practiceStorageAvailable}
-            notice={[practiceConflict, practiceRecovery.notice, practiceRecovery.recoveryWarning].filter(Boolean).join(" ")}
+            notice={[practiceConflict, practiceRecovery.notice, practiceRecovery.recoveryWarning].filter(Boolean).join(" ")} 
+            pendingChanges={!!pendingPractice}
+            reviewingChanges={reviewingPractice}
+            onReviewChanges={() => {
+              setPracticeSaved(false);
+              setReviewingPractice(true);
+              setPracticeRound(pendingPractice);
+            }}
+            onDiscardChanges={() => {
+              const latest = loadPractice(publication);
+              setPendingPractice(null);
+              setPracticeConflict("");
+              setReviewingPractice(false);
+              setPracticeRound(latest.round);
+            }}
+            onApplyChanges={() => {
+              applyingPractice.current = true;
+              setReviewingPractice(false);
+            }}
             storageAvailable={practiceStorageAvailable}
             onChange={(change) => { setPracticeSaved(false); setPracticeRound(change); }}
             onNewRound={() => {

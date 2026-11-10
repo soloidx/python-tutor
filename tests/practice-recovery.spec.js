@@ -134,6 +134,7 @@ for (const damage of [
   }) => {
     await open(page, context, single("damaged"));
     await page.getByLabel("Ocho", { exact: true }).check();
+    await expect(page.getByText("Ronda guardada", { exact: false })).toBeVisible();
     await page.evaluate(
       ({ key, damage }) => {
         const record = JSON.parse(window.__learnerTest.getItem(key));
