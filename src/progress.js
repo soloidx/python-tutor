@@ -1,3 +1,4 @@
+import { originalLocalId } from "./identity.js";
 import {
   preserveLearnerRecord,
   writeLearnerRecord,
@@ -41,10 +42,15 @@ export function resumeLabel(course, progress) {
 }
 
 export function loadProgress(course) {
-  const key = progressStorageKey(course.id);
+  let key = progressStorageKey(course.id);
   let raw;
   try {
     raw = localStorage.getItem(key);
+    const legacyId = originalLocalId(course.id);
+    if (raw === null && legacyId !== null) {
+      key = progressStorageKey(legacyId);
+      raw = localStorage.getItem(key);
+    }
     if (raw === null) return { progress: emptyProgress(), message: "" };
   } catch {
     return {
@@ -93,7 +99,8 @@ export function loadProgress(course) {
   const message = damaged
     ? preserveLearnerRecord(key, course.id, "progress", raw)
     : "";
-  if (damaged) writeLearnerRecord(key, JSON.stringify(progress));
+  if (damaged)
+    writeLearnerRecord(progressStorageKey(course.id), JSON.stringify(progress));
   return { progress, message };
 }
 
@@ -109,21 +116,28 @@ export function saveProgress(course, progress) {
 }
 
 export function removeProgress(course) {
-  try {
-    localStorage.removeItem(progressStorageKey(course.id));
-    forgetProtectedRecord(progressStorageKey(course.id));
-    return true;
-  } catch {
+  const legacy = originalLocalId(course.id);
+  const keys = [
+    progressStorageKey(course.id),
+    ...(legacy === null ? [] : [progressStorageKey(legacy)]),
+  ];
+  let success = true;
+  for (const key of keys) {
     try {
-      // Explicit reset may discard even a protected damaged original.
-      localStorage.setItem(
-        progressStorageKey(course.id),
-        JSON.stringify(emptyProgress()),
-      );
-      forgetProtectedRecord(progressStorageKey(course.id));
-      return true;
+      if (localStorage.getItem(key) === null) {
+          forgetProtectedRecord(key);
+          continue;
+        }
+      localStorage.removeItem(key);
+      forgetProtectedRecord(key);
     } catch {
-      return false;
+      try {
+        localStorage.setItem(key, JSON.stringify(emptyProgress()));
+        forgetProtectedRecord(key);
+      } catch {
+        success = false;
+      }
     }
   }
+  return success;
 }

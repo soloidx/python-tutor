@@ -332,7 +332,7 @@ export default function App({ publication }) {
           <Practice
             round={practiceRound}
             saved={practiceSaved && practiceStorageAvailable}
-            notice={practiceRecovery.notice}
+            notice={[practiceRecovery.notice, practiceRecovery.recoveryWarning].filter(Boolean).join(" ")}
             storageAvailable={practiceStorageAvailable}
             onChange={setPracticeRound}
             onNewRound={() =>

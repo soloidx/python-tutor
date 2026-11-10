@@ -10,8 +10,8 @@ import {
 
 test.use({ actionTimeout: 8000 });
 
-const progressKey = "python-tutor:course-progress:v1:python-fundamentos";
-const backupPrefix = "python-tutor:recovery:v1:python-fundamentos:";
+const progressKey = "python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D";
+const backupPrefix = "python-tutor:recovery:v1:%5B%22original%22%2C%22python-fundamentos%22%5D:";
 
 test("partial learner recovery keeps approvals, position and valid assessment answers with an exact raw copy", async ({
   page,
@@ -124,7 +124,7 @@ test("history recovery preserves valid exchanges and attempts, interrupts saved 
     .getByRole("button", { name: "Todas las rutas", exact: true })
     .click();
   const raw = await page.evaluate(() => {
-    const key = "python-tutor:course-conversations:v1:python-fundamentos";
+    const key = "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D";
     const saved = JSON.parse(localStorage.getItem(key));
     saved[0].attempts.push(
       {
@@ -275,7 +275,7 @@ test("a damaged latest attempt never turns an older completed answer into a conf
     .getByRole("button", { name: "Todas las rutas", exact: true })
     .click();
   await page.evaluate(() => {
-    const key = "python-tutor:course-conversations:v1:python-fundamentos";
+    const key = "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D";
     const saved = JSON.parse(localStorage.getItem(key));
     saved[0].attempts.push({ id: "bad-latest", text: 42, status: "complete" });
     localStorage.setItem(key, JSON.stringify(saved));
@@ -307,7 +307,7 @@ test("failed conversation backup keeps the original through a new answer and rel
     .getByRole("button", { name: "Todas las rutas", exact: true })
     .click();
   const raw = await page.evaluate(() => {
-    const key = "python-tutor:course-conversations:v1:python-fundamentos";
+    const key = "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D";
     const saved = JSON.parse(localStorage.getItem(key));
     saved.push(null);
     const raw = JSON.stringify(saved);
@@ -341,7 +341,7 @@ test("failed conversation backup keeps the original through a new answer and rel
   expect(
     await page.evaluate(() =>
       localStorage.getItem(
-        "python-tutor:course-conversations:v1:python-fundamentos",
+        "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D",
       ),
     ),
   ).toBe(raw);

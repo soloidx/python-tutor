@@ -1,16 +1,19 @@
+export const practiceEntryKey = (courseId, exerciseId) => JSON.stringify([courseId, exerciseId]);
+
 // Change this limit to configure the size of newly drawn rounds.
 export const PRACTICE_ROUND_LIMIT = 10;
 
 export function createPracticeRound(publication) {
   const unique = new Map();
-  // Registry order chooses one deterministic course/topic for canonical IDs
-  // referenced by more than one course. Learning-path references are irrelevant.
+  // A shared course appears once in the registry regardless of path references.
   for (const { id } of publication.catalog.courses) {
     const course = publication.courses[id];
     for (const topic of course.topics) {
       for (const exercise of topic.exercises) {
-        if (!unique.has(exercise.id)) {
-          unique.set(exercise.id, {
+        const key = practiceEntryKey(course.id, exercise.id);
+        if (!unique.has(key)) {
+          unique.set(key, {
+            key,
             id: exercise.id,
             course,
             topic,
@@ -32,7 +35,7 @@ export function createPracticeRound(publication) {
     id: crypto.randomUUID(),
     revision: publication.catalog.revision,
     entries,
-    currentId: entries[0]?.id ?? null,
+    currentId: entries[0]?.key ?? null,
     reviewing: false,
   };
 }

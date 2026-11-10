@@ -190,7 +190,7 @@ test("recovers legacy code and quarantines an invalid mixed choice capture", asy
         Object.keys(localStorage)
           .filter((key) => key.startsWith(prefix))
           .map((key) => localStorage.getItem(key)),
-      "python-tutor:recovery:v1:python-fundamentos:",
+      "python-tutor:recovery:v1:%5B%22original%22%2C%22python-fundamentos%22%5D:",
     ),
   ).toContain(original);
 });

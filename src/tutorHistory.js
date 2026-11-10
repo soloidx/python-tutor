@@ -1,3 +1,4 @@
+import { originalCourseId, originalLocalId } from "./identity.js";
 import {
   preserveLearnerRecord,
   writeLearnerRecord,
@@ -202,15 +203,15 @@ export function saveHistory(exchanges, courseId) {
 }
 
 export function storedCourseIds() {
-  return Object.keys(localStorage)
+  return [...new Set(Object.keys(localStorage)
     .filter((key) => key.startsWith(historyKeyPrefix))
     .flatMap((key) => {
       try {
-        return [decodeURIComponent(key.slice(historyKeyPrefix.length))];
-      } catch {
-        return [];
-      }
-    });
+        const id = decodeURIComponent(key.slice(historyKeyPrefix.length));
+        // Legacy publisher IDs were slugs; composite IDs are JSON tuples.
+        return [id.startsWith("[") ? id : originalCourseId(id)];
+      } catch { return []; }
+    }))];
 }
 
 export function removeHistory(courseId) {
@@ -218,14 +219,20 @@ export function removeHistory(courseId) {
     const ids = courseId === undefined ? storedCourseIds() : [courseId];
     let warning = "";
     for (const id of ids) {
-      try {
-        localStorage.removeItem(historyStorageKey(id));
-        forgetProtectedRecord(historyStorageKey(id));
+      const legacy = originalLocalId(id);
+      const keys = [historyStorageKey(id), ...(legacy === null ? [] : [historyStorageKey(legacy)])];
+      for (const key of keys) try {
+        if (localStorage.getItem(key) === null) {
+          forgetProtectedRecord(key);
+          continue;
+        }
+        localStorage.removeItem(key);
+        forgetProtectedRecord(key);
       } catch {
         // A browser may reject deletion while still allowing replacement.
         try {
-          localStorage.setItem(historyStorageKey(id), "[]");
-          forgetProtectedRecord(historyStorageKey(id));
+          localStorage.setItem(key, "[]");
+          forgetProtectedRecord(key);
         } catch {
           warning = historyStorageWarning;
         }
@@ -244,8 +251,15 @@ export function loadHistory() {
   try {
     for (const courseId of storedCourseIds()) {
       try {
-        const key = historyStorageKey(courseId);
-        const raw = localStorage.getItem(key);
+        let key = historyStorageKey(courseId);
+        let raw = localStorage.getItem(key);
+        const legacy = originalLocalId(courseId);
+        let fromLegacy = false;
+        if (raw === null && legacy !== null) {
+          key = historyStorageKey(legacy);
+          raw = localStorage.getItem(key);
+          fromLegacy = raw !== null;
+        }
         if (raw === null) continue;
         let stored;
         try {
@@ -256,7 +270,10 @@ export function loadHistory() {
         let damaged = !Array.isArray(stored);
         let interrupted = false;
         const valid = [];
-        for (const item of Array.isArray(stored) ? stored : []) {
+        for (const source of Array.isArray(stored) ? stored : []) {
+          const item = fromLegacy && source && typeof source === "object" && source.courseId === legacy && source.capture?.course?.id === legacy
+            ? { ...source, courseId, capture: source.capture && { ...source.capture, course: source.capture.course && { ...source.capture.course, id: courseId } } }
+            : source;
           const attempts = Array.isArray(item?.attempts)
             ? item.attempts.map((attempt, index) => {
                 if (validAttempt(attempt)) return attempt;

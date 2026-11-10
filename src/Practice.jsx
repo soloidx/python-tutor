@@ -18,12 +18,12 @@ export function Practice({
   ).length;
   const complete =
     round.entries.length > 0 && resolved === round.entries.length;
-  const current = round.entries.find((entry) => entry.id === round.currentId);
+  const current = round.entries.find((entry) => entry.key === round.currentId);
   function updateEntry(id, patch) {
     onChange((previous) => ({
       ...previous,
       entries: previous.entries.map((entry) =>
-        entry.id === id ? { ...entry, ...patch(entry) } : entry,
+        entry.key === id ? { ...entry, ...patch(entry) } : entry,
       ),
     }));
   }
@@ -105,13 +105,13 @@ export function Practice({
                 <h2>Tu ronda</h2>
                 {round.entries.map((entry, index) => (
                   <button
-                    key={entry.id}
-                    className={`round-exercise ${entry.id === current.id ? "selected" : ""} ${entry.status === "resolved" ? "resolved" : ""}`}
-                    aria-current={entry.id === current.id ? "step" : undefined}
+                    key={entry.key}
+                    className={`round-exercise ${entry.key === current.key ? "selected" : ""} ${entry.status === "resolved" ? "resolved" : ""}`}
+                    aria-current={entry.key === current.key ? "step" : undefined}
                     onClick={() =>
                       onChange((previous) => ({
                         ...previous,
-                        currentId: entry.id,
+                        currentId: entry.key,
                       }))
                     }
                   >
@@ -142,7 +142,7 @@ export function Practice({
                   <ArchivedPracticeExercise entry={current} />
                 ) : (
                   <ExerciseWorkspace
-                    key={`${round.id}:${current.id}`}
+                    key={`${round.id}:${current.key}`}
                     exercise={current.exercise}
                     state={current.work}
                     approved={current.status === "resolved"}
@@ -153,7 +153,7 @@ export function Practice({
                         : "EJERCICIO DE CÓDIGO"
                     }
                     onStateChange={(work) =>
-                      updateEntry(current.id, (entry) => ({
+                      updateEntry(current.key, (entry) => ({
                         work,
                         status:
                           entry.status === "resolved"
@@ -162,7 +162,7 @@ export function Practice({
                       }))
                     }
                     onComplete={() =>
-                      updateEntry(current.id, () => ({ status: "resolved" }))
+                      updateEntry(current.key, () => ({ status: "resolved" }))
                     }
                   />
                 )}

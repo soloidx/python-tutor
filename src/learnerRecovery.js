@@ -1,6 +1,7 @@
 // Recovery copies contain learner data only. Course-scoped prefixes let explicit
 // resets include retired courses without touching catalog or tutor settings.
 export const recoveryStoragePrefix = "python-tutor:recovery:v1:";
+export const practiceRecoveryScope = JSON.stringify(["system", "practice"]);
 export const recoveryCoursePrefix = (courseId) =>
   `${recoveryStoragePrefix}${encodeURIComponent(courseId)}:`;
 export const partialRecoveryWarning =
@@ -45,7 +46,10 @@ export function recoveryKeys(courseId) {
     courseId === undefined
       ? recoveryStoragePrefix
       : recoveryCoursePrefix(courseId);
-  return Object.keys(localStorage).filter((key) => key.startsWith(prefix));
+  return Object.keys(localStorage).filter((key) =>
+    key.startsWith(prefix) &&
+    (courseId !== undefined || !key.startsWith(recoveryCoursePrefix(practiceRecoveryScope))),
+  );
 }
 // Returns false if any recoverable copy survives. Call only for explicit reset.
 export function removeRecoveryCopies(courseId) {

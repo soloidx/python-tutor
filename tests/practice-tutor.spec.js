@@ -194,6 +194,8 @@ function revisionPublication(revision, exerciseId, summary) {
       course.topics[0].exercises = [{ ...original, id: exerciseId }];
     });
   }
+  value.catalog.courses = value.catalog.courses.filter(course => course.id !== 'python-practica');
+  value.catalog.learningPaths.forEach(path => { path.courseIds = ['python-fundamentos']; });
   return value;
 }
 async function activateRevision(page, context, value) {

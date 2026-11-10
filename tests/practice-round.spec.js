@@ -7,7 +7,7 @@ import {
   enterCourse,
 } from "./fixtures/catalog.js";
 
-function practicePublication(count = 3) {
+function practicePublication(count = 3, collision = false) {
   const value = publication("practice-round");
   updateCourse(value, "python-fundamentos", (course) => {
     const code = course.topics[0].exercises[0];
@@ -22,7 +22,7 @@ function practicePublication(count = 3) {
       },
     ];
   });
-  // Same canonical IDs across another active course must collapse.
+  // Equal local IDs in different courses remain distinct.
   const first = JSON.parse(value.files[value.catalog.courses[0].file]);
   updateCourse(value, "python-practica", (course) => {
     course.topics = structuredClone(first.topics);
@@ -30,6 +30,10 @@ function practicePublication(count = 3) {
       exercise.title = `Referencia ${exercise.id}`;
     });
   });
+  if (!collision) {
+    value.catalog.courses = value.catalog.courses.filter((course) => course.id !== "python-practica");
+    value.catalog.learningPaths.forEach((path) => { path.courseIds = path.courseIds.filter((id) => id !== "python-practica"); });
+  }
   return value;
 }
 
@@ -42,18 +46,18 @@ async function openPractice(page, context, value) {
   await page.getByRole("button", { name: "Práctica", exact: true }).click();
 }
 
-test("draws canonical exercise IDs once and retains order and drafts across navigation", async ({
+test("keeps equal exercise IDs in different courses and retains drafts across navigation", async ({
   page,
   context,
 }) => {
-  await openPractice(page, context, practicePublication());
+  await openPractice(page, context, practicePublication(3, true));
   await expect(
     page.getByRole("button", { name: "Práctica", exact: true }),
   ).toHaveAttribute("aria-current", "page");
   const rail = page.getByRole("navigation", { name: "Ejercicios de la ronda" });
-  await expect(rail.getByRole("button")).toHaveCount(3);
+  await expect(rail.getByRole("button")).toHaveCount(6);
   const order = await rail.getByRole("button").allTextContents();
-  expect(order.join(" ")).not.toContain("Referencia");
+  expect(order.join(" ")).toContain("Referencia");
   await page.getByLabel("Código Python").fill('nombre = "Borrador"');
   await rail.getByRole("button").nth(1).click();
   await rail.getByRole("button").nth(0).click();
@@ -350,7 +354,7 @@ for (const count of [1, 10, 14])
   }) => {
     const value = practicePublication(count);
     // Unlisted course documents and final assessments are not eligible.
-    const orphan = JSON.parse(value.files[value.catalog.courses[1].file]);
+    const orphan = JSON.parse(value.files[value.catalog.courses[0].file]);
     orphan.topics[0].exercises[0].id = "unpublished";
     orphan.topics[0].exercises[0].title = "No publicado";
     value.files["courses/inactive.json"] = JSON.stringify(orphan);
@@ -399,7 +403,7 @@ test("different canonical IDs remain distinct even with identical displayed cont
   page,
   context,
 }) => {
-  const value = practicePublication(2);
+  const value = practicePublication(2, true);
   updateCourse(value, "python-practica", (course) => {
     const sameContent = structuredClone(course.topics[0].exercises[0]);
     sameContent.id = "distinct-exercise";
@@ -408,7 +412,7 @@ test("different canonical IDs remain distinct even with identical displayed cont
   });
   await openPractice(page, context, value);
   const rail = page.getByRole("navigation", { name: "Ejercicios de la ronda" });
-  await expect(rail.getByRole("button")).toHaveCount(3);
+  await expect(rail.getByRole("button")).toHaveCount(5);
   await expect(rail.locator("strong", { hasText: "Actividad 1" })).toHaveCount(
     2,
   );
@@ -500,7 +504,7 @@ test("practice saves visible work without authored answers or making course draf
   await page.getByLabel("Compara edad con 7").check();
   await page.getByRole("button", { name: "Comprobar", exact: true }).click();
   const record = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("python-tutor:practice:v1")),
+    JSON.parse(localStorage.getItem("python-tutor:practice:v2")),
   );
   const serialized = JSON.stringify(record);
   for (const secret of [
@@ -538,4 +542,65 @@ test("practice saves visible work without authored answers or making course draf
     "value",
     "0",
   );
+});
+
+test("restores a legacy practice round without overwriting it", async ({ page, context }) => {
+  await openPractice(page, context, practicePublication(2));
+  await page.getByLabel("Código Python").fill("# antes de migrar");
+  const legacy = await page.evaluate(() => {
+    const key = "python-tutor:practice:v2";
+    const saved = JSON.parse(localStorage.getItem(key));
+    saved.version = 1;
+    const current = saved.entries.find((entry) => JSON.stringify([entry.courseId, entry.id]) === saved.currentId);
+    saved.currentId = current.id;
+    for (const entry of saved.entries) {
+      entry.courseId = JSON.parse(entry.courseId)[1];
+      entry.snapshot.course.id = entry.courseId;
+    }
+    const raw = JSON.stringify(saved);
+    localStorage.setItem("python-tutor:practice:v1", raw);
+    localStorage.removeItem(key);
+    return raw;
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Práctica", exact: true }).click();
+  await expect(page.getByLabel("Código Python")).toHaveValue("# antes de migrar");
+  await page.reload();
+  await page.getByRole("button", { name: "Práctica", exact: true }).click();
+  await expect(page.getByLabel("Código Python")).toHaveValue("# antes de migrar");
+  expect(await page.evaluate(() => localStorage.getItem("python-tutor:practice:v1"))).toBe(legacy);
+});
+
+test("keeps original and personal courses with the same local ID independent", async ({ page, context }) => {
+  // Simulate composition of a personal course; the publisher remains unchanged.
+  await page.route("**/src/CatalogBootstrap.jsx", async (route) => {
+    const response = await route.fetch();
+    const source = (await response.text()).replace(
+      "setPublication(originalPublication(value));",
+      `setPublication(((publication) => {
+        const original = JSON.stringify(["original", "python-fundamentos"]);
+        const personal = JSON.stringify(["personal", "python-fundamentos"]);
+        const course = structuredClone(publication.courses[original]);
+        course.id = personal;
+        course.title = "Curso personal";
+        course.topics[0].exercises[0].title = "Ejercicio personal";
+        publication.courses[personal] = course;
+        publication.catalog.courses.push({ ...publication.catalog.courses[0], id: personal });
+        publication.catalog.learningPaths[0].courseIds.push(personal);
+        return publication;
+      })(originalPublication(value)));`,
+    );
+    await route.fulfill({ response, body: source });
+  });
+  await openPractice(page, context, practicePublication(1));
+  const rail = page.getByRole("navigation", { name: "Ejercicios de la ronda" });
+  await expect(rail.getByRole("button")).toHaveCount(2);
+  await rail.getByRole("button", { name: /Ejercicio personal/ }).click();
+  await page.getByLabel("Código Python").fill("# personal");
+  await rail.getByRole("button", { name: /Actividad 1/ }).click();
+  await expect(page.getByLabel("Código Python")).not.toHaveValue("# personal");
+  await page.reload();
+  await page.getByRole("button", { name: "Práctica", exact: true }).click();
+  await rail.getByRole("button", { name: /Ejercicio personal/ }).click();
+  await expect(page.getByLabel("Código Python")).toHaveValue("# personal");
 });

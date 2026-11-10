@@ -1,7 +1,14 @@
-import { createPracticeRound } from "./practiceRound.js";
+import {
+  practiceRecoveryScope,
+  preserveLearnerRecord,
+  writeLearnerRecord,
+} from "./learnerRecovery.js";
+import { originalCourseId } from "./identity.js";
+import { createPracticeRound, practiceEntryKey } from "./practiceRound.js";
 
 // Practice owns one record, independent of course progress and conversations.
-export const practiceStorageKey = "python-tutor:practice:v1";
+export const practiceStorageKey = "python-tutor:practice:v2";
+export const legacyPracticeStorageKey = "python-tutor:practice:v1";
 const identity = (value) => typeof value === "string" && value.length > 0;
 const object = (value) =>
   value && typeof value === "object" && !Array.isArray(value);
@@ -156,12 +163,18 @@ function validWork(work, entry) {
 
 export function loadPractice(publication) {
   let raw;
+  let sourceKey = practiceStorageKey;
   try {
-    raw = localStorage.getItem(practiceStorageKey);
+    raw = localStorage.getItem(sourceKey);
+    if (raw === null) {
+      sourceKey = legacyPracticeStorageKey;
+      raw = localStorage.getItem(sourceKey);
+    }
   } catch {
     return { round: null, notice: null, storageAvailable: false };
   }
   const damaged = () => ({
+    recoveryWarning: preserveLearnerRecord(sourceKey, practiceRecoveryScope, "round", raw),
     round: createPracticeRound(publication),
     notice:
       "No pudimos recuperar la ronda guardada porque el registro está dañado. Comenzamos una ronda nueva con los ejercicios disponibles.",
@@ -173,14 +186,28 @@ export function loadPractice(publication) {
     const saved = JSON.parse(raw);
     if (
       !object(saved) ||
-      saved.version !== 1 ||
+      ![1, 2].includes(saved.version) ||
       !identity(saved.id) ||
       !identity(saved.revision) ||
       !Array.isArray(saved.entries) ||
       typeof saved.reviewing !== "boolean"
     )
       return damaged();
-    const ids = saved.entries.map((entry) => entry?.id);
+    if (saved.version === 1) {
+      for (const entry of saved.entries) {
+        if (!entry || !identity(entry.courseId) || entry.snapshot?.course?.id !== entry.courseId)
+          return damaged();
+        const internal = originalCourseId(entry.courseId);
+        // Archived courses may no longer be in the active publication.
+        if (!publication.courses[entry.courseId] && publication.originalIdentity) {
+          entry.courseId = internal;
+          entry.snapshot.course.id = internal;
+        }
+      }
+    }
+    const ids = saved.entries.map((entry) =>
+      saved.version === 1 ? entry?.id : practiceEntryKey(entry?.courseId, entry?.id),
+    );
     if (
       !ids.every(identity) ||
       new Set(ids).size !== ids.length ||
@@ -220,6 +247,7 @@ export function loadPractice(publication) {
       if (!archived && !exercise) return damaged();
       entries.push({
         id: entry.id,
+        key: practiceEntryKey(entry.courseId, entry.id),
         course: archived ? snapshot.course : course,
         topic: archived ? snapshot.topic : topic,
         exercise: archived ? snapshot.exercise : exercise,
@@ -233,7 +261,9 @@ export function loadPractice(publication) {
         archived,
         id: saved.id,
         revision: saved.revision,
-        currentId: saved.currentId,
+        currentId: saved.version === 1
+          ? entries.find((entry) => entry.id === saved.currentId)?.key ?? null
+          : saved.currentId,
         reviewing: saved.reviewing,
         entries,
       },
@@ -247,10 +277,10 @@ export function loadPractice(publication) {
 
 export function savePractice(round) {
   try {
-    localStorage.setItem(
+    return writeLearnerRecord(
       practiceStorageKey,
       JSON.stringify({
-        version: 1,
+        version: 2,
         id: round.id,
         revision: round.revision,
         currentId: round.currentId,
@@ -265,7 +295,6 @@ export function savePractice(round) {
         })),
       }),
     );
-    return true;
   } catch {
     return false;
   }

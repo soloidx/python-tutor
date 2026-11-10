@@ -295,3 +295,35 @@ test("continues with a truthful history warning when real browser storage is ful
   ).toHaveCount(0);
   expect(requests).toHaveLength(1);
 });
+
+test("migrates existing original learning and conversations while retaining source records", async ({ page }) => {
+  await setup(page);
+  await send(page, "Mensaje anterior a la migración", 1);
+  const legacy = await page.evaluate(() => {
+    const id = JSON.stringify(["original", "python-fundamentos"]);
+    const prefix = "python-tutor:course-conversations:v1:";
+    const key = prefix + encodeURIComponent(id);
+    const exchanges = JSON.parse(localStorage.getItem(key));
+    for (const exchange of exchanges) {
+      exchange.courseId = "python-fundamentos";
+      exchange.capture.course.id = "python-fundamentos";
+    }
+    const raw = JSON.stringify(exchanges);
+    localStorage.setItem(prefix + "python-fundamentos", raw);
+    localStorage.removeItem(key);
+    localStorage.removeItem("python-tutor:course-progress:v1:" + encodeURIComponent(id));
+    localStorage.setItem("python-tutor:course-progress:v1:python-fundamentos", JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null }));
+    return raw;
+  });
+  await page.reload();
+  await enterCourse(page, { path: "Camino a la automatización" });
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  await tutor(page);
+  await expect(page.getByText("Mensaje anterior a la migración", { exact: true })).toBeVisible();
+  await send(page, "Continuación compartida", 2);
+  await page.reload();
+  await enterCourse(page);
+  await tutor(page);
+  await expect(page.getByText("Continuación compartida", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("python-tutor:course-conversations:v1:python-fundamentos"))).toBe(legacy);
+});

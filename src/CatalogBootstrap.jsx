@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import App from "./App.jsx";
+import { originalPublication } from "./identity.js";
 import { loadCatalog } from "./catalog.js";
 import { readCatalogBackup, saveCatalogBackup, validatePublicationUpdate } from "./catalogCache.js";
 
@@ -26,7 +27,7 @@ export default function CatalogBootstrap() {
     const activate = value => {
       if (!active.current) {
         active.current = value;
-        setPublication(value);
+        setPublication(originalPublication(value));
       }
     };
     // Download and verify the saved backup in parallel. Handle remote rejection

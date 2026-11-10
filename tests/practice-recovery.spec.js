@@ -6,7 +6,7 @@ import {
   serveCatalog,
 } from "./fixtures/catalog.js";
 
-const key = "python-tutor:practice:v1";
+const key = "python-tutor:practice:v2";
 function single(revision, id = "original") {
   const value = publication(revision);
   for (const courseId of ["python-fundamentos", "python-practica"]) {
@@ -31,6 +31,8 @@ function single(revision, id = "original") {
       ];
     });
   }
+  value.catalog.courses = value.catalog.courses.filter((course) => course.id !== "python-practica");
+  value.catalog.learningPaths.forEach((path) => { path.courseIds = ["python-fundamentos"]; });
   return value;
 }
 async function open(page, context, value) {
@@ -248,6 +250,8 @@ test("archived code remains readable after its entire course is removed", async 
       course.topics = [course.topics[0]];
       course.topics[0].exercises = [course.topics[0].exercises[0]];
     });
+  value.catalog.courses = value.catalog.courses.filter((course) => course.id !== "python-practica");
+  value.catalog.learningPaths.forEach((path) => { path.courseIds = ["python-fundamentos"]; });
   await open(page, context, value);
   await page
     .getByLabel("Código Python")
@@ -256,10 +260,8 @@ test("archived code remains readable after its entire course is removed", async 
   await expect(
     page.getByRole("heading", { name: "Ronda completada", exact: true }),
   ).toBeVisible();
-  const next = single("code-replaced", "other");
-  next.catalog.courses = next.catalog.courses.filter(
-    (course) => course.id !== "python-fundamentos",
-  );
+  const next = publication("code-replaced");
+  next.catalog.courses = [next.catalog.courses[1]];
   next.catalog.learningPaths.forEach((path) => {
     path.courseIds = ["python-practica"];
   });
@@ -326,7 +328,7 @@ test("archived review preserves feedback from a legacy saved failed attempt", as
   context,
 }) => {
   const value = single("review-feedback");
-  for (const id of ["python-fundamentos", "python-practica"])
+  for (const id of ["python-fundamentos"])
     updateCourse(value, id, (course) => {
       course.topics[0].exercises.push({
         ...structuredClone(course.topics[0].exercises[0]),

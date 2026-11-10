@@ -1,3 +1,4 @@
+import { originalLocalId } from "./identity.js";
 import { emptyProgress, removeProgress, progressStoragePrefix } from "./progress.js";
 import { removeRecoveryCopies } from "./learnerRecovery.js";
 
@@ -38,7 +39,9 @@ export function resetLearner({ all, courseId, progressByCourse, courses, convers
     if (courses[id]) cleared[id] = { progress: emptyProgress(), message: "" };
   }
 
-  const copiesRemoved = removeRecoveryCopies(all ? undefined : courseId);
+  let copiesRemoved = removeRecoveryCopies(all ? undefined : courseId);
+  const legacyId = all ? null : originalLocalId(courseId);
+  if (legacyId !== null) copiesRemoved = removeRecoveryCopies(legacyId) && copiesRemoved;
   const warnings = [
     progressFailed ? progressRemovalWarning : "",
     historyWarning,

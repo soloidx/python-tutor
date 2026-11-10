@@ -20,7 +20,7 @@ test("shares a course conversation across paths and isolates matching local topi
   await send(page, "Pregunta de práctica", 1);
   expect(requests[1].messages).toHaveLength(2);
   expect(JSON.parse(requests[1].messages.at(-1).content).capture.course).toEqual({
-    id: "python-practica", title: "Python Práctica",
+    id: JSON.stringify(["original", "python-practica"]), title: "Python Práctica",
   });
   await page.reload();
   await enterCourse(page, { path: "Camino a la automatización" });

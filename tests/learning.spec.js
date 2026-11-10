@@ -461,7 +461,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   // Fault injection stays at the browser-storage boundary; assertions use the UI.
   for (const damaged of ["{damaged JSON", "{}"]) {
     await page.evaluate(
-      (value) => localStorage.setItem("python-tutor:course-progress:v1:python-fundamentos", value),
+      (value) => localStorage.setItem("python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D", value),
       damaged,
     );
     await page.reload();
