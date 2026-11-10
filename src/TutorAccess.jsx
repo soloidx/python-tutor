@@ -9,6 +9,8 @@ import { checkAccess, modelIncompatibility } from "./openRouterAccess.js";
 
 export function TutorPanel({
   onConfigure,
+  onClose,
+  notice,
   access,
   conversation,
   courseId,
@@ -62,19 +64,25 @@ export function TutorPanel({
     <div className="tutor-panel">
       <div className="panel-heading">
         <h2>Tutor</h2>
-        <button
-          className="secondary"
-          onClick={onConfigure}
-          aria-label="Configuración del tutor"
-        >
-          Configuración
-        </button>
+        <div className="tutor-panel-actions">
+          <button
+            className="secondary"
+            onClick={onConfigure}
+            aria-label="Configuración del tutor"
+          >
+            Configuración
+          </button>
+          {onClose && (
+            <button className="secondary" onClick={onClose} aria-label="Cerrar tutor">×</button>
+          )}
+        </div>
       </div>
       <div className="tutor-body">
         <div className="tutor-scroll" ref={transcript} role="region" aria-label="Historial del tutor" tabIndex={0} onScroll={() => {
           const node = transcript.current;
           followLatest.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
         }}>
+        {notice}
         <button
           ref={deleteButton}
           className="secondary"
