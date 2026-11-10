@@ -1,3 +1,4 @@
+import { learnerGet, learnerSet, learnerRemove, learnerList } from "./learnerStore.js";
 import { originalLocalId } from "./identity.js";
 import { emptyProgress, removeProgress, progressStoragePrefix } from "./progress.js";
 import { removeRecoveryCopies } from "./learnerRecovery.js";
@@ -18,7 +19,7 @@ export function resetLearner({ all, courseId, progressByCourse, courses, convers
 
   if (all) {
     try {
-      for (const key of Object.keys(localStorage)) {
+      for (const key of learnerList()) {
         if (!key.startsWith(progressStoragePrefix)) continue;
         try {
           ids.add(decodeURIComponent(key.slice(progressStoragePrefix.length)));

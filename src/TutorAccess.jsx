@@ -55,8 +55,7 @@ export function TutorPanel({
       config: access.config,
       onAccessIssue: access.reportIssue,
     });
-    if (conversation.getSnapshot().active) setMessage("");
-    await pending;
+    if (await pending) setMessage("");
   }
   const ready = access.status === "ready";
   const checking = access.status === "checking";

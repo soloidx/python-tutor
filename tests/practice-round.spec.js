@@ -503,8 +503,10 @@ test("practice saves visible work without authored answers or making course draf
   await page.getByRole("button", { name: "Dame una pista" }).click();
   await page.getByLabel("Compara edad con 7").check();
   await page.getByRole("button", { name: "Comprobar", exact: true }).click();
+  await expect(page.getByText("Busca el operador de comparación.")).toBeVisible();
+  await expect(page.getByText("Ronda guardada", { exact: false })).toBeVisible();
   const record = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("python-tutor:practice:v2")),
+    JSON.parse(JSON.parse(localStorage.getItem("python-tutor:learner-store:v1")).records["python-tutor:practice:v2"]),
   );
   const serialized = JSON.stringify(record);
   for (const secret of [
@@ -549,7 +551,8 @@ test("restores a legacy practice round without overwriting it", async ({ page, c
   await page.getByLabel("Código Python").fill("# antes de migrar");
   const legacy = await page.evaluate(() => {
     const key = "python-tutor:practice:v2";
-    const saved = JSON.parse(localStorage.getItem(key));
+    const store = JSON.parse(localStorage.getItem("python-tutor:learner-store:v1"));
+    const saved = JSON.parse(store.records[key]);
     saved.version = 1;
     const current = saved.entries.find((entry) => JSON.stringify([entry.courseId, entry.id]) === saved.currentId);
     saved.currentId = current.id;
@@ -558,8 +561,9 @@ test("restores a legacy practice round without overwriting it", async ({ page, c
       entry.snapshot.course.id = entry.courseId;
     }
     const raw = JSON.stringify(saved);
-    localStorage.setItem("python-tutor:practice:v1", raw);
-    localStorage.removeItem(key);
+    store.records["python-tutor:practice:v1"] = raw;
+    delete store.records[key];
+    localStorage.setItem("python-tutor:learner-store:v1", JSON.stringify(store));
     return raw;
   });
   await page.reload();
@@ -568,7 +572,7 @@ test("restores a legacy practice round without overwriting it", async ({ page, c
   await page.reload();
   await page.getByRole("button", { name: "Práctica", exact: true }).click();
   await expect(page.getByLabel("Código Python")).toHaveValue("# antes de migrar");
-  expect(await page.evaluate(() => localStorage.getItem("python-tutor:practice:v1"))).toBe(legacy);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("python-tutor:learner-store:v1")).records["python-tutor:practice:v1"])).toBe(legacy);
 });
 
 test("keeps original and personal courses with the same local ID independent", async ({ page, context }) => {

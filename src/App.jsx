@@ -1,3 +1,5 @@
+import { learnerTransaction, legacyCleanupFailed } from "./learnerStore.js";
+import { removeHistory, historyChanged, storedCourseIds } from "./tutorHistory.js";
 import React, {
   useEffect,
   useRef,
@@ -11,6 +13,9 @@ import {
   resumeLabel,
   loadProgress,
   saveProgress,
+  progressChanged,
+  anyProgressChanged,
+  rememberProgressRecords,
 } from "./progress.js";
 import { resetLearner } from "./learnerReset.js";
 import { useTutorAccess } from "./tutorAccess.js";
@@ -59,11 +64,25 @@ export default function App({ publication }) {
     practiceRecovery.storageAvailable,
   );
   const [practiceSaved, setPracticeSaved] = useState(false);
+  const [practiceConflict, setPracticeConflict] = useState("");
   useEffect(() => {
     if (!practiceRound || !practiceStorageAvailable) return;
-    const saved = savePractice(practiceRound);
-    setPracticeSaved(saved);
-    if (!saved) setPracticeStorageAvailable(false);
+    let cancelled = false;
+    setPracticeSaved(false);
+    if (!navigator.locks) { setPracticeStorageAvailable(false); return; }
+    navigator.locks.request("python-tutor:learner", () => {
+      if (cancelled) return;
+      const saved = savePractice(practiceRound);
+      if (saved === "conflict") {
+        const latest = loadPractice(publication);
+        setPracticeRound(latest.round);
+        setPracticeConflict("La ronda cambió en otra pestaña. Se recargó la versión guardada; revisa la operación antes de intentarla de nuevo.");
+      } else {
+        setPracticeSaved(saved);
+        if (!saved) setPracticeStorageAvailable(false);
+      }
+    });
+    return () => { cancelled = true; };
   }, [practiceRound, practiceStorageAvailable]);
   const [learningTab, setLearningTab] = useState("lesson");
   const focusTutorAfterSettings = useRef(false);
@@ -74,11 +93,12 @@ export default function App({ publication }) {
     topicId: null,
   };
   const [location, setLocation] = useState(rootLocation);
-  const [progressByCourse, setProgressByCourse] = useState(() =>
-    Object.fromEntries(
+  const [progressByCourse, setProgressByCourse] = useState(() => {
+    rememberProgressRecords();
+    return Object.fromEntries(
       Object.values(courses).map((course) => [course.id, loadProgress(course)]),
-    ),
-  );
+    );
+  });
   const [confirmReset, setConfirmReset] = useState(false);
   const [workspaceVersion, setWorkspaceVersion] = useState(0);
   const resetButton = useRef(null);
@@ -136,27 +156,24 @@ export default function App({ publication }) {
       ? Object.values(progressByCourse).find((item) => item.message)?.message
       : "") ||
     "";
-  function updateProgress(id, change) {
-    setProgressByCourse((previous) => {
+  const progressRef = useRef(progressByCourse);
+  progressRef.current = progressByCourse;
+  async function updateProgress(id, change) {
+    const apply = () => {
+      const previous = progressRef.current;
       const progress = { ...previous[id].progress, ...change };
       const saved = saveProgress(courses[id], progress);
-      return {
-        ...previous,
-        [id]: {
-          progress,
-          message: saved
-            ? previous[id].message
-            : [
-                previous[id].message,
-                previous[id].message.includes("No se pudo guardar el progreso")
-                  ? ""
-                  : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión.",
-              ]
-                .filter(Boolean)
-                .join(" "),
-        },
-      };
-    });
+      const next = saved === "conflict"
+        ? { ...loadProgress(courses[id]), message: "El progreso cambió en otra pestaña. Se recargó la versión guardada; revisa la operación antes de intentarla de nuevo." }
+        : { progress, message: saved ? previous[id].message : [previous[id].message, "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión."].filter(Boolean).join(" ") };
+      progressRef.current = { ...previous, [id]: next };
+      setProgressByCourse(progressRef.current);
+    };
+    if (!navigator.locks) {
+      setProgressByCourse((previous) => ({ ...previous, [id]: { progress: { ...previous[id].progress, ...change }, message: "No se pudo guardar el progreso: este navegador no permite protegerlo entre pestañas. Tu avance solo está disponible en esta sesión." } }));
+      return;
+    }
+    await navigator.locks.request("python-tutor:learner", apply);
   }
   useEffect(() => {
     if (location.screen === "learn" && course && topic) {
@@ -196,21 +213,43 @@ export default function App({ publication }) {
       );
     }
   }
-  function resetProgress() {
+  async function resetProgress() {
     const global = confirmReset === "all";
-    const { cleared, warning } = resetLearner({
-      all: global,
-      courseId: global ? undefined : course.id,
-      progressByCourse,
-      courses,
-      conversation,
+    conversation.cancel();
+    if (!navigator.locks) {
+      setResetError("No se pudo proteger el reinicio entre pestañas; no se modificaron los datos guardados.");
+      return;
+    }
+    await navigator.locks.request("python-tutor:learner", () => {
+      try {
+        const ids = global ? [...new Set([...Object.keys(progressRef.current), ...storedCourseIds()])] : [course.id];
+        if ((global ? anyProgressChanged() : progressChanged(ids)) || historyChanged(ids)) {
+          rememberProgressRecords();
+          const latest = Object.fromEntries(Object.values(courses).map((item) => [item.id, loadProgress(item)]));
+          progressRef.current = latest;
+          setProgressByCourse(latest);
+          conversation.reload();
+          setResetError("Los datos cambiaron en otra pestaña. Se recargó la versión guardada; revisa el reinicio antes de intentarlo de nuevo.");
+          return;
+        }
+        const { cleared, warning } = learnerTransaction(() => resetLearner({
+          all: global,
+          courseId: global ? undefined : course.id,
+          progressByCourse: progressRef.current,
+          courses,
+          conversation: { reset: removeHistory },
+        }));
+        conversation.reload();
+        setProgressByCourse((previous) => ({ ...previous, ...cleared }));
+        setResetError([warning, legacyCleanupFailed() ? "No se pudieron borrar todas las copias anteriores del navegador." : ""].filter(Boolean).join(" "));
+        navigate(global ? rootLocation : { screen: "topics", topicId: null });
+        setWorkspaceVersion((value) => value + 1);
+        setConfirmReset(false);
+        resetButton.current?.focus();
+      } catch {
+        setResetError("No se pudo guardar el reinicio. Se conserva la última versión guardada; vuelve a intentarlo.");
+      }
     });
-    setProgressByCourse((previous) => ({ ...previous, ...cleared }));
-    setResetError(warning);
-    navigate(global ? rootLocation : { screen: "topics", topicId: null });
-    setWorkspaceVersion((value) => value + 1);
-    setConfirmReset(false);
-    resetButton.current?.focus();
   }
   const currentProgress = course
     ? courseProgress(course, state.progress)
@@ -332,12 +371,13 @@ export default function App({ publication }) {
           <Practice
             round={practiceRound}
             saved={practiceSaved && practiceStorageAvailable}
-            notice={[practiceRecovery.notice, practiceRecovery.recoveryWarning].filter(Boolean).join(" ")}
+            notice={[practiceConflict, practiceRecovery.notice, practiceRecovery.recoveryWarning].filter(Boolean).join(" ")}
             storageAvailable={practiceStorageAvailable}
-            onChange={setPracticeRound}
-            onNewRound={() =>
-              setPracticeRound(createPracticeRound(publication))
-            }
+            onChange={(change) => { setPracticeSaved(false); setPracticeRound(change); }}
+            onNewRound={() => {
+              setPracticeSaved(false);
+              setPracticeRound(createPracticeRound(publication));
+            }}
             onCourses={() => navigate(rootLocation)}
             renderTutor={(entry, onClose) => (
               <PracticeTutor

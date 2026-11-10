@@ -1,3 +1,4 @@
+import { learnerGet, learnerSet, learnerRemove, learnerList, afterLearnerCommit } from "./learnerStore.js";
 // Recovery copies contain learner data only. Course-scoped prefixes let explicit
 // resets include retired courses without touching catalog or tutor settings.
 export const recoveryStoragePrefix = "python-tutor:recovery:v1:";
@@ -12,41 +13,46 @@ export const failedRecoveryCopyWarning =
 // A failed copy must protect subsequent automatic saves and explicit writes,
 // not just the initial repair. Keep the exact raw text until it can be backed up.
 const protectedRecords = new Map();
+function backupPending(key) {
+  const pending = protectedRecords.get(key);
+  if (!pending || pending.backedUp) return true;
+  const copyKey = `${recoveryCoursePrefix(pending.courseId)}${pending.kind}:${Date.now()}:${crypto.randomUUID()}`;
+  try {
+    learnerSet(copyKey, pending.raw);
+    pending.backedUp = true;
+    return true;
+  } catch { return false; }
+}
 export function preserveLearnerRecord(key, courseId, kind, raw) {
   const pending = protectedRecords.get(key);
   if (pending?.raw === raw && pending.backedUp) return partialRecoveryWarning;
-  const copyKey = `${recoveryCoursePrefix(courseId)}${kind}:${Date.now()}:${crypto.randomUUID()}`;
   protectedRecords.set(key, { raw, courseId, kind, backedUp: false });
-  try {
-    localStorage.setItem(copyKey, raw);
-    protectedRecords.get(key).backedUp = true;
-    return partialRecoveryWarning;
-  } catch {
-    return failedRecoveryCopyWarning;
-  }
+  if (navigator.locks) navigator.locks.request("python-tutor:learner", () => backupPending(key));
+  // Loading is synchronous and may overlap another tab's write. Preserve the
+  // source in memory and only make a backup while holding the learner lock.
+  return "Se realizó una recuperación parcial de los datos de aprendizaje. Los datos originales se conservan sin sobrescribir; aún no se ha guardado una copia de recuperación.";
 }
 export function writeLearnerRecord(key, value) {
   const pending = protectedRecords.get(key);
   if (pending && !pending.backedUp) {
-    preserveLearnerRecord(key, pending.courseId, pending.kind, pending.raw);
-    if (!protectedRecords.get(key).backedUp) return false;
+    if (!backupPending(key)) return false;
   }
   try {
-    localStorage.setItem(key, value);
+    learnerSet(key, value);
     return true;
   } catch {
     return false;
   }
 }
 export function forgetProtectedRecord(key) {
-  protectedRecords.delete(key);
+  afterLearnerCommit(() => protectedRecords.delete(key));
 }
 export function recoveryKeys(courseId) {
   const prefix =
     courseId === undefined
       ? recoveryStoragePrefix
       : recoveryCoursePrefix(courseId);
-  return Object.keys(localStorage).filter((key) =>
+  return learnerList().filter((key) =>
     key.startsWith(prefix) &&
     (courseId !== undefined || !key.startsWith(recoveryCoursePrefix(practiceRecoveryScope))),
   );
@@ -57,10 +63,10 @@ export function removeRecoveryCopies(courseId) {
     let removed = true;
     for (const key of recoveryKeys(courseId)) {
       try {
-        localStorage.removeItem(key);
+        learnerRemove(key);
       } catch {
         try {
-          localStorage.setItem(key, "");
+          learnerSet(key, "");
         } catch {
           removed = false;
         }

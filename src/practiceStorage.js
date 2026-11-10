@@ -1,3 +1,4 @@
+import { learnerGet, learnerSet, learnerRemove, learnerList } from "./learnerStore.js";
 import {
   practiceRecoveryScope,
   preserveLearnerRecord,
@@ -8,6 +9,7 @@ import { createPracticeRound, practiceEntryKey } from "./practiceRound.js";
 
 // Practice owns one record, independent of course progress and conversations.
 export const practiceStorageKey = "python-tutor:practice:v2";
+let observedPractice;
 export const legacyPracticeStorageKey = "python-tutor:practice:v1";
 const identity = (value) => typeof value === "string" && value.length > 0;
 const object = (value) =>
@@ -165,10 +167,11 @@ export function loadPractice(publication) {
   let raw;
   let sourceKey = practiceStorageKey;
   try {
-    raw = localStorage.getItem(sourceKey);
+    raw = learnerGet(sourceKey);
+    observedPractice = raw;
     if (raw === null) {
       sourceKey = legacyPracticeStorageKey;
-      raw = localStorage.getItem(sourceKey);
+      raw = learnerGet(sourceKey);
     }
   } catch {
     return { round: null, notice: null, storageAvailable: false };
@@ -277,9 +280,8 @@ export function loadPractice(publication) {
 
 export function savePractice(round) {
   try {
-    return writeLearnerRecord(
-      practiceStorageKey,
-      JSON.stringify({
+    if (learnerGet(practiceStorageKey) !== observedPractice) return "conflict";
+    const raw = JSON.stringify({
         version: 2,
         id: round.id,
         revision: round.revision,
@@ -293,8 +295,10 @@ export function savePractice(round) {
           snapshot: snapshotEntry(entry.snapshot ?? entry),
           work: projectWork(entry.work),
         })),
-      }),
-    );
+      });
+    if (!writeLearnerRecord(practiceStorageKey, raw)) return false;
+    observedPractice = raw;
+    return true;
   } catch {
     return false;
   }

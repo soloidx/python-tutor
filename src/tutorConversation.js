@@ -4,6 +4,7 @@ import {
   saveHistory,
   removeHistory,
   requestHistory,
+  historyConflict,
 } from "./tutorHistory.js";
 import { streamTutor } from "./openRouterTutor.js";
 
@@ -36,29 +37,38 @@ export function createConversationService() {
   let controller = null;
   const listeners = new Set();
   let deletionWarning = "";
+  let persistenceEpoch = 0;
   const publish = (next, persist) => {
-    if (next.exchanges !== state.exchanges) {
-      const changedCourses = new Set(
-        [...state.exchanges, ...next.exchanges]
-          .filter(
-            (item) =>
-              !state.exchanges.includes(item) || !next.exchanges.includes(item),
-          )
-          .map((item) => item.courseId),
-      );
-      const warning = persist
-        ? persist(next.exchanges)
-        : [...changedCourses]
-            .map((courseId) => saveHistory(next.exchanges, courseId))
-            .find(Boolean) || "";
-      if (!warning) deletionWarning = "";
-      next = {
-        ...next,
-        storageWarning: warning ? deletionWarning || warning : "",
-      };
-    }
+    const previous = state;
     state = next;
     listeners.forEach((listener) => listener());
+    if (next.exchanges === previous.exchanges) return;
+    const changedCourses = new Set(
+      [...previous.exchanges, ...next.exchanges]
+        .filter((item) => !previous.exchanges.includes(item) || !next.exchanges.includes(item))
+        .map((item) => item.courseId),
+    );
+    const epoch = persistenceEpoch;
+    if (!navigator.locks) {
+      state = { ...state, storageWarning: "No se puede proteger la conversación entre pestañas. Los cambios solo están disponibles en esta sesión." };
+      listeners.forEach((listener) => listener());
+      return;
+    }
+    return navigator.locks.request("python-tutor:learner", () => {
+      if (epoch !== persistenceEpoch) return;
+      const warning = persist
+        ? persist(next.exchanges)
+        : [...changedCourses].map((courseId) => saveHistory(next.exchanges, courseId)).find(Boolean) || "";
+      if (warning === historyConflict) {
+        persistenceEpoch++;
+        controller?.abort();
+        state = { ...state, ...loadHistory(), active: null, storageWarning: historyConflict };
+      } else {
+        if (!warning) deletionWarning = "";
+        state = { ...state, storageWarning: warning ? deletionWarning || warning : "" };
+      }
+      listeners.forEach((listener) => listener());
+    });
   };
   function update(scope, change) {
     publish({
@@ -149,7 +159,7 @@ export function createConversationService() {
       notices.push(
         "Se omitieron antecedentes antiguos por capacidad del modelo, sin resumir ni recortar su contenido.",
       );
-    publish({
+    await publish({
       ...state,
       exchanges: exchangeId
         ? state.exchanges.map((item) =>
@@ -171,6 +181,7 @@ export function createConversationService() {
       active: scope,
       notice: notices.join(" "),
     });
+    if (current.signal.aborted || state.active !== scope) return false;
     const valid = () =>
       !current.signal.aborted &&
       controller === current &&
@@ -230,6 +241,11 @@ export function createConversationService() {
       return () => listeners.delete(listener);
     },
     send,
+    reload() {
+      persistenceEpoch++;
+      state = { ...state, ...loadHistory(), active: null };
+      listeners.forEach((listener) => listener());
+    },
     retry({ scope, exchangeId, config, onAccessIssue }) {
       const exchange = state.exchanges.find((item) =>
         sameExchange(item, { id: exchangeId, ...scope }),

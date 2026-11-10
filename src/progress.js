@@ -1,3 +1,4 @@
+import { learnerGet, learnerSet, learnerRemove, learnerList, afterLearnerCommit } from "./learnerStore.js";
 import { originalLocalId } from "./identity.js";
 import {
   preserveLearnerRecord,
@@ -11,6 +12,19 @@ export const progressStoragePrefix = "python-tutor:course-progress:v1:";
 export const progressStorageKey = (courseId) =>
   `${progressStoragePrefix}${encodeURIComponent(courseId)}`;
 const unreadableCourses = new Set();
+const observedProgress = new Map();
+const observedProgressRecords = new Map();
+export function rememberProgressRecords() {
+  try {
+    observedProgressRecords.clear();
+    for (const key of learnerList().filter((item) => item.startsWith(progressStoragePrefix)))
+      observedProgressRecords.set(key, learnerGet(key));
+  } catch { /* loadProgress reports unavailable storage. */ }
+}
+export function anyProgressChanged() {
+  const keys = new Set([...observedProgressRecords.keys(), ...learnerList().filter((item) => item.startsWith(progressStoragePrefix))]);
+  return [...keys].some((key) => learnerGet(key) !== (observedProgressRecords.get(key) ?? null));
+}
 export const emptyProgress = () => ({
   topicId: null,
   completed: [],
@@ -46,11 +60,13 @@ export function loadProgress(course) {
   let key = progressStorageKey(course.id);
   let raw;
   try {
-    raw = localStorage.getItem(key);
+    raw = learnerGet(key);
+    observedProgress.set(course.id, raw);
+    observedProgressRecords.set(key, raw);
     const legacyId = originalLocalId(course.id);
     if (raw === null && legacyId !== null) {
       key = progressStorageKey(legacyId);
-      raw = localStorage.getItem(key);
+      raw = learnerGet(key);
     }
     if (raw === null) return { progress: emptyProgress(), message: "" };
   } catch {
@@ -101,21 +117,28 @@ export function loadProgress(course) {
   const message = damaged
     ? preserveLearnerRecord(key, course.id, "progress", raw)
     : "";
-  if (damaged)
-    writeLearnerRecord(progressStorageKey(course.id), JSON.stringify(progress));
   return { progress, message };
 }
 
 export function saveProgress(course, progress) {
   if (unreadableCourses.has(course.id)) return false;
-  return writeLearnerRecord(
-    progressStorageKey(course.id),
-    JSON.stringify({
+  const key = progressStorageKey(course.id);
+  try {
+    if (learnerGet(key) !== observedProgress.get(course.id)) return "conflict";
+    const raw = JSON.stringify({
       completed: progress.completed,
       topicId: progress.topicId,
       assessmentResult: progress.assessmentResult,
-    }),
-  );
+    });
+    if (!writeLearnerRecord(key, raw)) return false;
+    observedProgress.set(course.id, raw);
+    observedProgressRecords.set(key, raw);
+    return true;
+  } catch { return false; }
+}
+
+export function progressChanged(courseIds) {
+  return courseIds.some((id) => learnerGet(progressStorageKey(id)) !== (observedProgress.get(id) ?? null));
 }
 
 export function removeProgress(course) {
@@ -127,21 +150,25 @@ export function removeProgress(course) {
   let success = true;
   for (const key of keys) {
     try {
-      if (localStorage.getItem(key) === null) {
+      if (learnerGet(key) === null) {
           forgetProtectedRecord(key);
           continue;
         }
-      localStorage.removeItem(key);
+      learnerRemove(key);
       forgetProtectedRecord(key);
     } catch {
       try {
-        localStorage.setItem(key, JSON.stringify(emptyProgress()));
+        learnerSet(key, JSON.stringify(emptyProgress()));
         forgetProtectedRecord(key);
       } catch {
         success = false;
       }
     }
   }
-  if (success) unreadableCourses.delete(course.id);
+  if (success) afterLearnerCommit(() => {
+    unreadableCourses.delete(course.id);
+    observedProgress.set(course.id, null);
+    for (const key of keys) observedProgressRecords.set(key, null);
+  });
   return success;
 }

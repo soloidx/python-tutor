@@ -1,3 +1,4 @@
+import { learnerGet, learnerSet, learnerRemove, learnerList, afterLearnerCommit } from "./learnerStore.js";
 import { originalCourseId, originalLocalId } from "./identity.js";
 import {
   preserveLearnerRecord,
@@ -9,6 +10,8 @@ export const historyKeyPrefix = "python-tutor:course-conversations:v1:";
 export const historyStorageKey = (courseId) =>
   historyKeyPrefix + encodeURIComponent(courseId);
 const unreadableCourses = new Set();
+const observedHistory = new Map();
+export const historyConflict = "La conversación cambió en otra pestaña. Se recargó la versión guardada; revisa tu mensaje antes de intentarlo de nuevo.";
 let enumerationFailed = false;
 export const historyStorageWarning =
   "No se pudo guardar o recuperar el historial del tutor. Puedes continuar temporalmente; los mensajes no guardados se perderán al recargar. Cuando se restablezca el almacenamiento, recarga para recuperar el historial anterior. Esto no cambia la configuración del tutor.";
@@ -197,16 +200,18 @@ function validAttempt(attempt) {
 
 export function saveHistory(exchanges, courseId) {
   if (enumerationFailed || unreadableCourses.has(courseId)) return historyStorageWarning;
-  return writeLearnerRecord(
-    historyStorageKey(courseId),
-    JSON.stringify(exchanges.filter((item) => item.courseId === courseId)),
-  )
-    ? ""
-    : historyStorageWarning;
+  const key = historyStorageKey(courseId);
+  try {
+    if (learnerGet(key) !== (observedHistory.get(courseId) ?? null)) return historyConflict;
+    const raw = JSON.stringify(exchanges.filter((item) => item.courseId === courseId));
+    if (!writeLearnerRecord(key, raw)) return historyStorageWarning;
+    observedHistory.set(courseId, raw);
+    return "";
+  } catch { return historyStorageWarning; }
 }
 
 export function storedCourseIds() {
-  return [...new Set(Object.keys(localStorage)
+  return [...new Set(learnerList()
     .filter((key) => key.startsWith(historyKeyPrefix))
     .flatMap((key) => {
       try {
@@ -217,24 +222,29 @@ export function storedCourseIds() {
     }))];
 }
 
+export function historyChanged(courseIds) {
+  return courseIds.some((id) => learnerGet(historyStorageKey(id)) !== (observedHistory.get(id) ?? null));
+}
+
 export function removeHistory(courseId) {
   try {
     const ids = courseId === undefined ? storedCourseIds() : [courseId];
     let warning = "";
+    if (historyChanged(ids)) return historyConflict;
     for (const id of ids) {
       const legacy = originalLocalId(id);
       const keys = [historyStorageKey(id), ...(legacy === null ? [] : [historyStorageKey(legacy)])];
       for (const key of keys) try {
-        if (localStorage.getItem(key) === null) {
+        if (learnerGet(key) === null) {
           forgetProtectedRecord(key);
           continue;
         }
-        localStorage.removeItem(key);
+        learnerRemove(key);
         forgetProtectedRecord(key);
       } catch {
         // A browser may reject deletion while still allowing replacement.
         try {
-          localStorage.setItem(key, "[]");
+          learnerSet(key, "[]");
           forgetProtectedRecord(key);
         } catch {
           warning = historyStorageWarning;
@@ -242,8 +252,11 @@ export function removeHistory(courseId) {
       }
     }
     if (!warning) {
-      if (courseId === undefined) { unreadableCourses.clear(); enumerationFailed = false; }
-      else unreadableCourses.delete(courseId);
+      afterLearnerCommit(() => {
+        for (const id of ids) observedHistory.set(id, null);
+        if (courseId === undefined) { unreadableCourses.clear(); enumerationFailed = false; }
+        else unreadableCourses.delete(courseId);
+      });
     }
     return warning;
   } catch {
@@ -252,6 +265,7 @@ export function removeHistory(courseId) {
 }
 
 export function loadHistory() {
+  observedHistory.clear();
   const exchanges = [];
   let storageWarning = "";
   const recoveryWarnings = [];
@@ -259,12 +273,13 @@ export function loadHistory() {
     for (const courseId of storedCourseIds()) {
       try {
         let key = historyStorageKey(courseId);
-        let raw = localStorage.getItem(key);
+        let raw = learnerGet(key);
+        observedHistory.set(courseId, raw);
         const legacy = originalLocalId(courseId);
         let fromLegacy = false;
         if (raw === null && legacy !== null) {
           key = historyStorageKey(legacy);
-          raw = localStorage.getItem(key);
+          raw = learnerGet(key);
           fromLegacy = raw !== null;
         }
         if (raw === null) continue;
@@ -331,9 +346,7 @@ export function loadHistory() {
           recoveryWarnings.push(
             preserveLearnerRecord(key, courseId, "history", raw),
           );
-        if (damaged || interrupted)
-          storageWarning =
-            saveHistory(courseExchanges, courseId) || storageWarning;
+        // Leave the source untouched until a later locked learner write.
       } catch {
         unreadableCourses.add(courseId);
         storageWarning = historyStorageWarning;
