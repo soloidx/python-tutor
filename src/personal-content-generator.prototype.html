@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo · Chat del generador de contenido</title>
+<style>
+*{box-sizing:border-box}body{margin:32px auto;max-width:1160px;padding:0 22px;background:#f7f8fa;color:#192333;font:16px/1.5 system-ui,sans-serif}h1{font-size:30px;line-height:1.2}h2{font-size:21px;margin-top:0}h3{font-size:17px}section,aside{background:white;border:1px solid #dce1e8;border-radius:12px;padding:22px;margin:18px 0}.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}.columns section{margin:0}button,textarea{font:inherit}button{padding:9px 13px;margin:4px;border:1px solid #c9d1df;border-radius:7px;background:white;color:#24354c;cursor:pointer}button:hover,button[aria-selected=true]{background:#fff0f0;border-color:#d1242f}button:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #d1242f;outline-offset:3px}button:disabled{opacity:.45;cursor:default}.primary{background:#c91d29;color:white;border-color:#c91d29}.primary:hover{background:#ac1420}textarea{width:100%;min-height:80px;padding:12px;border:1px solid #abb8ca;border-radius:8px}label{display:block;font-weight:600;margin:12px 0 6px}.muted,small{color:#536078}.tag{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#a01b25}.notice{padding:12px 16px;background:#fff2f2;border-left:3px solid #c91d29;margin:12px 0}dl{display:grid;grid-template-columns:170px 1fr;gap:8px;margin:0}dt{font-weight:600}dd{margin:0;overflow-wrap:anywhere}.message{padding:12px 16px;margin:10px 0;border-radius:8px;background:#f2f4f8}.message.user{background:#fff0f0;margin-left:35px}.message p{margin:5px 0}.message strong{font-size:13px}details{padding:12px;border:1px solid #dce1e8;border-radius:8px;margin:10px 0}summary{cursor:pointer;font-weight:600}pre{white-space:pre-wrap;background:#f2f4f8;padding:12px;border-radius:6px}nav{margin-bottom:15px}#announcement{min-height:50px}#free button{font-size:14px}ol{padding-left:22px}@media(max-width:760px){.columns{grid-template-columns:1fr}dl{grid-template-columns:1fr}dd{margin-bottom:10px}}
+</style>
+<header><span class="tag">Prototipo descartable · Propuesta para discutir</span>
+<h1>Crear mi propio learning path</h1>
+<p>¿Se entienden las dos aprobaciones y qué ocurre al cambiar, cancelar o reintentar? Este boceto permite recorrer el chat y observar sus estados.</p>
+<p class="muted">Todo es simulado y vive en memoria: no llama al LLM, no ejecuta Python y no modifica la aplicación. Recargar reinicia el boceto. La recuperación tras cerrar o recargar se decidirá en el ticket de persistencia.</p>
+</header>
+<aside><h2>Estado de la propuesta</h2><dl id="state"></dl><p id="announcement" class="notice" role="status" aria-live="polite" aria-atomic="true"></p></aside>
+<div class="columns">
+<section><h2>Explorar libremente</h2><p class="muted">Controles del boceto, siempre disponibles. Una acción fuera de lugar muestra por qué todavía no se puede realizar.</p><div id="free"></div></section>
+<section><h2>Recorridos guiados</h2><div id="tabs" role="tablist" aria-label="Casos del generador"></div><div id="walkthrough" role="tabpanel" aria-labelledby="tab-0" tabindex="0"><p id="description"></p><div id="steps"></div></div></section>
+</div>
+<main id="app"></main>
+<script>
+// Modelo puro. No depende del DOM, red, almacenamiento ni temporizadores.
+const GeneratorModel=(()=>{
+ const initial=()=>({phase:'objective',view:'chat',objective:'Automatizar archivos con Python',details:'',changeRequest:'',revision:0,job:0,abandonedJob:null,first:false,second:false,complete:false,validated:false,incorporated:false,messages:[{who:'assistant',text:'¿Qué te gustaría aprender con Python?'}],notice:'Escribe un objetivo o comienza un recorrido.'});
+ const say=(n,who,text)=>n.messages.push({who,text});
+ function reduce(s,a){
+  if(a.type==='reset')return initial();
+  const n=structuredClone(s);
+  const reject=text=>({...s,notice:text});
+  switch(a.type){
+   case 'objective':
+    if(s.phase!=='objective')return reject('Este objetivo ya está en conversación. Usa «Cambiar lo pedido» para revisarlo.');
+    if(!a.text?.trim())return reject('Escribe qué te gustaría aprender.');
+    n.objective=a.text.trim();n.phase='clarifying';n.revision++;
+    say(n,'user',n.objective);say(n,'assistant','¿Qué sabes ya de Python? ¿Qué tarea concreta quieres poder realizar y cuánto tiempo tienes?');
+    n.notice='La aclaración sigue en el chat. Aquí se simula una ronda; el LLM real podrá necesitar más.';break;
+   case 'details':
+    if(s.phase!=='clarifying')return reject('Primero necesitamos un objetivo o una petición de cambios.');
+    if(!a.text?.trim())return reject('Cuéntame tu experiencia y el resultado que buscas.');
+    n.details=a.text.trim();n.phase='brief';say(n,'user',n.details);
+    say(n,'assistant','Entiendo tu objetivo: '+n.objective+'. Tendré en cuenta: '+n.details+'. '+(n.changeRequest?'Último ajuste pedido: '+n.changeRequest+'. ':'')+'¿Genero una propuesta con cursos, lecciones y ejercicios?');
+    n.notice='Primera aprobación pendiente. Todavía no hemos generado cursos.';break;
+   case 'approve':
+    if(s.phase!=='brief')return reject('La generación se aprueba después de revisar el resumen del objetivo.');
+    n.first=true;n.second=false;n.job++;n.phase='generating';say(n,'user','Sí, generar contenido con este objetivo.');
+    say(n,'assistant','Estoy preparando la propuesta. La revisarás antes de añadirla a tus learning paths.');n.notice='Generación simulada en curso. El catálogo activo sigue igual.';break;
+   case 'finish':
+    if(a.job!==s.job||s.phase!=='generating')return reject('Resultado tardío descartado: ya no corresponde a la generación activa.');
+    n.complete=true;n.phase='validating';say(n,'assistant','El borrador está completo. Ahora se comprueba antes de ofrecer su incorporación.');n.notice='Contenido completo; validación pendiente. Aún no se puede incorporar.';break;
+   case 'valid':
+    if(s.phase!=='validating')return reject('Primero tiene que terminar la generación del borrador.');
+    n.validated=true;n.phase='review';say(n,'assistant','La propuesta está lista para revisar: una ruta, un curso original reutilizado y un curso nuevo con sus lecciones y ejercicios. Puedes pedir cambios o añadirla.');n.notice='Segunda aprobación pendiente. La validación de este boceto es solo una simulación.';break;
+   case 'fail':
+    if(!['generating','validating'].includes(s.phase))return reject('Este fallo solo se simula mientras se genera o valida.');
+    n.phase='error';n.validated=false;say(n,'assistant','No pude completar o validar esta propuesta. Puedes reintentar el mismo objetivo o pedir cambios.');n.notice='Fallo simulado. No se ha incorporado ningún curso.';break;
+   case 'retry':
+    if(s.phase!=='error'||!s.first)return reject('Reintentar conserva la primera aprobación solo si falla el mismo objetivo.');
+    n.phase='generating';n.job++;n.complete=false;n.validated=false;say(n,'user','Reintentar la generación con el mismo objetivo.');n.notice='Nuevo intento del mismo objetivo; no repite la aprobación inicial.';break;
+   case 'edit':
+    if(s.incorporated||['objective','saving','saveError'].includes(s.phase))return reject('Aquí solo revisamos una propuesta que todavía no está incorporada ni en proceso de guardarse.');
+    n.abandonedJob=s.job;n.job++;n.revision++;n.phase='clarifying';n.first=false;n.second=false;n.complete=false;n.validated=false;
+    n.changeRequest=a.text||'Quiero una propuesta más breve y centrada en organizar fotos.';
+    say(n,'user',n.changeRequest);say(n,'assistant','Revisemos el objetivo. ¿Qué resultado quieres priorizar? La propuesta anterior deja de estar vigente.');n.notice='Cambiar lo pedido invalida el borrador y sus aprobaciones. La conversación se conserva.';break;
+   case 'cancel':
+    if(!['generating','validating','error','review'].includes(s.phase))return reject('Puedes cancelar cuando existe una generación o propuesta pendiente.');
+    n.abandonedJob=s.job;n.job++;n.phase='brief';n.first=false;n.second=false;n.complete=false;n.validated=false;
+    say(n,'user','Cancelar esta generación.');say(n,'assistant','Conservamos la conversación y el objetivo. Puedes revisarlo o aprobar una nueva generación.');n.notice='Cancelada. La simulación ignora resultados tardíos; cancelar una petición real podría no evitar todo su coste.';break;
+   case 'incorporate':
+    if(s.phase!=='review'||!s.complete||!s.validated||!s.first)return reject('Solo puedes incorporar una propuesta completa, validada y revisable.');
+    n.second=true;n.phase='saving';say(n,'user','Aprobar y añadir a mis learning paths.');n.notice='Segunda aprobación registrada. Incorporación pendiente de guardar; todavía no navegamos.';break;
+   case 'saveFail':
+    if(s.phase!=='saving')return reject('Primero aprueba incorporar la propuesta.');
+    n.phase='saveError';say(n,'assistant','No pudimos guardar el contenido. La propuesta sigue disponible en esta sesión. Reintenta guardarla.');n.notice='El catálogo activo sigue intacto. No mostramos una incorporación que no pudo guardarse.';break;
+   case 'saveRetry':
+    if(s.phase!=='saveError')return reject('No hay una incorporación fallida que reintentar.');
+    n.phase='saving';n.notice='Reintentando la misma incorporación, sin duplicar cursos ni volver a pedir aprobación.';break;
+   case 'saved':
+    if(s.phase!=='saving'||!s.second)return reject(s.incorporated?'Ya se incorporó esta propuesta; no se añade por segunda vez.':'No hay una incorporación aprobada pendiente.');
+    n.phase='incorporated';n.incorporated=true;n.view='paths';say(n,'assistant','Tu ruta está lista en Learning paths.');n.notice='Incorporación simulada completada una sola vez. Se abre Learning paths con ambas fuentes.';break;
+   case 'leave':n.view='paths';n.notice='Sales del chat. Mientras esta aplicación siga abierta, conservamos el trabajo en memoria y la generación puede continuar.';break;
+   case 'return':n.view='chat';n.notice='Vuelves a la misma conversación, separada del tutor de cada tema.';break;
+   default:return reject('Acción desconocida.');
+  }
+  return n;
+ }
+ return {initial,reduce};
+})();
+</script>
+<script>
+const $=id=>document.getElementById(id);
+const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let state=GeneratorModel.initial(),guide=0,step=0;
+const names={objective:'Elegir objetivo',clarifying:'Conversar sobre detalles',brief:'Revisar resumen del objetivo',generating:'Generando contenido',validating:'Validando contenido',review:'Revisar propuesta completa',error:'Generación o validación fallida',saving:'Guardando incorporación',saveError:'No se pudo guardar',incorporated:'Contenido incorporado'};
+const actions=[['Enviar objetivo','objective'],['Responder detalles','details'],['Aprobar generación','approve'],['Completar generación','finish'],['Superar validación','valid'],['Simular fallo','fail'],['Reintentar generación','retry'],['Cambiar lo pedido','edit'],['Cancelar generación','cancel'],['Recibir resultado tardío','late'],['Aprobar incorporación','incorporate'],['Simular fallo al guardar','saveFail'],['Reintentar guardar','saveRetry'],['Completar incorporación','saved'],['Salir a Learning paths','leave'],['Volver al generador','return'],['Reiniciar boceto','reset']];
+const scenarios=[
+ {name:'Dos aprobaciones',text:'Recorre la conversación completa. Observa que el catálogo solo cambia después de revisar, aprobar y guardar.',steps:['objective','details','approve','finish','valid','incorporate','saved','saved']},
+ {name:'Cambiar y cancelar',text:'Cambiar lo pedido invalida la propuesta. Un resultado anterior no puede reactivarla. Cancelar exige aprobar otra generación.',steps:['objective','details','approve','edit','late','details','approve','cancel','late']},
+ {name:'Fallos y reintentos',text:'La misma petición conserva su aprobación al reintentarse. Si falla el guardado, la ruta aún no aparece.',steps:['objective','details','approve','finish','fail','retry','finish','valid','incorporate','saveFail','saveRetry','saved']},
+ {name:'Salir y regresar',text:'Se conserva la sesión al navegar. Aquí simulamos que el trabajo termina mientras estás en Learning paths.',steps:['objective','details','approve','leave','finish','valid','return','incorporate','saved']},
+ {name:'Aprobación prematura',text:'Intenta incorporar antes de generar, antes de validar y sin la segunda aprobación. Ningún intento debe cambiar el catálogo.',steps:['incorporate','objective','details','approve','incorporate','finish','incorporate','valid','saved']}
+];
+const label=type=>type==='late'?'Recibir resultado tardío':actions.find(x=>x[1]===type)?.[0]||type;
+function button(text,type,primary=false){return `<button ${primary?'class="primary"':''} data-action="${type}">${escapeHtml(text)}</button>`;}
+function send(type){
+ const objective=$('objective')?.value||state.objective;
+ const details=$('details')?.value||'Ya conozco variables y bucles. Quiero organizar archivos y fotos, con 20 minutos diarios.';
+ const change=$('change')?.value;
+ const a=type==='late'?{type:'finish',job:state.abandonedJob??-1}:{type,text:type==='objective'?objective:type==='details'?details:type==='edit'?change:undefined,job:state.job};
+ state=GeneratorModel.reduce(state,a);render();
+}
+function proposal(){return `<article><h3>Propuesta: ${escapeHtml(state.objective)}</h3><p>Una ruta · 2 cursos · Revisión de muestra</p><details><summary>Fundamentos de Python · curso original reutilizado</summary><p>Se conserva el curso existente y su progreso compartido. No se genera una copia.</p></details><details open><summary>Organizar archivos · curso personal nuevo</summary><p>Un tema de muestra: nombres y extensiones. El producto real permitiría revisar todos sus temas y ejercicios.</p><h3>Lección: reconocer extensiones</h3><p>Una extensión es la parte del nombre después del último punto. Puedes comprobar el final de un texto con endswith.</p><pre>nombre = "foto.jpg"\nprint(nombre.endswith(".jpg"))</pre><h3>Ejercicio de código</h3><p>Usa <code>nombre</code> para asignar a <code>es_foto</code> si termina en <code>.jpg</code>.</p><pre>nombre = "foto.jpg"\nes_foto = False</pre><h3>Ejercicio de selección</h3><p>¿Qué devuelve <code>"notas.txt".endswith(".jpg")</code>?</p><ul><li>True</li><li>False</li></ul><p class="muted">Material fijo de ejemplo, sin ejecución ni comprobación pedagógica real. Los criterios de validación pertenecen a otro ticket.</p></details></article>`;}
+function render(){
+ $('state').innerHTML=[['Pantalla',state.view==='chat'?'Generador · conversación propia':'Learning paths'],['Etapa',names[state.phase]],['Versión del objetivo',state.revision||'Sin enviar'],['Primera aprobación',state.first?'Sí, para este objetivo':'Pendiente'],['Contenido',state.complete?'Borrador completo':'Sin borrador completo'],['Validación',state.validated?'Superada (simulada)':'Pendiente o fallida'],['Segunda aprobación',state.second?'Sí, para esta propuesta':'Pendiente'],['Catálogo activo',state.incorporated?'Original + 1 ruta personal + 1 curso personal':'Solo contenido original'],['Trabajo activo',['generating','validating'].includes(state.phase)?'Intento '+state.job:'Ninguno'],['Datos guardados','Solo memoria de este boceto']].map(([k,v])=>`<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join('');
+ $('announcement').textContent=state.notice;
+ $('free').innerHTML=actions.map(([text,type])=>button(text,type)).join('');
+ $('tabs').innerHTML=scenarios.map((s,i)=>`<button id="tab-${i}" role="tab" aria-controls="walkthrough" aria-selected="${i===guide}" tabindex="${i===guide?0:-1}" data-guide="${i}">${s.name}</button>`).join('');
+ $('walkthrough').setAttribute('aria-labelledby','tab-'+guide);
+ $('description').textContent=scenarios[guide].text;
+ $('steps').innerHTML=scenarios[guide].steps.map((t,i)=>`<button data-step="${i}" ${i!==step?'disabled':''}>${i+1}. ${label(t)}</button>`).join('')+(step===scenarios[guide].steps.length?'<p>Recorrido terminado. Puedes seguir con los controles libres o elegir otro caso.</p>':'');
+ if(state.view==='paths'){
+  $('app').innerHTML=`<section><h2>Learning paths</h2><p>Fundamentos de Python · contenido original</p>${state.incorporated?`<h3>${escapeHtml(state.objective)}</h3><p>Tu nueva ruta ya incluye el curso original reutilizado y el nuevo curso personal.</p>`:`<p class="notice">Tu propuesta todavía no se ha incorporado. Estado: ${names[state.phase]}.</p>`}${button('Volver al generador','return')}</section>`;return;
+ }
+ let controls='';
+ if(state.phase==='objective')controls=`<label for="objective">¿Qué te gustaría aprender?</label><textarea id="objective">${escapeHtml(state.objective)}</textarea>${button('Conversar sobre mi objetivo','objective',true)}`;
+ if(state.phase==='clarifying')controls=`<label for="details">Tu experiencia y el resultado que buscas</label><textarea id="details">Ya conozco variables y bucles. Quiero organizar archivos y fotos, con 20 minutos diarios.</textarea>${button('Enviar respuesta','details',true)}`;
+ if(state.phase==='brief')controls=button('Sí, generar contenido','approve',true)+button('Cambiar lo pedido','edit');
+ if(['generating','validating'].includes(state.phase))controls=`<p role="status">${names[state.phase]}… Puedes continuar en otra sección de la aplicación.</p>${button('Cancelar generación','cancel')}`;
+ if(state.phase==='error')controls=button('Reintentar mismo objetivo','retry',true)+button('Cambiar lo pedido','edit');
+ if(state.phase==='review')controls=proposal()+`<label for="change">¿Quieres ajustar la propuesta?</label><textarea id="change" placeholder="Por ejemplo: enfócalo en organizar fotos"></textarea>`+button('Pedir cambios','edit')+button('Aprobar y añadir a mis learning paths','incorporate',true);
+ if(state.phase==='saving')controls='<p role="status">Guardando el contenido aprobado…</p>';
+ if(state.phase==='saveError')controls=button('Reintentar guardar','saveRetry',true);
+ if(state.phase==='incorporated')controls='<p>Esta propuesta ya está incorporada. El generador conserva aquí su conversación.</p>'+button('Ver mis learning paths','leave',true);
+ $('app').innerHTML=`<section><nav>${button('← Learning paths','leave')}</nav><h2>Conversación del generador</h2><p class="muted">Este historial prepara contenido. La ayuda al resolver ejercicios sigue en el tutor de cada tema.</p><div aria-label="Mensajes">${state.messages.map(m=>`<div class="message ${m.who==='user'?'user':''}"><strong>${m.who==='user'?'Tú':'Generador'}</strong><p>${escapeHtml(m.text)}</p></div>`).join('')}</div><div>${controls}</div></section>`;
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.action){send(b.dataset.action);return;}
+ if(b.dataset.guide!==undefined){guide=Number(b.dataset.guide);step=0;state=GeneratorModel.initial();render();$('tab-'+guide).focus();return;}
+ if(b.dataset.step!==undefined){const i=Number(b.dataset.step);if(i!==step)return;step++;send(scenarios[guide].steps[i]);const next=$('steps').querySelector('button:not(:disabled)');if(next)next.focus();else $('walkthrough').focus();}
+});
+$('tabs').addEventListener('keydown',e=>{
+ if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();
+ guide=e.key==='Home'?0:e.key==='End'?scenarios.length-1:(guide+(e.key==='ArrowRight'?1:-1)+scenarios.length)%scenarios.length;
+ step=0;state=GeneratorModel.initial();render();$('tab-'+guide).focus();
+});
+render();
+</script>
+</html>
