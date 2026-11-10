@@ -116,6 +116,35 @@ test("switching exercises cancels a run and ignores its late worker result", asy
   await expect(page.getByLabel("Salida del programa")).not.toHaveText("late");
 });
 
+test("resolved code entries keep their accepted answer available for review", async ({
+  page,
+  context,
+}) => {
+  await page.addInitScript(() => {
+    window.Worker = class {
+      constructor() {
+        setTimeout(() => this.onmessage?.({ data: { type: "ready" } }), 0);
+      }
+      postMessage() {
+        setTimeout(
+          () => this.onmessage?.({ data: { passed: true, output: "Hola, Ada" } }),
+          0,
+        );
+      }
+      terminate() {}
+    };
+  });
+  await openPractice(page, context, practicePublication(2));
+  await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre)');
+  await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
+  await expect(page.getByLabel("Salida del programa")).toHaveText("Hola, Ada");
+  await expect(page.getByLabel("Progreso de la ronda")).toHaveAttribute("value", "1");
+  await expect(page.getByLabel("Código Python")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Restablecer código" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Ejecutar", exact: true })).toBeDisabled();
+  await expect(page.getByRole("status").first()).toContainText("¡Correcto!");
+});
+
 function mixedRound() {
   const value = practicePublication(2);
   updateCourse(value, "python-fundamentos", (course) => {

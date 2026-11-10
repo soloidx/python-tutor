@@ -366,7 +366,7 @@ test("sends an allowlisted choice capture for checked and pending attempts", asy
   expect(pending.capture).toMatchObject({
     selectedOptionId: "imprime",
     selectionStatus: "pending",
-    lastResult: { optionId: "compara", correct: false },
+    lastResult: null,
     feedback: null,
   });
   expect(JSON.stringify(pending.capture)).not.toContain("answerId");

@@ -7,6 +7,7 @@ import { usePython } from "./usePython.js";
 export function ExerciseWorkspace({
   exercise,
   approved = false,
+  lockWhenApproved = false,
   onComplete = () => {},
   state,
   onStateChange,
@@ -86,6 +87,7 @@ export function ExerciseWorkspace({
     update({
       selectedOptionId,
       selectionStatus: "pending",
+      selectionResult: null,
       selectionFeedback: null,
     });
   }
@@ -153,6 +155,7 @@ export function ExerciseWorkspace({
           selectionResult={selectionResult}
           feedback={selectionFeedback}
           approved={approved}
+          locked={lockWhenApproved && approved}
           onSelect={selectOption}
           onCheck={checkChoice}
         />
@@ -177,7 +180,7 @@ export function ExerciseWorkspace({
                   className="reset-code"
                   title="Restablecer código del ejercicio"
                   aria-label="Restablecer código"
-                  disabled={python.status === "running"}
+                  disabled={lockWhenApproved && approved || python.status === "running"}
                   onClick={() => {
                     setCode(exercise.starter);
                     setResult(null);
@@ -188,7 +191,7 @@ export function ExerciseWorkspace({
                 </button>
                 <button
                   className="primary run-button"
-                  disabled={python.status !== "ready"}
+                  disabled={lockWhenApproved && approved || python.status !== "ready"}
                   onClick={() => {
                     setFeedback("");
                     setResult(null);
@@ -224,7 +227,7 @@ export function ExerciseWorkspace({
                     });
                   }
                 }}
-                disabled={python.status === "running"}
+                disabled={lockWhenApproved && approved || python.status === "running"}
               />
             </div>
             <div className="editor-footer">
@@ -315,6 +318,7 @@ function ChoicePractice({
   selectionResult,
   feedback,
   approved,
+  locked,
   onSelect,
   onCheck,
 }) {
@@ -354,6 +358,7 @@ function ChoicePractice({
                   name={`choice-${exercise.id}`}
                   value={option.id}
                   checked={selectedOptionId === option.id}
+                  disabled={locked}
                   onChange={() => onSelect(option.id)}
                 />
                 <span>{option.text}</span>
@@ -364,7 +369,7 @@ function ChoicePractice({
         <button
           className="primary choice-check"
           type="submit"
-          disabled={!selectedOptionId}
+          disabled={!selectedOptionId || locked}
         >
           Comprobar
         </button>

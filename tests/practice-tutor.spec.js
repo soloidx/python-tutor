@@ -50,6 +50,53 @@ test('practice shares the course topic conversation and safely captures selectio
   await expect(page.getByText('Pregunta desde selección', { exact: true })).toBeVisible();
 });
 
+test('practice tutor captures only the current choice check result', async ({ page, context }) => {
+  await serveCatalog(context, tutorPublication());
+  const requests = await setup(page);
+  await practice(page).click();
+  await rail(page).getByRole('button', { name: /Selección del tema/ }).click();
+
+  await page.getByLabel('Guarda otra cosa', { exact: true }).check();
+  await page.getByRole('button', { name: 'Comprobar', exact: true }).click();
+  await page.getByLabel('Guarda siete', { exact: true }).check();
+  await send(page, 'Revisa mi nueva selección');
+  await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(1);
+  const pending = JSON.parse(requests[0].messages.at(-1).content).capture;
+  expect(pending).toMatchObject({
+    selectedOptionId: 'seven',
+    selectionStatus: 'pending',
+    lastResult: null,
+    feedback: null,
+  });
+
+  await page.getByRole('button', { name: 'Comprobar', exact: true }).click();
+  await send(page, 'Revisa mi selección comprobada');
+  await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(2);
+  const checked = JSON.parse(requests[1].messages.at(-1).content).capture;
+  expect(checked).toMatchObject({
+    selectedOptionId: 'seven',
+    selectionStatus: 'checked',
+    lastResult: { optionId: 'seven', correct: true },
+    feedback: 'Guarda el valor siete',
+  });
+});
+
+test('resolved choice entries keep their accepted answer available for review', async ({ page, context }) => {
+  await serveCatalog(context, tutorPublication());
+  await page.goto('/');
+  await practice(page).click();
+  const choice = rail(page).getByRole('button', { name: /Selección del tema/ });
+  await choice.click();
+  await page.getByLabel('Guarda siete', { exact: true }).check();
+  await page.getByRole('button', { name: 'Comprobar', exact: true }).click();
+  await expect(page.getByLabel('Progreso de la ronda')).toHaveAttribute('value', '1');
+  await expect(page.getByLabel('Guarda siete', { exact: true })).toBeDisabled();
+  await expect(page.getByLabel('Guarda otra cosa', { exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Comprobar', exact: true })).toBeDisabled();
+  await expect(page.locator('.choice-feedback')).toContainText('Guarda el valor siete');
+  await expect(page.getByText('Ejercicio aprobado')).toBeVisible();
+});
+
 for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
   test(`practice returns from settings and retries original code and selection captures at ${viewport.width}px`, async ({ page, context }) => {
     await page.setViewportSize(viewport);

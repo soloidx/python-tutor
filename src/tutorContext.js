@@ -37,7 +37,7 @@ export function captureContext({
       exercise: capturedExercise,
       selectedOptionId: selectionStatus === "none" ? null : selectedOptionId,
       selectionStatus,
-      lastResult: selectionResult
+      lastResult: selectionStatus === "checked" && selectionResult
         ? {
             optionId: selectionResult.optionId,
             correct: selectionResult.correct,

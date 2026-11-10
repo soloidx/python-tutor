@@ -152,6 +152,7 @@ export function Practice({
                     exercise={current.exercise}
                     state={current.work}
                     approved={current.status === "resolved"}
+                    lockWhenApproved
                     label={
                       current.exercise.type === "choice"
                         ? "EJERCICIO DE SELECCIÓN"
