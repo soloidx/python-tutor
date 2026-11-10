@@ -1,6 +1,6 @@
 # Generación estructurada de contenido personal con OpenRouter
 
-Investigación para [Investigar generación estructurada con uno o varios agentes en OpenRouter](https://github.com/soloidx/python-tutor/issues/74), dentro del [Mapa: generador conversacional de contenido personal](https://github.com/soloidx/python-tutor/issues/73). Consultado el 10 de noviembre de 2026 UTC. Documento de planificación en rama desechable; no propone fusionarse ni implementa el generador.
+Investigación para [Investigar generación estructurada con uno o varios agentes en OpenRouter](https://github.com/soloidx/python-tutor/issues/74), dentro del [Mapa: generador conversacional de contenido personal](https://github.com/soloidx/python-tutor/issues/73). Consultado el 9 de noviembre de 2026 (America/Lima). Documento de planificación en rama desechable; no propone fusionarse ni implementa el generador.
 
 ## Resultado y alcance
 
