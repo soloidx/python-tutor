@@ -1,0 +1,54 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><title>Ejecutor descartable</title><script>
+/* Trusted functional supervisor; never receives rules, secrets or course data. */
+(() => {
+  const appOrigin = "__APP_ORIGIN__";
+  let current = null, assetsPromise;
+  const tell = (message) => parent.postMessage(message, appOrigin);
+  const assets = () => assetsPromise ||= Promise.all(["pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"].map(async name => {
+    const response = await fetch("/runtime/" + name);
+    if (!response.ok) throw new Error("No se pudo cargar " + name);
+    return [name, await response.arrayBuffer()];
+  })).then(Object.fromEntries).catch(error => { assetsPromise = null; throw error; });
+  function stop() {
+    if (!current) return;
+    clearTimeout(current.timer);
+    current.worker?.terminate();
+    current = null;
+  }
+  function terminal(run, message) {
+    if (current !== run) return;
+    tell({...message, id: run.id});
+    stop();
+  }
+  addEventListener("message", async ({origin, source, data}) => {
+    if (origin !== appOrigin || source !== parent || !data || typeof data.id !== "string") return;
+    if (data.type === "cancel") {
+      if (current?.id === data.id) terminal(current, {type: "cancelled"});
+      return;
+    }
+    if (data.type !== "execute" || typeof data.code !== "string" || data.code.length > 16000 || !Array.isArray(data.names) || data.names.length > 20 || !data.names.every(name => /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(name))) return;
+    stop();
+    const run = {id: data.id, worker: null, timer: null};
+    current = run;
+    tell({id: run.id, type: "loading"});
+    run.timer = setTimeout(() => terminal(run, {type: "load-error", message: "La carga superó 45 segundos."}), 45000);
+    try {
+      const bytes = await assets();
+      if (current !== run) return;
+      run.worker = new Worker("/worker.js");
+      run.worker.onerror = () => terminal(run, {type: "load-error", message: "No se pudo iniciar el worker del prototipo."});
+      run.worker.onmessage = ({data: message}) => {
+        if (current !== run || !message || typeof message.type !== "string") return;
+        if (message.type === "ready") {
+          clearTimeout(run.timer);
+          run.timer = setTimeout(() => terminal(run, {type: "timeout", message: "La ejecución superó diez segundos."}), 10000);
+          tell({id: run.id, type: "running", version: message.version});
+          run.worker.postMessage({type: "run", code: data.code, names: data.names});
+        } else if (["observations", "execution-error", "load-error", "unsupported", "limit"].includes(message.type)) terminal(run, message);
+      };
+      run.worker.postMessage({type: "bootstrap", assets: bytes});
+    } catch (error) { terminal(run, {type: "load-error", message: String(error)}); }
+  });
+  tell({type: "executor-ready"});
+})();
+</script></html>

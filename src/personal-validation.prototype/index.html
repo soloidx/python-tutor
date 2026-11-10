@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo · Corrección por reglas</title>
+<style>
+:root{font:16px/1.5 system-ui,sans-serif;color:#21332b;background:#f3f5f1}*{box-sizing:border-box}body{max-width:1100px;margin:36px auto;padding:0 22px}h1{font-size:30px;margin:8px 0}h2{font-size:19px;margin:0 0 14px}p{margin:10px 0}.eyebrow{font-size:12px;letter-spacing:.1em;color:#557365;font-weight:700}.intro{max-width:850px}.notice{padding:13px 16px;background:#fff5d9;border:1px solid #ecd69a;border-radius:8px;font-size:14px}.card{background:white;border:1px solid #dce4dc;border-radius:12px;padding:22px;margin:20px 0}.state{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.state p{margin:0}.label{display:block;color:#617168;font-size:13px}.value{font-weight:650}.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}textarea{display:block;width:100%;resize:vertical;min-height:185px;font:14px/1.5 ui-monospace,monospace;padding:12px;color:#21332b;background:#f8faf7;border:1px solid #cbd7cd;border-radius:7px;margin-top:7px}button{font:inherit;border:1px solid #bdccbf;background:white;color:#243f30;padding:9px 14px;border-radius:7px;cursor:pointer}button.primary{background:#256749;border-color:#256749;color:white}button:disabled{opacity:.45;cursor:default}.actions,.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.tabs button[aria-selected=true]{background:#e2f0e5;border-color:#397451}.result{font-size:21px;font-weight:650}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8f4;padding:14px;border-radius:7px;min-height:65px;font-size:13px}.fine{font-size:13px;color:#617168}ol{padding-left:23px}iframe{display:none}button:focus-visible,textarea:focus-visible{outline:3px solid #87b99d;outline-offset:3px}@media(max-width:700px){body{margin:20px auto}.columns,.state{grid-template-columns:1fr}h1{font-size:25px}}
+</style>
+<div class="eyebrow">PYTHON TUTOR · PROTOTIPO DESCARTABLE</div>
+<h1>¿Podemos corregir con reglas separadas de Python?</h1>
+<p class="intro">Ejecuta un ejercicio en otro origen y observa cómo la aplicación compara su salida y valores con reglas de datos. Puedes explorar aprobación, rechazo, errores y cancelación. Todo vive en memoria.</p>
+<p class="notice">Esta demo comprueba funcionamiento. No certifica la integridad del canal ni el aislamiento completo y no está conectada al catálogo, progreso ni tutor. No introduzcas información personal.</p>
+<section class="card" aria-live="polite"><h2>Estado actual</h2><div class="state"><p><span class="label">Etapa</span><span id="stage" class="value">Esperando al ejecutor</span></p><p><span class="label">Resultado</span><span id="verdict" class="value">Sin ejecutar</span></p><p><span class="label">Sesión</span><span id="session" class="value">Ninguna</span></p></div><p id="detail"></p><p class="fine" id="origins"></p></section>
+<section class="card"><h2>Recorridos guiados</h2><div id="tabs" class="tabs" role="tablist" aria-label="Casos de validación"></div><p id="scenario"></p><div id="steps" class="actions"></div><p class="fine">Cada recorrido vuelve a un estado conocido. Los controles de abajo permiten explorar libremente.</p></section>
+<section class="card"><h2>Exploración libre</h2><div class="columns"><label>Código del ejercicio<textarea id="code" spellcheck="false"></textarea></label><label>Reglas que evalúa la aplicación<textarea id="rules" spellcheck="false"></textarea></label></div><p class="fine">Perfil: salida sin blancos finales, texto, booleanos y números finitos de magnitud ≤ 2⁵³−1. Todas las reglas deben cumplirse. No admite listas, objetos, funciones, expresiones ejecutables ni input().</p><div class="actions"><button id="run" class="primary" disabled>Ejecutar y comparar</button><button id="cancel" disabled>Cancelar</button><button id="reset">Volver al caso correcto</button></div></section>
+<section class="card"><h2>Observaciones y corrección</h2><p id="result" class="result">Sin resultado</p><div class="columns"><div><span class="label">Datos observados de Python</span><pre id="observations">—</pre></div><div><span class="label">Comparaciones de la aplicación</span><pre id="comparisons">—</pre></div></div><h2>Acciones recientes</h2><ol id="history"></ol></section>
+<iframe id="executor" title="Ejecutor separado" sandbox="allow-scripts allow-same-origin"></iframe>
+<script>
+// Pure prototype module: rules are data, never evaluated as source code.
+const RuleProfile = (() => {
+  const plain = value => value && typeof value === 'object' && !Array.isArray(value);
+  const keys = (value, expected) => Object.keys(value).length === expected.length && expected.every(key => Object.hasOwn(value,key));
+  function scalar(value) {
+    return typeof value === 'boolean' || (typeof value === 'string' && value.length <= 20000) || (typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= Number.MAX_SAFE_INTEGER);
+  }
+  function parse(source) {
+    if (source.length > 24000) throw new Error('Las reglas son demasiado largas.');
+    const rules = JSON.parse(source);
+    if (!Array.isArray(rules) || !rules.length || rules.length > 20) throw new Error('Usa entre una y veinte reglas.');
+    for (const rule of rules) {
+      if (!plain(rule)) throw new Error('Cada regla debe ser un objeto de datos.');
+      if (rule.kind === 'stdout' && keys(rule,['kind','equals']) && typeof rule.equals === 'string' && rule.equals.length <= 20000) continue;
+      if (rule.kind === 'variable' && keys(rule,['kind','name','equals']) && /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(rule.name) && scalar(rule.equals)) continue;
+      throw new Error('Regla no admitida. Usa stdout o variable con un valor escalar.');
+    }
+    return rules;
+  }
+  function compare(rules, message) {
+    if (!keys(message,['id','type','output','variables']) || typeof message.output !== 'string' || message.output.length > 20000 || !plain(message.variables)) throw new Error('Observaciones fuera del perfil.');
+    const expectedNames = [...new Set(rules.filter(rule=>rule.kind==='variable').map(rule=>rule.name))];
+    if (!keys(message.variables,expectedNames)) throw new Error('Faltan observaciones o hay variables no solicitadas.');
+    for (const entry of Object.values(message.variables)) {
+      if (!plain(entry) || !keys(entry,['type','value']) || !scalar(entry.value) || entry.type !== typeof entry.value) throw new Error('Valor observado fuera del perfil.');
+    }
+    const comparisons = rules.map(rule => {
+      const actual = rule.kind === 'stdout' ? message.output : message.variables[rule.name].value;
+      return {regla: rule.kind === 'stdout' ? 'Salida' : rule.name, esperado: rule.equals, observado: actual, cumple: typeof actual === typeof rule.equals && actual === rule.equals};
+    });
+    return {passed: comparisons.every(item=>item.cumple), comparisons};
+  }
+  return {parse, compare};
+})();
+</script>
+<script>
+const $ = id => document.getElementById(id);
+const executorOrigin = '__EXECUTOR_ORIGIN__';
+const frame = $('executor');
+const basicRules = [{kind:'variable',name:'respuesta',equals:42},{kind:'stdout',equals:'42'}];
+const cases = [
+  {name:'Aprueba',description:'El ejercicio calcula 42 y lo muestra. Comprueba que las dos reglas se cumplen.',code:'respuesta = 6 * 7\nprint(respuesta)',rules:basicRules},
+  {name:'Rechaza',description:'El programa funciona, pero produce 41. Es un rechazo educativo, no un error de Python.',code:'respuesta = 41\nprint(respuesta)',rules:basicRules},
+  {name:'Error',description:'Una expresión incompleta produce un error de ejecución; no se confunde con una respuesta incorrecta.',code:'respuesta =',rules:basicRules},
+  {name:'Tipo no admitido',description:'Una lista queda fuera del perfil inicial. No se transforma en texto para aprobarla.',code:'respuesta = [42]',rules:[{kind:'variable',name:'respuesta',equals:42}]},
+  {name:'Límite de salida',description:'Una salida de 20.001 caracteres invalida el caso. No se aprueba un resultado truncado.',code:'print("x" * 20001)',rules:[{kind:'stdout',equals:'x'}]},
+  {name:'Cancelar y recuperar',description:'Inicia un cálculo largo pero finito, cancélalo y después ejecuta el caso correcto en una sesión nueva.',code:'respuesta = sum(range(100_000_000))\nprint(respuesta)',rules:[{kind:'variable',name:'respuesta',equals:42}]},
+  {name:'Regla no admitida',description:'El perfil rechaza reglas fuera del esquema antes de ejecutar Python.',code:'respuesta = 42',rules:[{kind:'expresion',equals:'respuesta == 42'}]},
+];
+let ready=false, active=null, sequence=0, selected=0;
+const log=[];
+function note(text){log.unshift(text);$('history').replaceChildren(...log.slice(0,8).map(item=>{const li=document.createElement('li');li.textContent=item;return li;}));}
+function controls(){ $('run').disabled=!ready || !!active; $('cancel').disabled=!active; }
+function state(stage, verdict, detail=''){ $('stage').textContent=stage;$('verdict').textContent=verdict;$('detail').textContent=detail;controls(); }
+function cancel(){if(!active)return;const id=active.id;frame.contentWindow.postMessage({type:'cancel',id},executorOrigin);active=null;state('Detenida','Cancelado','Los resultados tardíos de esta sesión se ignorarán.');$('result').textContent='Cancelado';note('Sesión cancelada.');}
+function select(index){cancel();selected=index;const value=cases[index];$('code').value=value.code;$('rules').value=JSON.stringify(value.rules,null,2);$('scenario').textContent=value.description;$('observations').textContent='—';$('comparisons').textContent='—';$('result').textContent='Sin resultado';state(ready?'Lista':'Esperando al ejecutor','Sin ejecutar');for(const [i,button] of [...$('tabs').children].entries())button.setAttribute('aria-selected',String(i===index));$('steps').replaceChildren();const step=(label,fn)=>{const button=document.createElement('button');button.textContent=label;button.onclick=fn;$('steps').append(button);};step('1. Ejecutar este caso',run);if(index===5){step('2. Cancelar',cancel);step('3. Preparar el caso correcto',()=>select(0));}else step('2. Preparar el caso correcto',()=>select(0));note('Preparado: '+value.name);}
+function run(){
+  if(active||!ready)return;
+  let rules;try{rules=RuleProfile.parse($('rules').value);if($('code').value.length>16000)throw new Error('El código supera el tamaño del prototipo.');}catch(error){state('Sin ejecutar','Regla no admitida',error.message);$('result').textContent='Regla no admitida';note('Se rechazó la entrada antes de iniciar Python.');return;}
+  const id=crypto.randomUUID();active={id,rules};sequence++;$('session').textContent=String(sequence)+' · '+id.slice(0,8);$('observations').textContent='—';$('comparisons').textContent='—';$('result').textContent='Cargando Python…';state('Cargando Python','Pendiente','Cada ejecución crea un intérprete nuevo.');note('Nueva sesión '+sequence+'.');
+  frame.contentWindow.postMessage({type:'execute',id,code:$('code').value,names:[...new Set(rules.filter(rule=>rule.kind==='variable').map(rule=>rule.name))]},executorOrigin);
+}
+addEventListener('message',({origin,source,data})=>{
+  if(origin!==executorOrigin||source!==frame.contentWindow||!data)return;
+  if(data.type==='executor-ready'){ready=true;state('Lista','Sin ejecutar','Ejecutor conectado.');return;}
+  if(!active||data.id!==active.id)return;
+  if(data.type==='loading')return;
+  if(data.type==='running'){state('Ejecutando Python '+data.version,'Pendiente','Límite de diez segundos; puedes cancelar.');$('result').textContent='Ejecutando…';return;}
+  const current=active;active=null;
+  if(data.type==='observations'){
+    try{const result=RuleProfile.compare(current.rules,data);$('observations').textContent=JSON.stringify({salida:data.output,variables:data.variables},null,2);$('comparisons').textContent=JSON.stringify(result.comparisons,null,2);const label=result.passed?'Aprobado':'No aprobado';state('Comparación terminada',label,'El veredicto lo calculó la página a partir de las reglas.');$('result').textContent=label;note(label+' por comparación de reglas.');}catch(error){state('Error de datos','No validado',error.message);$('result').textContent='No validado';}
+  }else{const labels={'unsupported':'Tipo no admitido','limit':'Límite excedido','execution-error':'Error de Python','load-error':'Error de carga','timeout':'Tiempo excedido','cancelled':'Cancelado'};const label=labels[data.type]||'Resultado no admitido';state('Terminada',label,String(data.message||'').slice(0,20000));$('result').textContent=label;$('observations').textContent=String(data.output||'—');note(label+'.');}
+});
+cases.forEach((item,index)=>{const button=document.createElement('button');button.textContent=item.name;button.setAttribute('role','tab');button.onclick=()=>select(index);$('tabs').append(button);});
+$('run').onclick=run;$('cancel').onclick=cancel;$('reset').onclick=()=>select(0);
+$('origins').textContent='Página: '+location.origin+' · Ejecutor: '+executorOrigin;
+select(0);frame.src=executorOrigin;
+</script></html>
