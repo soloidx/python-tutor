@@ -24,6 +24,10 @@ import { PracticeTutor } from "./PracticeTutor.jsx";
 import { createPracticeRound } from "./practiceRound.js";
 import { loadPractice, savePractice } from "./practiceStorage.js";
 
+const TutorLayoutPrototype = import.meta.env.DEV
+  ? React.lazy(() => import("./TutorLayout.prototype.jsx"))
+  : null;
+
 import pathArt from "./assets/resources/path.svg";
 import courseArt from "./assets/resources/course.svg";
 import topicArt from "./assets/resources/topic.svg";
@@ -45,6 +49,13 @@ function ResourceArt({ kind, icon, iconFiles }) {
 }
 
 export default function App({ publication }) {
+  if (TutorLayoutPrototype && new URLSearchParams(window.location.search).has("tutor-prototype")) {
+    return <React.Suspense fallback={<p>Cargando prototipo…</p>}><TutorLayoutPrototype publication={publication} /></React.Suspense>;
+  }
+  return <LearningApp publication={publication} />;
+}
+
+function LearningApp({ publication }) {
   const { catalog, courses } = publication;
   const [conversation] = useState(createConversationService);
   const recoveryWarning = useSyncExternalStore(
