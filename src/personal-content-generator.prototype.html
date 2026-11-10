@@ -48,7 +48,7 @@ const GeneratorModel=(()=>{
     n.complete=true;n.phase='validating';say(n,'assistant','El borrador está completo. Ahora se comprueba antes de ofrecer su incorporación.');n.notice='Contenido completo; validación pendiente. Aún no se puede incorporar.';break;
    case 'valid':
     if(s.phase!=='validating')return reject('Primero tiene que terminar la generación del borrador.');
-    n.validated=true;n.phase='review';say(n,'assistant','La propuesta está lista para revisar: una ruta, un curso original reutilizado y un curso nuevo con sus lecciones y ejercicios. Puedes pedir cambios o añadirla.');n.notice='Segunda aprobación pendiente. La validación de este boceto es solo una simulación.';break;
+    n.validated=true;n.phase='review';say(n,'assistant','El temario está listo para revisar: una ruta con diez cursos y cincuenta ejercicios. Puedes revisar objetivos, temas y cantidades, pedir cambios o añadirla. No necesitas leer las lecciones ni resolver los ejercicios para aprobarlo.');n.notice='Segunda aprobación pendiente. La validación de este boceto es solo una simulación.';break;
    case 'fail':
     if(!['generating','validating'].includes(s.phase))return reject('Este fallo solo se simula mientras se genera o valida.');
     n.phase='error';n.validated=false;say(n,'assistant','No pude completar o validar esta propuesta. Puedes reintentar el mismo objetivo o pedir cambios.');n.notice='Fallo simulado. No se ha incorporado ningún curso.';break;
@@ -89,7 +89,7 @@ const GeneratorModel=(()=>{
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state=GeneratorModel.initial(),guide=0,step=0;
-const names={objective:'Elegir objetivo',clarifying:'Conversar sobre detalles',brief:'Revisar resumen del objetivo',generating:'Generando contenido',validating:'Validando contenido',review:'Revisar propuesta completa',error:'Generación o validación fallida',saving:'Guardando incorporación',saveError:'No se pudo guardar',incorporated:'Contenido incorporado'};
+const names={objective:'Elegir objetivo',clarifying:'Conversar sobre detalles',brief:'Revisar resumen del objetivo',generating:'Generando contenido',validating:'Validando contenido',review:'Revisar temario',error:'Generación o validación fallida',saving:'Guardando incorporación',saveError:'No se pudo guardar',incorporated:'Contenido incorporado'};
 const actions=[['Enviar objetivo','objective'],['Responder detalles','details'],['Aprobar generación','approve'],['Completar generación','finish'],['Superar validación','valid'],['Simular fallo','fail'],['Reintentar generación','retry'],['Cambiar lo pedido','edit'],['Cancelar generación','cancel'],['Recibir resultado tardío','late'],['Aprobar incorporación','incorporate'],['Simular fallo al guardar','saveFail'],['Reintentar guardar','saveRetry'],['Completar incorporación','saved'],['Salir a Learning paths','leave'],['Volver al generador','return'],['Reiniciar boceto','reset']];
 const scenarios=[
  {name:'Dos aprobaciones',text:'Recorre la conversación completa. Observa que el catálogo solo cambia después de revisar, aprobar y guardar.',steps:['objective','details','approve','finish','valid','incorporate','saved','saved']},
@@ -107,9 +107,26 @@ function send(type){
  const a=type==='late'?{type:'finish',job:state.abandonedJob??-1}:{type,text:type==='objective'?objective:type==='details'?details:type==='edit'?change:undefined,job:state.job};
  state=GeneratorModel.reduce(state,a);render();
 }
-function proposal(){return `<article><h3>Propuesta: ${escapeHtml(state.objective)}</h3><p>Una ruta · 2 cursos · Revisión de muestra</p><details><summary>Fundamentos de Python · curso original reutilizado</summary><p>Se conserva el curso existente y su progreso compartido. No se genera una copia.</p></details><details open><summary>Organizar archivos · curso personal nuevo</summary><p>Un tema de muestra: nombres y extensiones. El producto real permitiría revisar todos sus temas y ejercicios.</p><h3>Lección: reconocer extensiones</h3><p>Una extensión es la parte del nombre después del último punto. Puedes comprobar el final de un texto con endswith.</p><pre>nombre = "foto.jpg"\nprint(nombre.endswith(".jpg"))</pre><h3>Ejercicio de código</h3><p>Usa <code>nombre</code> para asignar a <code>es_foto</code> si termina en <code>.jpg</code>.</p><pre>nombre = "foto.jpg"\nes_foto = False</pre><h3>Ejercicio de selección</h3><p>¿Qué devuelve <code>"notas.txt".endswith(".jpg")</code>?</p><ul><li>True</li><li>False</li></ul><p class="muted">Material fijo de ejemplo, sin ejecución ni comprobación pedagógica real. Los criterios de validación pertenecen a otro ticket.</p></details></article>`;}
+const syllabus=[
+ ['Fundamentos de Python','Reforzar las bases para automatizar tareas.',['Variables y tipos','Condicionales y bucles'],true],
+ ['Textos y nombres de archivo','Interpretar y transformar nombres.',['Operaciones con textos','Extensiones y patrones']],
+ ['Colecciones de archivos','Agrupar y recorrer información.',['Listas y diccionarios','Filtros y agrupaciones']],
+ ['Funciones reutilizables','Organizar una automatización en pasos.',['Parámetros y resultados','Composición de funciones']],
+ ['Rutas y directorios','Representar una estructura de carpetas.',['Rutas relativas','Organización de directorios']],
+ ['Lectura de archivos','Extraer información de archivos de ejemplo.',['Texto y codificaciones','Lectura estructurada']],
+ ['Escritura de archivos','Producir resultados organizados.',['Crear archivos','Actualizar contenido']],
+ ['Organizar fotografías','Clasificar fotos por sus nombres.',['Reconocer fotografías','Reglas de clasificación']],
+ ['Errores y comprobaciones','Detectar problemas antes de aplicar cambios.',['Excepciones','Validar resultados']],
+ ['Proyecto de automatización','Combinar los conocimientos en una tarea completa.',['Diseñar el flujo','Comprobar el resultado']]
+];
+function proposal(){return `<article><h3>Temario: ${escapeHtml(state.objective)}</h3>
+<p><strong>1 learning path · 10 cursos · 20 temas · 50 ejercicios</strong></p>
+<p>Revisa el alcance y el orden de aprendizaje. Las lecciones, los enunciados y sus soluciones se consultan después en los cursos.</p>
+<ol>${syllabus.map(([title,goal,topics,reused])=>`<li><details><summary>${escapeHtml(title)} · 2 temas · 5 ejercicios</summary><p>${escapeHtml(goal)}</p><ul>${topics.map(t=>`<li>${escapeHtml(t)}</li>`).join('')}</ul><p class="muted">${reused?'Curso original reutilizado: conserva su progreso compartido.':'Curso personal nuevo.'}</p></details></li>`).join('')}</ol>
+<p class="muted">Temario fijo de muestra para probar una propuesta grande. El contenido y su validación están simulados; aprobar no exige inspeccionar cada lección o ejercicio.</p></article>`;}
+
 function render(){
- $('state').innerHTML=[['Pantalla',state.view==='chat'?'Generador · conversación propia':'Learning paths'],['Etapa',names[state.phase]],['Versión del objetivo',state.revision||'Sin enviar'],['Primera aprobación',state.first?'Sí, para este objetivo':'Pendiente'],['Contenido',state.complete?'Borrador completo':'Sin borrador completo'],['Validación',state.validated?'Superada (simulada)':'Pendiente o fallida'],['Segunda aprobación',state.second?'Sí, para esta propuesta':'Pendiente'],['Catálogo activo',state.incorporated?'Original + 1 ruta personal + 1 curso personal':'Solo contenido original'],['Trabajo activo',['generating','validating'].includes(state.phase)?'Intento '+state.job:'Ninguno'],['Datos guardados','Solo memoria de este boceto']].map(([k,v])=>`<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join('');
+ $('state').innerHTML=[['Pantalla',state.view==='chat'?'Generador · conversación propia':'Learning paths'],['Etapa',names[state.phase]],['Versión del objetivo',state.revision||'Sin enviar'],['Primera aprobación',state.first?'Sí, para este objetivo':'Pendiente'],['Contenido',state.complete?'Borrador completo':'Sin borrador completo'],['Validación',state.validated?'Superada (simulada)':'Pendiente o fallida'],['Segunda aprobación',state.second?'Sí, para esta propuesta':'Pendiente'],['Catálogo activo',state.incorporated?'Original + 1 ruta personal + 9 cursos personales':'Solo contenido original'],['Trabajo activo',['generating','validating'].includes(state.phase)?'Intento '+state.job:'Ninguno'],['Datos guardados','Solo memoria de este boceto']].map(([k,v])=>`<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join('');
  $('announcement').textContent=state.notice;
  $('free').innerHTML=actions.map(([text,type])=>button(text,type)).join('');
  $('tabs').innerHTML=scenarios.map((s,i)=>`<button id="tab-${i}" role="tab" aria-controls="walkthrough" aria-selected="${i===guide}" tabindex="${i===guide?0:-1}" data-guide="${i}">${s.name}</button>`).join('');
@@ -117,7 +134,7 @@ function render(){
  $('description').textContent=scenarios[guide].text;
  $('steps').innerHTML=scenarios[guide].steps.map((t,i)=>`<button data-step="${i}" ${i!==step?'disabled':''}>${i+1}. ${label(t)}</button>`).join('')+(step===scenarios[guide].steps.length?'<p>Recorrido terminado. Puedes seguir con los controles libres o elegir otro caso.</p>':'');
  if(state.view==='paths'){
-  $('app').innerHTML=`<section><h2>Learning paths</h2><p>Fundamentos de Python · contenido original</p>${state.incorporated?`<h3>${escapeHtml(state.objective)}</h3><p>Tu nueva ruta ya incluye el curso original reutilizado y el nuevo curso personal.</p>`:`<p class="notice">Tu propuesta todavía no se ha incorporado. Estado: ${names[state.phase]}.</p>`}${button('Volver al generador','return')}</section>`;return;
+  $('app').innerHTML=`<section><h2>Learning paths</h2><p>Fundamentos de Python · contenido original</p>${state.incorporated?`<h3>${escapeHtml(state.objective)}</h3><p>Tu nueva ruta ya incluye el curso original reutilizado y los nueve cursos personales nuevos.</p>`:`<p class="notice">Tu propuesta todavía no se ha incorporado. Estado: ${names[state.phase]}.</p>`}${button('Volver al generador','return')}</section>`;return;
  }
  let controls='';
  if(state.phase==='objective')controls=`<label for="objective">¿Qué te gustaría aprender?</label><textarea id="objective">${escapeHtml(state.objective)}</textarea>${button('Conversar sobre mi objetivo','objective',true)}`;
