@@ -10,6 +10,7 @@ import {
 export const progressStoragePrefix = "python-tutor:course-progress:v1:";
 export const progressStorageKey = (courseId) =>
   `${progressStoragePrefix}${encodeURIComponent(courseId)}`;
+const unreadableCourses = new Set();
 export const emptyProgress = () => ({
   topicId: null,
   completed: [],
@@ -53,10 +54,11 @@ export function loadProgress(course) {
     }
     if (raw === null) return { progress: emptyProgress(), message: "" };
   } catch {
+    unreadableCourses.add(course.id);
     return {
       progress: emptyProgress(),
       message:
-        "No se pudo recuperar el progreso guardado. Si el almacenamiento está bloqueado, tu avance solo estará disponible en esta sesión.",
+        "No se pudo recuperar el progreso guardado. Tu avance solo estará disponible en esta sesión. Cuando se restablezca el almacenamiento, recarga para recuperar el progreso anterior.",
     };
   }
   let saved;
@@ -105,6 +107,7 @@ export function loadProgress(course) {
 }
 
 export function saveProgress(course, progress) {
+  if (unreadableCourses.has(course.id)) return false;
   return writeLearnerRecord(
     progressStorageKey(course.id),
     JSON.stringify({
@@ -139,5 +142,6 @@ export function removeProgress(course) {
       }
     }
   }
+  if (success) unreadableCourses.delete(course.id);
   return success;
 }

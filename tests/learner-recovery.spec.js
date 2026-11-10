@@ -406,3 +406,24 @@ test("an unavailable catalog preserves learner data and never creates recovery c
   ).toHaveLength(0);
   expect(requests).toHaveLength(1);
 });
+
+test("a temporary legacy progress read failure cannot mask earlier learning", async ({ page }) => {
+  const legacyKey = "python-tutor:course-progress:v1:python-fundamentos";
+  await page.addInitScript((key) => {
+    const get = Storage.prototype.getItem;
+    const set = Storage.prototype.setItem;
+    if (get.call(localStorage, key) === null)
+      set.call(localStorage, key, JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null }));
+    Storage.prototype.getItem = function (record) {
+      if (record === key && !sessionStorage.getItem("read-restored")) throw new DOMException("Blocked", "SecurityError");
+      return get.call(this, record);
+    };
+  }, legacyKey);
+  await page.goto("/");
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo recuperar el progreso" })).toBeVisible();
+  await enterCourse(page);
+  await page.evaluate(() => sessionStorage.setItem("read-restored", "yes"));
+  await page.reload();
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+});

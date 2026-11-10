@@ -8,8 +8,10 @@ import {
 export const historyKeyPrefix = "python-tutor:course-conversations:v1:";
 export const historyStorageKey = (courseId) =>
   historyKeyPrefix + encodeURIComponent(courseId);
+const unreadableCourses = new Set();
+let enumerationFailed = false;
 export const historyStorageWarning =
-  "No se pudo guardar o recuperar el historial del tutor. Puedes continuar temporalmente; los mensajes no guardados se perderán al recargar. Esto no cambia la configuración del tutor.";
+  "No se pudo guardar o recuperar el historial del tutor. Puedes continuar temporalmente; los mensajes no guardados se perderán al recargar. Cuando se restablezca el almacenamiento, recarga para recuperar el historial anterior. Esto no cambia la configuración del tutor.";
 
 const record = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -194,6 +196,7 @@ function validAttempt(attempt) {
 }
 
 export function saveHistory(exchanges, courseId) {
+  if (enumerationFailed || unreadableCourses.has(courseId)) return historyStorageWarning;
   return writeLearnerRecord(
     historyStorageKey(courseId),
     JSON.stringify(exchanges.filter((item) => item.courseId === courseId)),
@@ -237,6 +240,10 @@ export function removeHistory(courseId) {
           warning = historyStorageWarning;
         }
       }
+    }
+    if (!warning) {
+      if (courseId === undefined) { unreadableCourses.clear(); enumerationFailed = false; }
+      else unreadableCourses.delete(courseId);
     }
     return warning;
   } catch {
@@ -328,10 +335,12 @@ export function loadHistory() {
           storageWarning =
             saveHistory(courseExchanges, courseId) || storageWarning;
       } catch {
+        unreadableCourses.add(courseId);
         storageWarning = historyStorageWarning;
       }
     }
   } catch {
+    enumerationFailed = true;
     storageWarning = historyStorageWarning;
   }
   return {

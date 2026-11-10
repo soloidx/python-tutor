@@ -327,3 +327,39 @@ test("migrates existing original learning and conversations while retaining sour
   await expect(page.getByText("Continuación compartida", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("python-tutor:course-conversations:v1:python-fundamentos"))).toBe(legacy);
 });
+
+test("a temporary legacy conversation read failure cannot mask prior messages", async ({ page }) => {
+  await setup(page);
+  await send(page, "Conversación anterior", 1);
+  await page.evaluate(() => {
+    const prefix = "python-tutor:course-conversations:v1:";
+    const internal = JSON.stringify(["original", "python-fundamentos"]);
+    const key = prefix + encodeURIComponent(internal);
+    const saved = JSON.parse(localStorage.getItem(key));
+    for (const item of saved) {
+      item.courseId = "python-fundamentos";
+      item.capture.course.id = "python-fundamentos";
+    }
+    localStorage.setItem(prefix + "python-fundamentos", JSON.stringify(saved));
+    localStorage.removeItem(key);
+  });
+  await page.addInitScript(() => {
+    const get = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === "python-tutor:course-conversations:v1:python-fundamentos" && !get.call(sessionStorage, "history-read-restored"))
+        throw new DOMException("Blocked", "SecurityError");
+      return get.call(this, key);
+    };
+  });
+  await page.reload();
+  await enterCourse(page);
+  await tutor(page);
+  await send(page, "Solo en esta sesión", 1);
+  await expect(page.getByText(/No se pudo guardar o recuperar el historial/).first()).toBeVisible();
+  await page.evaluate(() => sessionStorage.setItem("history-read-restored", "yes"));
+  await page.reload();
+  await enterCourse(page);
+  await tutor(page);
+  await expect(page.getByText("Conversación anterior", { exact: true })).toBeVisible();
+  await expect(page.getByText("Solo en esta sesión", { exact: true })).toHaveCount(0);
+});
