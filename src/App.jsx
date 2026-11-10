@@ -339,9 +339,10 @@ export default function App({ publication }) {
               setPracticeRound(createPracticeRound(publication))
             }
             onCourses={() => navigate(rootLocation)}
-            renderTutor={(entry) => (
+            renderTutor={(entry, onClose) => (
               <PracticeTutor
                 entry={entry}
+                onClose={onClose}
                 access={access}
                 conversation={conversation}
                 onConfigure={() => setSettingsOpen(true)}

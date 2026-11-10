@@ -321,7 +321,7 @@ test("corrupt record still explains recovery when the current pool is empty", as
   ).toBeVisible();
 });
 
-test("archived review keeps the feedback from a later failed attempt on an approved exercise", async ({
+test("archived review preserves feedback from a legacy saved failed attempt", async ({
   page,
   context,
 }) => {
@@ -340,8 +340,6 @@ test("archived review keeps the feedback from a later failed attempt on an appro
   await open(page, context, value);
   await page.getByLabel("Siete", { exact: true }).check();
   await page.getByRole("button", { name: "Comprobar", exact: true }).click();
-  await page.getByLabel("Ocho", { exact: true }).check();
-  await page.getByRole("button", { name: "Comprobar", exact: true }).click();
   await page
     .getByRole("navigation", { name: "Ejercicios de la ronda" })
     .getByRole("button")
@@ -349,6 +347,19 @@ test("archived review keeps the feedback from a later failed attempt on an appro
     .click();
   await page.getByLabel("Siete", { exact: true }).check();
   await page.getByRole("button", { name: "Comprobar", exact: true }).click();
+  // Older records can contain attempts made after approval. Current practice
+  // locks approved answers, so seed this compatibility case at storage's edge.
+  await page.evaluate((key) => {
+    const record = JSON.parse(localStorage.getItem(key));
+    const entry = record.entries.find((entry) => entry.id === "original");
+    Object.assign(entry.work, {
+      selectedOptionId: "eight",
+      selectionStatus: "checked",
+      selectionResult: { optionId: "eight", correct: false },
+      selectionFeedback: "Intenta de nuevo.",
+    });
+    localStorage.setItem(key, JSON.stringify(record));
+  }, key);
   await activate(page, context, single("review-feedback-new", "replacement"));
   await page
     .getByRole("button", { name: "Revisar ejercicios", exact: true })

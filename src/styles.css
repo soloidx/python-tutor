@@ -1969,3 +1969,38 @@ textarea:focus-visible {
   color: #854616;
   overflow-wrap: anywhere;
 }
+
+/* Practice: the tutor stays beside the exercise, with its own scroll area. */
+.practice-page { max-width: 1640px; }
+.practice-heading .muted { overflow-wrap: anywhere; }
+.practice-grid { grid-template-columns: 180px minmax(0, 1fr); gap: 20px; }
+.practice-workspace { overflow: visible; }
+.practice-context { align-items: center; }
+.practice-context > div { min-width: 0; }
+.practice-context > div > span { display: block; margin-top: 5px; }
+.practice-context > button { flex-shrink: 0; }
+.practice-workspace-body { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.practice-workspace-body.with-tutor { grid-template-columns: minmax(240px, 1fr) minmax(260px, 340px); }
+.practice-exercise-column { min-width: 0; }
+.practice-tutor-dock { position: sticky; top: 16px; width: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-left: 1px solid #e2e8f0; border-radius: 0 0 20px 0; background: white; color: inherit; height: min(740px, var(--practice-tutor-height, calc(100dvh - 32px))); overflow: hidden; }
+.practice-tutor-dock[open] { display: flex; flex-direction: column; }
+.practice-tutor-dock .practice-tutor { margin: 0; border: 0; border-radius: 0; height: 100%; display: flex; flex-direction: column; }
+.practice-tutor-dock .tutor-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.practice-tutor-dock .panel-heading { flex-shrink: 0; padding: 16px; gap: 10px; }
+.tutor-panel-actions { display: flex; align-items: center; gap: 8px; }
+.practice-tutor-dock .tutor-panel-actions button { font-size: 11px; padding: 8px 10px; }
+.practice-tutor-dock .tutor-body { flex: 1; height: auto; min-height: 0; max-height: none; }
+.practice-tutor-dock .tutor-scroll, .practice-tutor-dock .tutor-composer { padding: 16px; }
+.practice-tutor-dock .practice-tutor-notice { margin: 0 0 16px; font-size: 12px; padding: 12px; }
+.practice-tutor-dock .tutor-composer textarea { max-height: 110px; }
+@media (min-width: 821px) and (max-width: 1250px) {
+  .practice-grid { grid-template-columns: minmax(0, 1fr); }
+  .practice-rail { grid-row: 2; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .practice-rail h2 { grid-column: 1 / -1; }
+  .practice-page { padding-left: 24px; padding-right: 24px; }
+}
+@media (max-width: 820px) {
+  .practice-grid { grid-template-columns: minmax(0, 1fr); }
+  .practice-tutor-dock { position: fixed; inset: 12px 12px 12px auto; width: min(400px, calc(100vw - 24px)); height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 18px 60px #17203330; }
+  .practice-tutor-dock::backdrop { background: #17203366; }
+}

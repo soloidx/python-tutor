@@ -21,7 +21,12 @@ function tutorPublication(revision = 'practice-tutor') {
 }
 const practice = page => page.getByRole('button', { name: 'Práctica', exact: true });
 const rail = page => page.getByRole('navigation', { name: 'Ejercicios de la ronda' });
+async function openTutor(page) {
+  const button = page.getByRole('button', { name: 'Abrir tutor', exact: true });
+  if (await button.isVisible()) await button.click();
+}
 async function send(page, message) {
+  await openTutor(page);
   await page.getByLabel('Mensaje al tutor').fill(message);
   await page.getByRole('button', { name: 'Enviar', exact: true }).click();
 }
@@ -104,11 +109,13 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     const requests = await setup(page, model, 'Respuesta parcial', 'length');
     await practice(page).click();
     await rail(page).getByRole('button', { name: /Tu primera variable/ }).click();
+    await openTutor(page);
     await page.getByRole('button', { name: 'Configuración del tutor', exact: true }).click();
     await page.getByRole('button', { name: 'Validar clave', exact: true }).click();
     await page.getByRole('button', { name: 'Guardar y volver al tutor' }).click();
     await expect(practice(page)).toHaveAttribute('aria-current', 'page');
     await expect(page.getByLabel('Mensaje al tutor')).toBeFocused();
+    if (viewport.width < 821) await page.getByRole('button', { name: 'Cerrar tutor', exact: true }).click();
     await page.getByLabel('Código Python').fill('print("ejecución original")');
     await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
     await expect(page.getByLabel('Salida del programa')).toHaveText('ejecución original');
@@ -120,6 +127,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
       draft: '# borrador posterior',
       lastResult: { previous: true, code: 'print("ejecución original")', output: 'ejecución original' },
     });
+    if (viewport.width < 821) await page.getByRole('button', { name: 'Cerrar tutor', exact: true }).click();
     await page.getByLabel('Código Python').fill('# captura no debe cambiar');
     await rail(page).getByRole('button', { name: /Selección del tema/ }).click();
     await page.getByLabel('Guarda otra cosa', { exact: true }).check();
@@ -127,10 +135,12 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await send(page, 'Revisa mi selección');
     await expect(page.getByText(/límite de salida/)).toHaveCount(2);
     const choiceRequest = structuredClone(requests[1]);
+    if (viewport.width < 821) await page.getByRole('button', { name: 'Cerrar tutor', exact: true }).click();
     await page.getByLabel('Guarda siete', { exact: true }).check();
     await page.getByRole('button', { name: 'Comprobar', exact: true }).click();
     await page.reload();
     await practice(page).click();
+    await openTutor(page);
     await expect(page.getByRole('button', { name: 'Reintentar respuesta', exact: true })).toHaveCount(2);
     await page.route('https://openrouter.ai/api/v1/chat/completions', route => {
       requests.push(route.request().postDataJSON());
@@ -228,3 +238,46 @@ test('topic conversation survives invalidated rounds and completed review keeps 
   await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(4);
   expect(JSON.parse(requests[3].messages.at(-1).content).capture).toMatchObject({ topic: { summary: 'Contenido nuevo que no pertenece a la ronda completada' }, exercise: { id: 'third-choice' } });
 });
+
+for (const width of [1440, 390]) {
+  test(`practice tutor toggles without losing its draft at ${width}px`, async ({ page, context }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await serveCatalog(context, tutorPublication());
+    await setup(page);
+    await practice(page).click();
+    await rail(page).getByRole('button', { name: /Tu primera variable/ }).click();
+    const trigger = page.getByRole('button', { name: /^(Abrir|Ocultar) tutor$/ });
+    await expect(trigger).toHaveAttribute('aria-expanded', width === 390 ? 'false' : 'true');
+    await openTutor(page);
+    const message = page.getByLabel('Mensaje al tutor');
+    await message.fill('Mi pregunta todavía sin enviar');
+    const code = page.getByLabel('Código Python');
+    const narrowWidth = (await code.boundingBox()).width;
+    if (width === 1440) {
+      const panel = await page.getByRole('complementary', { name: 'Tutor de práctica' }).boundingBox();
+      const editor = await code.boundingBox();
+      expect(panel.x).toBeGreaterThan(editor.x + editor.width - 1);
+      const composer = await message.boundingBox();
+      expect(composer.y + composer.height).toBeLessThan(900);
+    } else {
+      await expect(page.getByRole('dialog', { name: 'Tutor de práctica' })).toBeVisible();
+      // The exercise is inert while the mobile dialog is open.
+      await code.focus();
+      expect(await page.evaluate(() => document.activeElement.closest('#practice-tutor-panel') !== null)).toBe(true);
+    }
+    await page.keyboard.press('Escape');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(trigger).toBeFocused();
+    await expect(message).not.toBeVisible();
+    if (width === 1440) expect((await code.boundingBox()).width).toBeGreaterThan(narrowWidth);
+    await openTutor(page);
+    await expect(message).toHaveValue('Mi pregunta todavía sin enviar');
+    await page.getByRole('button', { name: 'Enviar', exact: true }).click();
+    await page.getByRole('button', { name: 'Cerrar tutor', exact: true }).click();
+    await expect(trigger).toBeFocused();
+    await openTutor(page);
+    await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `/tmp/practice-tutor-panel-${width}.png`, fullPage: true });
+  });
+}

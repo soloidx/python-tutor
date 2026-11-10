@@ -1,5 +1,6 @@
 import React from "react";
 import { ArchivedPracticeExercise } from "./ArchivedPracticeExercise.jsx";
+import { PracticeWorkspace } from "./PracticeWorkspace.jsx";
 import { ExerciseWorkspace } from "./ExerciseWorkspace.jsx";
 
 export function Practice({
@@ -136,14 +137,7 @@ export function Practice({
                   </button>
                 ))}
               </nav>
-              <section
-                className="practice-workspace"
-                aria-label="Ejercicio de la ronda"
-              >
-                <div className="practice-context">
-                  <strong>{current.topic.title}</strong>
-                  <span>{current.course.title}</span>
-                </div>
+              <PracticeWorkspace entry={current} renderTutor={renderTutor}>
                 {round.archived ? (
                   <ArchivedPracticeExercise entry={current} />
                 ) : (
@@ -172,8 +166,7 @@ export function Practice({
                     }
                   />
                 )}
-                {renderTutor?.(current)}
-              </section>
+              </PracticeWorkspace>
             </div>
           )}
         </>
