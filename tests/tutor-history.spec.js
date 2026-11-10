@@ -363,3 +363,54 @@ test("a temporary legacy conversation read failure cannot mask prior messages", 
   await expect(page.getByText("Conversación anterior", { exact: true })).toBeVisible();
   await expect(page.getByText("Solo en esta sesión", { exact: true })).toHaveCount(0);
 });
+
+test("study and tutor stay separate for original and personal courses with equal local IDs", async ({ page }) => {
+  // Model composition at its browser boundary until personal content is available.
+  await page.route("**/src/CatalogBootstrap.jsx", async (route) => {
+    const response = await route.fetch();
+    const original = await response.text();
+    const marker = "setPublication(originalPublication(value));";
+    expect(original).toContain(marker);
+    const source = original.replace(marker, `setPublication(((publication) => {
+      const originalId = JSON.stringify(["original", "python-fundamentos"]);
+      const personalId = JSON.stringify(["personal", "python-fundamentos"]);
+      const course = structuredClone(publication.courses[originalId]);
+      course.id = personalId;
+      course.title = "Curso personal";
+      publication.courses[personalId] = course;
+      publication.catalog.courses.push({ ...publication.catalog.courses[0], id: personalId });
+      for (const path of publication.catalog.learningPaths) path.courseIds.push(personalId);
+      return publication;
+    })(originalPublication(value)));`);
+    await route.fulfill({ response, body: source });
+  });
+
+  const requests = await setup(page);
+  await send(page, "Pregunta del original", 1);
+  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre)');
+  await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Todas las rutas", exact: true }).click();
+  await enterCourse(page, { course: "Curso personal" });
+  await expect(page.getByText("0 / 12 ejercicios", { exact: true })).toBeVisible();
+  await tutor(page);
+  await expect(page.getByText("Pregunta del original", { exact: true })).toHaveCount(0);
+  await send(page, "Pregunta del personal", 1);
+  expect(requests[1].messages).toHaveLength(2);
+
+  await page.reload();
+  await enterCourse(page, { path: "Camino a la automatización", course: "Curso personal" });
+  await expect(page.getByText("0 / 12 ejercicios", { exact: true })).toBeVisible();
+  await tutor(page);
+  await expect(page.getByText("Pregunta del personal", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pregunta del original", { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Todas las rutas", exact: true }).click();
+  await enterCourse(page, { path: "Camino a la automatización" });
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  await tutor(page);
+  await expect(page.getByText("Pregunta del original", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pregunta del personal", { exact: true })).toHaveCount(0);
+});
