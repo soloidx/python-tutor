@@ -90,13 +90,9 @@ test("switching exercises cancels a run and ignores its late worker result", asy
         setTimeout(() => this.onmessage?.({ data: { type: "ready" } }), 0);
       }
       postMessage() {
-        setTimeout(
-          () =>
-            this.onmessage?.({
-              data: { type: "result", passed: true, output: "late" },
-            }),
-          300,
-        );
+        window.deliverLatePracticeResult = () => this.onmessage?.({
+          data: { type: "result", passed: true, output: "late" },
+        });
       }
       // Deliberately deliver an already queued event after termination.
       terminate() {}
@@ -106,7 +102,8 @@ test("switching exercises cancels a run and ignores its late worker result", asy
   const rail = page.getByRole("navigation", { name: "Ejercicios de la ronda" });
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await rail.getByRole("button").nth(1).click();
-  await page.waitForTimeout(400);
+  // Deliver only after navigation; a short timer races the click on busy hosts.
+  await page.evaluate(() => window.deliverLatePracticeResult());
   await expect(page.getByLabel("Salida del programa")).not.toHaveText("late");
   await expect(page.getByLabel("Progreso de la ronda")).toHaveAttribute(
     "value",
