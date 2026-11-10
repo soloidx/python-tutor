@@ -13,9 +13,11 @@
 <section class="card"><h2>Exploración libre</h2><div class="columns"><label>Código del ejercicio<textarea id="code" spellcheck="false"></textarea></label><label>Reglas que evalúa la aplicación<textarea id="rules" spellcheck="false"></textarea></label></div><p class="fine">Perfil: salida sin blancos finales, texto, booleanos y números finitos de magnitud ≤ 2⁵³−1. Todas las reglas deben cumplirse. No admite listas, objetos, funciones, expresiones ejecutables ni input().</p><div class="actions"><button id="run" class="primary" disabled>Ejecutar y comparar</button><button id="cancel" disabled>Cancelar</button><button id="reset">Volver al caso correcto</button></div></section>
 <section class="card"><h2>Observaciones y corrección</h2><p id="result" class="result">Sin resultado</p><div class="columns"><div><span class="label">Datos observados de Python</span><pre id="observations">—</pre></div><div><span class="label">Comparaciones de la aplicación</span><pre id="comparisons">—</pre></div></div><h2>Acciones recientes</h2><ol id="history"></ol></section>
 <iframe id="executor" title="Ejecutor separado" sandbox="allow-scripts allow-same-origin"></iframe>
+<script src="/protocol.js"></script>
 <script>
 // Pure prototype module: rules are data, never evaluated as source code.
 const RuleProfile = (() => {
+  const P = ValidationProtocol;
   const plain = value => value && typeof value === 'object' && !Array.isArray(value);
   const keys = (value, expected) => Object.keys(value).length === expected.length && expected.every(key => Object.hasOwn(value,key));
   function scalar(value) {
@@ -28,13 +30,13 @@ const RuleProfile = (() => {
     for (const rule of rules) {
       if (!plain(rule)) throw new Error('Cada regla debe ser un objeto de datos.');
       if (rule.kind === 'stdout' && keys(rule,['kind','equals']) && typeof rule.equals === 'string' && rule.equals.length <= 20000) continue;
-      if (rule.kind === 'variable' && keys(rule,['kind','name','equals']) && /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(rule.name) && scalar(rule.equals)) continue;
+      if (rule.kind === 'variable' && keys(rule,['kind','name','equals']) && P.name(rule.name) && scalar(rule.equals)) continue;
       throw new Error('Regla no admitida. Usa stdout o variable con un valor escalar.');
     }
     return rules;
   }
   function compare(rules, message) {
-    if (!keys(message,['id','type','output','variables']) || typeof message.output !== 'string' || message.output.length > 20000 || !plain(message.variables)) throw new Error('Observaciones fuera del perfil.');
+    if (!P.frameReply(message) || !keys(message,['v','id','type','output','variables']) || typeof message.output !== 'string' || message.output.length > 20000 || !plain(message.variables)) throw new Error('Observaciones fuera del perfil.');
     const expectedNames = [...new Set(rules.filter(rule=>rule.kind==='variable').map(rule=>rule.name))];
     if (!keys(message.variables,expectedNames)) throw new Error('Faltan observaciones o hay variables no solicitadas.');
     for (const entry of Object.values(message.variables)) {
@@ -63,29 +65,64 @@ const cases = [
   {name:'Cancelar y recuperar',description:'Inicia un cálculo largo pero finito, cancélalo y después ejecuta el caso correcto en una sesión nueva.',code:'respuesta = sum(range(100_000_000))\nprint(respuesta)',rules:[{kind:'variable',name:'respuesta',equals:42}]},
   {name:'Regla no admitida',description:'El perfil rechaza reglas fuera del esquema antes de ejecutar Python.',code:'respuesta = 42',rules:[{kind:'expresion',equals:'respuesta == 42'}]},
 ];
-let ready=false, active=null, sequence=0, selected=0;
+const P = ValidationProtocol;
+let ready=false, active=null, sequence=0, selected=0, pendingSelection=null;
+const terminals = ['observations','execution-error','load-error','unsupported','limit','timeout','cancelled'];
 const log=[];
 function note(text){log.unshift(text);$('history').replaceChildren(...log.slice(0,8).map(item=>{const li=document.createElement('li');li.textContent=item;return li;}));}
-function controls(){ $('run').disabled=!ready || !!active; $('cancel').disabled=!active; }
+function controls(){ $('run').disabled=!ready || !!active; $('cancel').disabled=!active || active.phase==='cancelling'; }
 function state(stage, verdict, detail=''){ $('stage').textContent=stage;$('verdict').textContent=verdict;$('detail').textContent=detail;controls(); }
-function cancel(){if(!active)return;const id=active.id;frame.contentWindow.postMessage({type:'cancel',id},executorOrigin);active=null;state('Detenida','Cancelado','Los resultados tardíos de esta sesión se ignorarán.');$('result').textContent='Cancelado';note('Sesión cancelada.');}
-function select(index){cancel();selected=index;const value=cases[index];$('code').value=value.code;$('rules').value=JSON.stringify(value.rules,null,2);$('scenario').textContent=value.description;$('observations').textContent='—';$('comparisons').textContent='—';$('result').textContent='Sin resultado';state(ready?'Lista':'Esperando al ejecutor','Sin ejecutar');for(const [i,button] of [...$('tabs').children].entries())button.setAttribute('aria-selected',String(i===index));$('steps').replaceChildren();const step=(label,fn)=>{const button=document.createElement('button');button.textContent=label;button.onclick=fn;$('steps').append(button);};step('1. Ejecutar este caso',run);if(index===5){step('2. Cancelar',cancel);step('3. Preparar el caso correcto',()=>select(0));}else step('2. Preparar el caso correcto',()=>select(0));note('Preparado: '+value.name);}
+function send(message){frame.contentWindow.postMessage({v:1,...message},executorOrigin);}
+function endActive(){const finished=active;clearTimeout(finished?.watchdog);active=null;return finished;}
+function cancel(){
+  if(!active||active.phase==='cancelling')return;
+  active.phase='cancelling';
+  clearTimeout(active.watchdog);
+  const id=active.id;
+  active.watchdog=setTimeout(()=>{
+    if(active?.id!==id)return;
+    endActive();ready=false;pendingSelection=null;frame.src=executorOrigin;
+    state('Reiniciando ejecutor','Cancelación no confirmada','No llegó confirmación; se descarta el ejecutor antes de permitir otra sesión.');
+    $('result').textContent='Cancelación no confirmada';
+  },2000);
+  send({type:'cancel',id});
+  state('Deteniendo','Cancelando','Esperando que el supervisor confirme el cierre.');
+  $('result').textContent='Cancelando';note('Cancelación solicitada.');
+}
+function select(index){
+  if(active){pendingSelection=index;cancel();return;}
+  selected=index;const value=cases[index];$('code').value=value.code;$('rules').value=JSON.stringify(value.rules,null,2);$('scenario').textContent=value.description;$('observations').textContent='—';$('comparisons').textContent='—';$('result').textContent='Sin resultado';state(ready?'Lista':'Esperando al ejecutor','Sin ejecutar');
+  for(const [i,button] of [...$('tabs').children].entries())button.setAttribute('aria-selected',String(i===index));
+  $('steps').replaceChildren();const step=(label,fn)=>{const button=document.createElement('button');button.textContent=label;button.onclick=fn;$('steps').append(button);};step('1. Ejecutar este caso',run);if(index===5){step('2. Cancelar',cancel);step('3. Preparar el caso correcto',()=>select(0));}else step('2. Preparar el caso correcto',()=>select(0));note('Preparado: '+value.name);
+}
 function run(){
   if(active||!ready)return;
   let rules;try{rules=RuleProfile.parse($('rules').value);if($('code').value.length>16000)throw new Error('El código supera el tamaño del prototipo.');}catch(error){state('Sin ejecutar','Regla no admitida',error.message);$('result').textContent='Regla no admitida';note('Se rechazó la entrada antes de iniciar Python.');return;}
-  const id=crypto.randomUUID();active={id,rules};sequence++;$('session').textContent=String(sequence)+' · '+id.slice(0,8);$('observations').textContent='—';$('comparisons').textContent='—';$('result').textContent='Cargando Python…';state('Cargando Python','Pendiente','Cada ejecución crea un intérprete nuevo.');note('Nueva sesión '+sequence+'.');
-  frame.contentWindow.postMessage({type:'execute',id,code:$('code').value,names:[...new Set(rules.filter(rule=>rule.kind==='variable').map(rule=>rule.name))]},executorOrigin);
+  const id=crypto.randomUUID();active={id,rules,phase:'requested',watchdog:null};
+  active.watchdog=setTimeout(()=>{if(active?.id===id)cancel();},58000);
+  sequence++;$('session').textContent=String(sequence)+' · '+id.slice(0,8);$('observations').textContent='—';$('comparisons').textContent='—';$('result').textContent='Cargando Python…';state('Cargando Python','Pendiente','Cada ejecución crea un intérprete nuevo.');note('Nueva sesión '+sequence+'.');
+  send({type:'execute',id,code:$('code').value,names:[...new Set(rules.filter(rule=>rule.kind==='variable').map(rule=>rule.name))]});
+}
+function cancelled(){
+  endActive();state('Detenida','Cancelado','El supervisor confirmó el cierre. Los resultados tardíos se ignorarán.');$('result').textContent='Cancelado';note('Cancelación confirmada.');
+  if(pendingSelection!==null){const next=pendingSelection;pendingSelection=null;select(next);}
 }
 addEventListener('message',({origin,source,data})=>{
-  if(origin!==executorOrigin||source!==frame.contentWindow||!data)return;
-  if(data.type==='executor-ready'){ready=true;state('Lista','Sin ejecutar','Ejecutor conectado.');return;}
+  if(origin!==executorOrigin||source!==frame.contentWindow||!P.frameReply(data))return;
+  if(data.type==='executor-ready'){if(ready||active)return;ready=true;state('Lista','Sin ejecutar','Ejecutor conectado.');return;}
   if(!active||data.id!==active.id)return;
-  if(data.type==='loading')return;
-  if(data.type==='running'){state('Ejecutando Python '+data.version,'Pendiente','Límite de diez segundos; puedes cancelar.');$('result').textContent='Ejecutando…';return;}
-  const current=active;active=null;
+  if(active.phase==='cancelling'){if(terminals.includes(data.type))cancelled();return;}
+  if(data.type==='loading'){if(active.phase==='requested')active.phase='loading';return;}
+  if(data.type==='running'){
+    if(active.phase!=='loading')return;
+    active.phase='running';state('Ejecutando Python '+data.version,'Pendiente','Límite de diez segundos; puedes cancelar.');$('result').textContent='Ejecutando…';return;
+  }
+  const allowed=active.phase==='running' ? ['observations','execution-error','unsupported','limit','timeout'] : ['load-error','execution-error'];
+  if(!allowed.includes(data.type))return;
+  const current=endActive();
   if(data.type==='observations'){
     try{const result=RuleProfile.compare(current.rules,data);$('observations').textContent=JSON.stringify({salida:data.output,variables:data.variables},null,2);$('comparisons').textContent=JSON.stringify(result.comparisons,null,2);const label=result.passed?'Aprobado':'No aprobado';state('Comparación terminada',label,'El veredicto lo calculó la página a partir de las reglas.');$('result').textContent=label;note(label+' por comparación de reglas.');}catch(error){state('Error de datos','No validado',error.message);$('result').textContent='No validado';}
-  }else{const labels={'unsupported':'Tipo no admitido','limit':'Límite excedido','execution-error':'Error de Python','load-error':'Error de carga','timeout':'Tiempo excedido','cancelled':'Cancelado'};const label=labels[data.type]||'Resultado no admitido';state('Terminada',label,String(data.message||'').slice(0,20000));$('result').textContent=label;$('observations').textContent=String(data.output||'—');note(label+'.');}
+  }else{const labels={'unsupported':'Tipo no admitido','limit':'Límite excedido','execution-error':'Error de Python','load-error':'Error de carga','timeout':'Tiempo excedido'};const label=labels[data.type];state('Terminada',label,data.message);$('result').textContent=label;$('observations').textContent=data.output||'—';note(label+'.');}
 });
 cases.forEach((item,index)=>{const button=document.createElement('button');button.textContent=item.name;button.setAttribute('role','tab');button.onclick=()=>select(index);$('tabs').append(button);});
 $('run').onclick=run;$('cancel').onclick=cancel;$('reset').onclick=()=>select(0);

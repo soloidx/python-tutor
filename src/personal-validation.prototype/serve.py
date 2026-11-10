@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 HERE = Path(__file__).resolve().parent
 ASSETS = {"pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"}
+WORKER_POLICY = "default-src 'none'; script-src 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'; base-uri 'none'"
 
 
 def main():
@@ -34,16 +35,28 @@ def main():
                 if role == "app" and path == "/":
                     body = (HERE / "index.html").read_text().replace("__EXECUTOR_ORIGIN__", executor_origin).encode()
                     content_type = "text/html; charset=utf-8"
-                    csp = f"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src {executor_origin}; base-uri 'none'; form-action 'none'"
+                    csp = f"default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; frame-src {executor_origin}; base-uri 'none'; form-action 'none'"
                 elif role == "executor" and path == "/":
                     body = (HERE / "executor.html").read_text().replace("__APP_ORIGIN__", app_origin).encode()
                     content_type = "text/html; charset=utf-8"
-                    csp = "default-src 'none'; script-src 'unsafe-inline'; connect-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'"
+                    csp = "default-src 'none'; script-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'"
+                elif path == "/protocol.js":
+                    body = (HERE / "protocol.js").read_bytes()
+                    content_type = "text/javascript; charset=utf-8"
+                    csp = "default-src 'none'"
+                elif role == "executor" and path == "/policy-conformance.js":
+                    body = (HERE / "policy-conformance.js").read_bytes()
+                    content_type = "text/javascript; charset=utf-8"
+                    csp = WORKER_POLICY
+                elif role == "executor" and path == "/policy-target":
+                    body = b"/* Public, empty conformance fixture. */"
+                    content_type = "text/javascript; charset=utf-8"
+                    csp = WORKER_POLICY
                 elif role == "executor" and path == "/worker.js":
                     body = b"\n".join((runtime / name).read_bytes() for name in ["pyodide.asm.js", "pyodide.js"])
-                    body += b"\n" + (HERE / "worker.js").read_bytes()
+                    body += b"\n" + (HERE / "protocol.js").read_bytes() + b"\n" + (HERE / "worker.js").read_bytes()
                     content_type = "text/javascript; charset=utf-8"
-                    csp = "default-src 'none'; script-src 'wasm-unsafe-eval'; connect-src 'none'; worker-src 'none'; base-uri 'none'"
+                    csp = WORKER_POLICY
                 elif role == "executor" and path.removeprefix("/runtime/") in ASSETS and path.startswith("/runtime/"):
                     body = (runtime / path.removeprefix("/runtime/")).read_bytes()
                     content_type = "application/octet-stream"
