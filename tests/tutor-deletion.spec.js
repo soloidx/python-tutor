@@ -88,6 +88,21 @@ test("deletes only the confirmed topic conversation and keeps other history, pro
   expect(requests).toHaveLength(4);
 });
 
+test("reset persists when deleting individual storage keys is blocked", async ({ page }) => {
+  await setup(page);
+  await send(page, "Pregunta que no debe volver");
+  await page.evaluate(() => {
+    Storage.prototype.removeItem = () => { throw new DOMException("Blocked", "SecurityError"); };
+  });
+  await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
+  await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.reload();
+  await enterCourse(page);
+  await tutor(page);
+  await expect(page.getByText("Pregunta que no debe volver", { exact: true })).toHaveCount(0);
+});
+
 for (const scope of ["course", "global"])
 test(`${scope} reset preserves an active response on cancel and removes every topic on confirm despite late events`, async ({
   page,
@@ -280,116 +295,28 @@ test("failed topic deletion reports session-only deletion, preserves other topic
   ).toHaveCount(0);
 });
 
-for (const [failHistory, failProgress] of [
-  [true, false],
-  [false, true],
-  [true, true],
-])
-  test(`reset reports independent persistence outcomes: history=${failHistory}, progress=${failProgress}`, async ({
-    page,
-  }) => {
-    const requests = await setup(page);
-    await page
-      .getByLabel("Código Python")
-      .fill('nombre = "Ada"\nprint("Hola, " + nombre)');
-    await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
-    await expect(page.getByRole("status")).toContainText("¡Correcto!");
-    await send(page, "Pregunta antes del reinicio");
-    await topic(page, 2);
-    await page.evaluate(
-      ({ failHistory, failProgress }) => {
-        // Identify a browser record by student-authored content, without assuming keys or schema.
-        const conversationRecord = Object.keys(localStorage).find((record) =>
-          localStorage.getItem(record).includes("Pregunta antes del reinicio"),
-        );
-        for (const method of ["setItem", "removeItem"]) {
-          const original = Storage.prototype[method];
-          Storage.prototype[method] = function (record, ...args) {
-            if (record === conversationRecord ? failHistory : failProgress)
-              throw new DOMException("Blocked", "SecurityError");
-            return original.call(this, record, ...args);
-          };
-        }
-      },
-      { failHistory, failProgress },
-    );
-    await page
-      .getByRole("button", { name: "Reiniciar este curso", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Sí, reiniciar", exact: true })
-      .click();
-    const warning = page.getByRole("alert").filter({ hasText:
-      failHistory ? "Se borraron todas las conversaciones en esta sesión" : "No se pudo borrar el progreso guardado",
-    });
-    await expect(warning).toContainText(
-      failHistory
-        ? "Se borraron todas las conversaciones en esta sesión"
-        : "No se pudo borrar el progreso guardado",
-    );
-    if (failProgress)
-      await expect(warning).toContainText(
-        "el progreso anterior podría reaparecer",
-      );
-    else
-      await expect(warning).not.toContainText(
-        "el progreso anterior podría reaparecer",
-      );
-    if (!failHistory)
-      await expect(warning).not.toContainText("el historial guardado");
-    await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
-    await expect(page.getByText("0 / 12 ejercicios", { exact: true })).toBeVisible();
-    await tutor(page);
-    await expect(
-      page.getByText("Pregunta antes del reinicio", { exact: true }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Enviar", exact: true }),
-    ).toBeEnabled();
-    expect(requests).toHaveLength(1);
-    await page.reload();
-    await enterCourse(page);
-    await topic(page, 1);
-    await expect(
-      page.getByText("Pregunta antes del reinicio", { exact: true }),
-    ).toHaveCount(failHistory ? 1 : 0);
-    await expect(
-      page.getByText(`${failProgress ? 1 : 0} / 12 ejercicios`, {
-        exact: true,
-      }),
-    ).toBeVisible();
-    expect(requests).toHaveLength(1);
+test("a failed reset preserves both conversation and progress", async ({ page }) => {
+  await setup(page);
+  await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre)');
+  await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("¡Correcto!");
+  await send(page, "Pregunta antes del reinicio");
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "python-tutor:learner-store:v1") throw new DOMException("Full", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
   });
-
-for (const blocked of ["setItem", "removeItem"])
-  test(`reset persists deletion when only ${blocked} fails`, async ({
-    page,
-  }) => {
-    await setup(page);
-    await send(page, "Pregunta que no debe volver");
-    await page.evaluate((method) => {
-      Storage.prototype[method] = () => {
-        throw new DOMException("Blocked", "SecurityError");
-      };
-    }, blocked);
-    await page
-      .getByRole("button", { name: "Reiniciar este curso", exact: true })
-      .click();
-    await page
-      .getByRole("button", { name: "Sí, reiniciar", exact: true })
-      .click();
-    await expect(
-      page.getByRole("alert").filter({ hasText: /podría reaparecer/ }),
-    ).toHaveCount(0);
-    await page.reload();
-    await enterCourse(page);
-
-    await tutor(page);
-    await expect(
-      page.getByText("Pregunta que no debe volver", { exact: true }),
-    ).toHaveCount(0);
-  });
+  await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
+  await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo guardar el reinicio" })).toBeVisible();
+  await page.reload();
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  await tutor(page);
+  await expect(page.getByText("Pregunta antes del reinicio", { exact: true })).toBeVisible();
+});
 
 for (const scope of ["course", "global"])
 test(`${scope} reset preserves the explicitly chosen session-only configuration`, async ({
@@ -435,8 +362,7 @@ test(`${scope} reset preserves the explicitly chosen session-only configuration`
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
-  if (scope === "global") await enterCourse(page);
-  else await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo guardar el reinicio" })).toBeVisible();
   await tutor(page);
   await expect(
     page.getByText(

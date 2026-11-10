@@ -53,14 +53,14 @@ test("partial learner recovery keeps approvals, position and valid assessment an
     .first()
     .click();
   const raw = await page.evaluate((key) => {
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     saved.completed.push(null, "ejercicio-retirado");
     saved.assessmentResult = {
       answers: { valor: "dos", retirada: "opcion-a", rota: 7 },
       score: "incorrecto",
     };
     const raw = JSON.stringify(saved);
-    localStorage.setItem(key, raw);
+    window.__learnerTest.setItem(key, raw);
     return raw;
   }, progressKey);
   await page.reload();
@@ -87,9 +87,9 @@ test("partial learner recovery keeps approvals, position and valid assessment an
   expect(
     await page.evaluate(
       (prefix) =>
-        Object.keys(localStorage)
+        window.__learnerTest.keys()
           .filter((key) => key.startsWith(prefix))
-          .map((key) => localStorage.getItem(key)),
+          .map((key) => window.__learnerTest.getItem(key)),
       backupPrefix,
     ),
   ).toContain(raw);
@@ -125,7 +125,7 @@ test("history recovery preserves valid exchanges and attempts, interrupts saved 
     .click();
   const raw = await page.evaluate(() => {
     const key = "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D";
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     saved[0].attempts.push(
       {
         id: "bad-error",
@@ -141,7 +141,7 @@ test("history recovery preserves valid exchanges and attempts, interrupts saved 
     );
     saved.push({ id: "invalid" });
     const raw = JSON.stringify(saved);
-    localStorage.setItem(key, raw);
+    window.__learnerTest.setItem(key, raw);
     return raw;
   });
   await page.reload();
@@ -166,9 +166,9 @@ test("history recovery preserves valid exchanges and attempts, interrupts saved 
   expect(
     await page.evaluate(
       (prefix) =>
-        Object.keys(localStorage)
+        window.__learnerTest.keys()
           .filter((key) => key.startsWith(prefix))
-          .map((key) => localStorage.getItem(key)),
+          .map((key) => window.__learnerTest.getItem(key)),
       backupPrefix,
     ),
   ).toContain(raw);
@@ -204,16 +204,16 @@ test("failed recovery copies protect original learner data through visits and ne
     .first()
     .click();
   const raw = await page.evaluate((key) => {
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     saved.topicId = 7;
     const raw = JSON.stringify(saved);
-    localStorage.setItem(key, raw);
+    window.__learnerTest.setItem(key, raw);
     return raw;
   }, progressKey);
   await page.addInitScript(() => {
     const set = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
-      if (key.startsWith("python-tutor:recovery:v1:"))
+      if (key === "python-tutor:learner-store:v1" && Object.keys(JSON.parse(value).records).some((record) => record.startsWith("python-tutor:recovery:v1:")))
         throw new DOMException("Full", "QuotaExceededError");
       return set.call(this, key, value);
     };
@@ -222,7 +222,7 @@ test("failed recovery copies protect original learner data through visits and ne
   await expect(
     page
       .getByRole("alert")
-      .filter({ hasText: /no se pudo guardar una copia/i }),
+      .filter({ hasText: /sin sobrescribir/i }),
   ).toBeVisible();
   await enterCourse(page);
   await expect(
@@ -238,12 +238,12 @@ test("failed recovery copies protect original learner data through visits and ne
     page.getByText("2 / 12 ejercicios", { exact: true }),
   ).toBeVisible();
   expect(
-    await page.evaluate((key) => localStorage.getItem(key), progressKey),
+    await page.evaluate((key) => window.__learnerTest.getItem(key), progressKey),
   ).toBe(raw);
   expect(
     await page.evaluate(
       (prefix) =>
-        Object.keys(localStorage).filter((key) => key.startsWith(prefix)),
+        window.__learnerTest.keys().filter((key) => key.startsWith(prefix)),
       backupPrefix,
     ),
   ).toHaveLength(0);
@@ -255,7 +255,7 @@ test("failed recovery copies protect original learner data through visits and ne
   await expect(
     page
       .getByRole("alert")
-      .filter({ hasText: /no se pudo guardar una copia/i }),
+      .filter({ hasText: /sin sobrescribir/i }),
   ).toBeVisible();
 });
 
@@ -276,9 +276,9 @@ test("a damaged latest attempt never turns an older completed answer into a conf
     .click();
   await page.evaluate(() => {
     const key = "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D";
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     saved[0].attempts.push({ id: "bad-latest", text: 42, status: "complete" });
-    localStorage.setItem(key, JSON.stringify(saved));
+    window.__learnerTest.setItem(key, JSON.stringify(saved));
   });
   await page.reload();
   await enterCourse(page);
@@ -308,16 +308,16 @@ test("failed conversation backup keeps the original through a new answer and rel
     .click();
   const raw = await page.evaluate(() => {
     const key = "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D";
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     saved.push(null);
     const raw = JSON.stringify(saved);
-    localStorage.setItem(key, raw);
+    window.__learnerTest.setItem(key, raw);
     return raw;
   });
   await page.addInitScript(() => {
     const set = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
-      if (key.startsWith("python-tutor:recovery:v1:"))
+      if (key === "python-tutor:learner-store:v1" && Object.keys(JSON.parse(value).records).some((record) => record.startsWith("python-tutor:recovery:v1:")))
         throw new DOMException("Blocked", "QuotaExceededError");
       return set.call(this, key, value);
     };
@@ -326,7 +326,7 @@ test("failed conversation backup keeps the original through a new answer and rel
   await expect(
     page
       .getByRole("alert")
-      .filter({ hasText: /no se pudo guardar una copia/i }),
+      .filter({ hasText: /sin sobrescribir/i }),
   ).toBeVisible();
   await enterCourse(page);
   await page.getByRole("tab", { name: "Tutor", exact: true }).click();
@@ -340,7 +340,7 @@ test("failed conversation backup keeps the original through a new answer and rel
   ).toHaveCount(2);
   expect(
     await page.evaluate(() =>
-      localStorage.getItem(
+      window.__learnerTest.getItem(
         "python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D",
       ),
     ),
@@ -378,7 +378,7 @@ test("an unavailable catalog preserves learner data and never creates recovery c
   await page
     .getByRole("button", { name: "Todas las rutas", exact: true })
     .click();
-  await page.evaluate(() => localStorage.removeItem("python-tutor:catalog:v1"));
+  await page.evaluate(() => window.__learnerTest.removeItem("python-tutor:catalog:v1"));
   await context.route(
     `${sourceBase}**`,
     (route) => route.abort(),
@@ -399,7 +399,7 @@ test("an unavailable catalog preserves learner data and never creates recovery c
   ).toBeVisible();
   expect(
     await page.evaluate(() =>
-      Object.keys(localStorage).filter((key) =>
+      window.__learnerTest.keys().filter((key) =>
         key.startsWith("python-tutor:recovery:v1:"),
       ),
     ),

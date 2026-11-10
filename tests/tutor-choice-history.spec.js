@@ -187,9 +187,9 @@ test("recovers legacy code and quarantines an invalid mixed choice capture", asy
   expect(
     await page.evaluate(
       (prefix) =>
-        Object.keys(localStorage)
+        window.__learnerTest.keys()
           .filter((key) => key.startsWith(prefix))
-          .map((key) => localStorage.getItem(key)),
+          .map((key) => window.__learnerTest.getItem(key)),
       "python-tutor:recovery:v1:%5B%22original%22%2C%22python-fundamentos%22%5D:",
     ),
   ).toContain(original);

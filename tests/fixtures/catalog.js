@@ -93,6 +93,18 @@ export async function enterCourse(
 }
 export const test = base.extend({
   context: async ({ context }, use) => {
+    await context.addInitScript(() => {
+      const storeKey = "python-tutor:learner-store:v1";
+      const learnerKey = (key) => key.startsWith("python-tutor:course-progress:") || key.startsWith("python-tutor:course-conversations:") || key.startsWith("python-tutor:recovery:") || key.startsWith("python-tutor:practice:");
+      const store = () => { try { return JSON.parse(localStorage.getItem(storeKey)); } catch { return null; } };
+      window.__learnerTest = {
+        getItem(key) { const current = store(); return learnerKey(key) && current ? current.records[key] ?? null : localStorage.getItem(key); },
+        setItem(key, value) { const current = store(); if (learnerKey(key) && current) { current.records[key] = String(value); localStorage.setItem(storeKey, JSON.stringify(current)); } else localStorage.setItem(key, value); },
+        removeItem(key) { const current = store(); if (learnerKey(key) && current) { delete current.records[key]; localStorage.setItem(storeKey, JSON.stringify(current)); } else localStorage.removeItem(key); },
+        keys() { const current = store(); return current ? [...Object.keys(localStorage).filter((key) => key !== storeKey && !learnerKey(key)), ...Object.keys(current.records)] : Object.keys(localStorage); },
+        entries() { return this.keys().map((key) => [key, this.getItem(key)]); },
+      };
+    });
     await serveCatalog(context);
     await use(context);
   },

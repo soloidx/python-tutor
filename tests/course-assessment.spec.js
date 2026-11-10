@@ -121,7 +121,7 @@ test('storage failure reports a session-only assessment result that disappears o
   await page.addInitScript(() => {
     const setItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
-      if (key.startsWith('python-tutor:course-progress:v1:')) throw new DOMException('Blocked', 'QuotaExceededError');
+      if (key === 'python-tutor:learner-store:v1') throw new DOMException('Blocked', 'QuotaExceededError');
       return setItem.call(this, key, value);
     };
   });

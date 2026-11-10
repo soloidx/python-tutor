@@ -112,3 +112,58 @@ test("legacy progress survives migration and reload", async ({ page }) => {
   await enterCourse(page);
   await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
 });
+
+test("a write from an older tab is preserved after migration", async ({ page, context }) => {
+  const legacyKey = "python-tutor:course-progress:v1:python-fundamentos";
+  await page.addInitScript((key) => {
+    if (!localStorage.getItem("python-tutor:learner-store:v1"))
+      localStorage.setItem(key, JSON.stringify({ topicId: "valores-variables", completed: [], assessmentResult: null }));
+  }, legacyKey);
+  await page.goto("/");
+  await enterCourse(page);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"))).not.toBeNull();
+  const oldTab = await context.newPage();
+  await oldTab.goto("/");
+  const newer = JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null });
+  await oldTab.evaluate(({ key, value }) => localStorage.setItem(key, value), { key: legacyKey, value: newer });
+  await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
+  await expect(page.getByRole("alert")).toContainText("No se pudo guardar");
+  expect(await oldTab.evaluate((key) => localStorage.getItem(key), legacyKey)).toBe(newer);
+});
+
+test("reset does not revive retained legacy progress", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("python-tutor:learner-store:v1"))
+      localStorage.setItem("python-tutor:course-progress:v1:python-fundamentos", JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null }));
+  });
+  await page.goto("/");
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
+  await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
+  await page.reload();
+  await enterCourse(page);
+  await expect(page.getByText("0 / 12 ejercicios", { exact: true })).toBeVisible();
+});
+
+test("failed migration keeps the legacy learning available", async ({ page }) => {
+  const key = "python-tutor:course-progress:v1:python-fundamentos";
+  const legacy = JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null });
+  await page.addInitScript(({ key, legacy }) => {
+    localStorage.setItem(key, legacy);
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (name, value) {
+      if (name === "python-tutor:learner-store:v1") throw new DOMException("Full", "QuotaExceededError");
+      return set.call(this, name, value);
+    };
+  }, { key, legacy });
+  await page.goto("/");
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("No se pudo guardar");
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(legacy);
+  await page.reload();
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+});

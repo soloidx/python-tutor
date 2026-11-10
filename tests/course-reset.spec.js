@@ -52,21 +52,21 @@ test('course reset removes retired approvals, assessment, history and recovery c
   await page.getByRole('button', { name: 'Todas las rutas', exact: true }).click();
   await page.evaluate(() => {
     const key = 'python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D';
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     saved.completed.push('ejercicio-retirado', null);
     saved.assessmentResult = { answers: { retirada: 'opcion-a' } };
-    localStorage.setItem(key, JSON.stringify(saved));
+    window.__learnerTest.setItem(key, JSON.stringify(saved));
   });
   await page.reload();
   await expect(page.getByRole('alert').filter({ hasText: /recuperación parcial/ })).toBeVisible();
   await enterCourse(page);
-  const kept = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.includes('python-practica') || key === 'python-tutor:catalog:v1' || (!key.includes('course-') && !key.includes('recovery:')))));
+  const kept = await page.evaluate(() => Object.fromEntries(window.__learnerTest.entries().filter(([key]) => key.includes('python-practica') || key === 'python-tutor:catalog:v1' || (!key.includes('course-') && !key.includes('recovery:')))));
   await reset(page);
   await expect(page.getByRole('button', { name: 'Comenzar curso', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.includes('recovery:v1:%5B%22original%22%2C%22python-fundamentos%22%5D:')))).toEqual([]);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D') || 'null'))).toBeNull();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D') || '[]'))).toEqual([]);
-  expect(await page.evaluate(keys => Object.fromEntries(keys.map(key => [key, localStorage.getItem(key)])), Object.keys(kept))).toEqual(kept);
+  expect(await page.evaluate(() => window.__learnerTest.keys().filter(key => key.includes('recovery:v1:%5B%22original%22%2C%22python-fundamentos%22%5D:')))).toEqual([]);
+  expect(await page.evaluate(() => JSON.parse(window.__learnerTest.getItem('python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D') || 'null'))).toBeNull();
+  expect(await page.evaluate(() => JSON.parse(window.__learnerTest.getItem('python-tutor:course-conversations:v1:%5B%22original%22%2C%22python-fundamentos%22%5D') || '[]'))).toEqual([]);
+  expect(await page.evaluate(keys => Object.fromEntries(keys.map(key => [key, window.__learnerTest.getItem(key)])), Object.keys(kept))).toEqual(kept);
   await page.getByRole('button', { name: 'Comenzar curso', exact: true }).click();
   await ask(page, 'Después del reinicio');
   expect(requests.at(-1).messages).toHaveLength(2);
@@ -90,9 +90,9 @@ test('global reset includes courses retired from the catalog and their recovery 
   await page.getByRole('button', { name: 'Todas las rutas', exact: true }).click();
   await page.evaluate(() => {
     const key = 'python-tutor:course-progress:v1:%5B%22original%22%2C%22python-practica%22%5D';
-    const raw = JSON.parse(localStorage.getItem(key));
+    const raw = JSON.parse(window.__learnerTest.getItem(key));
     raw.completed.push(null);
-    localStorage.setItem(key, JSON.stringify(raw));
+    window.__learnerTest.setItem(key, JSON.stringify(raw));
   });
   await page.reload();
   await expect(page.getByRole('alert').filter({ hasText: /recuperación parcial/ })).toBeVisible();
@@ -103,14 +103,15 @@ test('global reset includes courses retired from the catalog and their recovery 
   await page.reload();
   await page.getByRole('button', { name: 'Recargar para actualizar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Cursos y rutas de aprendizaje', exact: true })).toBeVisible();
-  const kept = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key === 'python-tutor:catalog:v1' || (!key.includes('course-') && !key.includes('recovery:')))));
+  const kept = await page.evaluate(() => Object.fromEntries(window.__learnerTest.entries().filter(([key]) => key === 'python-tutor:catalog:v1' || (!key.includes('course-') && !key.includes('recovery:')))));
   await page.getByRole('button', { name: 'Reiniciar todo el aprendizaje', exact: true }).click();
   const confirmation = page.getByRole('group', { name: 'Confirmar reinicio' });
   await expect(confirmation).toContainText('retirados del catálogo');
   await confirmation.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await reset(page, true);
-  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.includes('course-progress:') || key.includes('course-conversations:') || key.includes('recovery:')))).toEqual([]);
-  expect(await page.evaluate(keys => Object.fromEntries(keys.map(key => [key, localStorage.getItem(key)])), Object.keys(kept))).toEqual(kept);
+  await expect(page.getByRole('group', { name: 'Confirmar reinicio' })).not.toBeVisible();
+  expect(await page.evaluate(() => window.__learnerTest.keys().filter(key => key.includes('course-progress:') || key.includes('course-conversations:') || key.includes('recovery:')))).toEqual([]);
+  expect(await page.evaluate(keys => Object.fromEntries(keys.map(key => [key, window.__learnerTest.getItem(key)])), Object.keys(kept))).toEqual(kept);
   await serveCatalog(context, publication('returned-reset'));
   await page.reload();
   await page.getByRole('button', { name: 'Recargar para actualizar', exact: true }).click();
@@ -129,23 +130,23 @@ for (const global of [false, true]) {
     await ask(page, 'Original protegido');
     await page.getByRole('button', { name: 'Todas las rutas', exact: true }).click();
     await page.evaluate(() => {
-      for (const key of Object.keys(localStorage).filter(key => key.startsWith('python-tutor:course-'))) {
-        const raw = JSON.parse(localStorage.getItem(key));
+      for (const key of window.__learnerTest.keys().filter(key => key.startsWith('python-tutor:course-'))) {
+        const raw = JSON.parse(window.__learnerTest.getItem(key));
         if (Array.isArray(raw)) raw.push(null);
         else raw.completed.push(null);
-        localStorage.setItem(key, JSON.stringify(raw));
+        window.__learnerTest.setItem(key, JSON.stringify(raw));
       }
     });
     await page.addInitScript(() => {
       const set = Storage.prototype.setItem;
       Storage.prototype.setItem = function(key, value) {
-        if (key.startsWith('python-tutor:recovery:')) throw new DOMException('Blocked', 'QuotaExceededError');
+        if (key === 'python-tutor:learner-store:v1' && Object.keys(JSON.parse(value).records).some((record) => record.startsWith('python-tutor:recovery:'))) throw new DOMException('Blocked', 'QuotaExceededError');
         return set.call(this, key, value);
       };
       Storage.prototype.removeItem = function() { throw new DOMException('Blocked', 'SecurityError'); };
     });
     await page.reload();
-    await expect(page.getByRole('alert').filter({ hasText: /no se pudo guardar una copia/i }).first()).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: /sin sobrescribir/i }).first()).toBeVisible();
     await enterCourse(page);
     await reset(page, global);
     await expect(page.getByRole('alert').filter({ hasText: /podría reaparecer|no se pudo borrar/i })).toHaveCount(0);
@@ -173,10 +174,10 @@ test('global reset warns when the browser prevents enumerating retired course da
     }) });
   });
   await reset(page, true);
-  await expect(page.getByRole('alert').filter({ hasText: /Podrían quedar datos de cursos retirados/ })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: /No se pudo guardar el reinicio/ })).toBeVisible();
   await page.reload();
   await enterCourse(page);
-  await expect(page.getByText('0 / 12 ejercicios', { exact: true })).toBeVisible();
+  await expect(page.getByText('1 / 12 ejercicios', { exact: true })).toBeVisible();
 });
 
 test('an approved exercise retired before course reset returns pending when republished', async ({ page, context }) => {
@@ -208,9 +209,9 @@ test('reset reports surviving recovery copies when both safe clearing operations
   await page.getByRole('button', { name: 'Todas las rutas', exact: true }).click();
   await page.evaluate(() => {
     const key = 'python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D';
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     saved.completed.push(null);
-    localStorage.setItem(key, JSON.stringify(saved));
+    window.__learnerTest.setItem(key, JSON.stringify(saved));
   });
   await page.reload();
   await expect(page.getByRole('alert').filter({ hasText: /recuperación parcial/i })).toBeVisible();
@@ -219,14 +220,14 @@ test('reset reports surviving recovery copies when both safe clearing operations
     for (const method of ['setItem', 'removeItem']) {
       const original = Storage.prototype[method];
       Storage.prototype[method] = function(key, ...args) {
-        if (key.startsWith('python-tutor:recovery:')) throw new DOMException('Blocked', 'SecurityError');
+        if (key === 'python-tutor:learner-store:v1') throw new DOMException('Blocked', 'SecurityError');
         return original.call(this, key, ...args);
       };
     }
   });
   await reset(page);
-  await expect(page.getByRole('alert').filter({ hasText: /No se pudieron borrar todas las copias de recuperación/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Comenzar curso', exact: true })).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: /No se pudo guardar el reinicio/ })).toBeVisible();
+  await expect(page.getByText('1 / 12 ejercicios', { exact: true })).toBeVisible();
 });
 
 test('global learning reset preserves a damaged practice recovery copy', async ({ page }) => {
@@ -234,10 +235,10 @@ test('global learning reset preserves a damaged practice recovery copy', async (
   await page.goto('/');
   await page.getByRole('button', { name: 'Práctica', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('registro está dañado');
-  const copies = await page.evaluate(() => Object.entries(localStorage).filter(([, value]) => value === '{damaged practice').map(([key]) => key));
+  const copies = await page.evaluate(() => window.__learnerTest.entries().filter(([, value]) => value === '{damaged practice').map(([key]) => key));
   expect(copies.length).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Cursos y rutas', exact: true }).click();
   await enterCourse(page);
   await reset(page, true);
-  expect(await page.evaluate(keys => keys.map(key => localStorage.getItem(key)), copies)).toContain('{damaged practice');
+  expect(await page.evaluate(keys => keys.map(key => window.__learnerTest.getItem(key)), copies)).toContain('{damaged practice');
 });

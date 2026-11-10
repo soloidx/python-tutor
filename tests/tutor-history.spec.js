@@ -303,12 +303,13 @@ test("migrates existing original learning and conversations while retaining sour
     const id = JSON.stringify(["original", "python-fundamentos"]);
     const prefix = "python-tutor:course-conversations:v1:";
     const key = prefix + encodeURIComponent(id);
-    const exchanges = JSON.parse(localStorage.getItem(key));
+    const exchanges = JSON.parse(window.__learnerTest.getItem(key));
     for (const exchange of exchanges) {
       exchange.courseId = "python-fundamentos";
       exchange.capture.course.id = "python-fundamentos";
     }
     const raw = JSON.stringify(exchanges);
+    localStorage.removeItem("python-tutor:learner-store:v1");
     localStorage.setItem(prefix + "python-fundamentos", raw);
     localStorage.removeItem(key);
     localStorage.removeItem("python-tutor:course-progress:v1:" + encodeURIComponent(id));
@@ -335,11 +336,12 @@ test("a temporary legacy conversation read failure cannot mask prior messages", 
     const prefix = "python-tutor:course-conversations:v1:";
     const internal = JSON.stringify(["original", "python-fundamentos"]);
     const key = prefix + encodeURIComponent(internal);
-    const saved = JSON.parse(localStorage.getItem(key));
+    const saved = JSON.parse(window.__learnerTest.getItem(key));
     for (const item of saved) {
       item.courseId = "python-fundamentos";
       item.capture.course.id = "python-fundamentos";
     }
+    localStorage.removeItem("python-tutor:learner-store:v1");
     localStorage.setItem(prefix + "python-fundamentos", JSON.stringify(saved));
     localStorage.removeItem(key);
   });

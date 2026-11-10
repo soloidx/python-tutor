@@ -136,8 +136,8 @@ for (const damage of [
     await page.getByLabel("Ocho", { exact: true }).check();
     await page.evaluate(
       ({ key, damage }) => {
-        const record = JSON.parse(localStorage.getItem(key));
-        if (damage === "json") localStorage.setItem(key, "{broken");
+        const record = JSON.parse(window.__learnerTest.getItem(key));
+        if (damage === "json") window.__learnerTest.setItem(key, "{broken");
         else {
           if (damage === "duplicate") record.entries.push(record.entries[0]);
           if (damage === "snapshot")
@@ -145,7 +145,7 @@ for (const damage of [
           if (damage === "reviewing") record.reviewing = true;
           if (damage === "selection")
             record.entries[0].work.selectedOptionId = "missing";
-          localStorage.setItem(key, JSON.stringify(record));
+          window.__learnerTest.setItem(key, JSON.stringify(record));
         }
       },
       { key, damage },
@@ -183,12 +183,12 @@ for (const failure of ["read", "blocked", "quota", "unavailable"])
           });
         else {
           Storage.prototype.getItem = function (k) {
-            if (k === key && failure === "read")
+            if (k === "python-tutor:learner-store:v1" && failure === "read")
               throw new DOMException("Blocked", "SecurityError");
             return get.call(this, k);
           };
           Storage.prototype.setItem = function (k, v) {
-            if (k === key && failure !== "read")
+            if (k === "python-tutor:learner-store:v1" && failure !== "read")
               throw new DOMException(
                 "Blocked",
                 failure === "quota" ? "QuotaExceededError" : "SecurityError",
@@ -352,7 +352,7 @@ test("archived review preserves feedback from a legacy saved failed attempt", as
   // Older records can contain attempts made after approval. Current practice
   // locks approved answers, so seed this compatibility case at storage's edge.
   await page.evaluate((key) => {
-    const record = JSON.parse(localStorage.getItem(key));
+    const record = JSON.parse(window.__learnerTest.getItem(key));
     const entry = record.entries.find((entry) => entry.id === "original");
     Object.assign(entry.work, {
       selectedOptionId: "eight",
@@ -360,7 +360,7 @@ test("archived review preserves feedback from a legacy saved failed attempt", as
       selectionResult: { optionId: "eight", correct: false },
       selectionFeedback: "Intenta de nuevo.",
     });
-    localStorage.setItem(key, JSON.stringify(record));
+    window.__learnerTest.setItem(key, JSON.stringify(record));
   }, key);
   await activate(page, context, single("review-feedback-new", "replacement"));
   await page

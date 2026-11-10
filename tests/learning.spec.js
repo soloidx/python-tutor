@@ -461,7 +461,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   // Fault injection stays at the browser-storage boundary; assertions use the UI.
   for (const damaged of ["{damaged JSON", "{}"]) {
     await page.evaluate(
-      (value) => localStorage.setItem("python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D", value),
+      (value) => window.__learnerTest.setItem("python-tutor:course-progress:v1:%5B%22original%22%2C%22python-fundamentos%22%5D", value),
       damaged,
     );
     await page.reload();
@@ -499,12 +499,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
-  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "Valores y variables", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo guardar el reinicio" })).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" }),
@@ -532,9 +527,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await page
     .getByRole("button", { name: "Sí, reiniciar", exact: true })
     .click();
-  await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "el progreso anterior podría reaparecer" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudo guardar el reinicio" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();

@@ -11,30 +11,32 @@ const learnerKeys = new Set(["python-tutor:practice:v1", "python-tutor:practice:
 const isLearnerKey = (key) => learnerKeys.has(key) || learnerPrefixes.some((prefix) => key.startsWith(prefix));
 let draft = null;
 let commitCallbacks = [];
-let cleanupFailed = false;
-export const legacyCleanupFailed = () => cleanupFailed;
+let migrationSources = {};
 
+function legacySnapshot() {
+  return Object.fromEntries(Object.keys(localStorage).filter(isLearnerKey).map((key) => [key, localStorage.getItem(key)]));
+}
 function snapshot() {
   const raw = localStorage.getItem(storeKey);
   if (raw !== null) {
     const parsed = JSON.parse(raw);
     if (!parsed || parsed.version !== 1 || !parsed.records || typeof parsed.records !== "object" || Array.isArray(parsed.records) || Object.values(parsed.records).some((value) => typeof value !== "string")) throw new Error("Invalid learner store");
+    const expected = parsed.legacy ?? {};
+    const actual = legacySnapshot();
+    if (JSON.stringify(Object.entries(actual).sort()) !== JSON.stringify(Object.entries(expected).sort()))
+      throw new Error("Legacy learner records changed in another version of the application");
+    migrationSources = expected;
     return parsed.records;
   }
-  return Object.fromEntries(Object.keys(localStorage).filter(isLearnerKey).map((key) => [key, localStorage.getItem(key)]));
+  migrationSources = legacySnapshot();
+  return { ...migrationSources };
 }
 function commit(records) {
-  const legacy = Object.fromEntries(Object.keys(localStorage).filter(isLearnerKey).map((key) => [key, localStorage.getItem(key)]));
-  localStorage.setItem(storeKey, JSON.stringify({ version: 1, records }));
-  cleanupFailed = false;
-  try {
-    for (const key of Object.keys(localStorage).filter(isLearnerKey)) {
-      try {
-        if (Object.hasOwn(legacy, key) && localStorage.getItem(key) === legacy[key]) localStorage.removeItem(key);
-        else cleanupFailed = true;
-      } catch { cleanupFailed = true; }
-    }
-  } catch { cleanupFailed = true; }
+  // Legacy keys are deliberately retained. If an older tab changes them later,
+  // snapshot refuses further writes instead of deleting or masking its data.
+  if (JSON.stringify(Object.entries(legacySnapshot()).sort()) !== JSON.stringify(Object.entries(migrationSources).sort()))
+    throw new Error("Legacy learner records changed during migration");
+  localStorage.setItem(storeKey, JSON.stringify({ version: 1, records, legacy: migrationSources }));
 }
 export function learnerGet(key) {
   return (draft || snapshot())[key] ?? null;
@@ -85,7 +87,8 @@ export async function performLearnerOperation({ id, revision, apply }) {
     if (learnerGet(marker) !== null) return { status: "already-applied" };
     if (learnerRevision() !== revision) return { status: "conflict" };
     learnerTransaction(() => {
-      apply();
+      const result = apply();
+      if (result && typeof result.then === "function") throw new TypeError("Learner operations must be synchronous");
       learnerSet(marker, "complete");
     });
     return { status: "applied" };

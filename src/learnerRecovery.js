@@ -30,7 +30,7 @@ export function preserveLearnerRecord(key, courseId, kind, raw) {
   if (navigator.locks) navigator.locks.request("python-tutor:learner", () => backupPending(key));
   // Loading is synchronous and may overlap another tab's write. Preserve the
   // source in memory and only make a backup while holding the learner lock.
-  return "Se realizó una recuperación parcial de los datos de aprendizaje. Los datos originales se conservan sin sobrescribir; aún no se ha guardado una copia de recuperación.";
+  return "Se realizó una recuperación parcial de los datos de aprendizaje. Los datos originales se conservarán sin sobrescribir hasta que pueda guardarse una copia de recuperación.";
 }
 export function writeLearnerRecord(key, value) {
   const pending = protectedRecords.get(key);

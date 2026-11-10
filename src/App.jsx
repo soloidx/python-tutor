@@ -1,4 +1,4 @@
-import { learnerTransaction, legacyCleanupFailed } from "./learnerStore.js";
+import { learnerTransaction } from "./learnerStore.js";
 import { removeHistory, historyChanged, storedCourseIds } from "./tutorHistory.js";
 import React, {
   useEffect,
@@ -165,7 +165,7 @@ export default function App({ publication }) {
       const saved = saveProgress(courses[id], progress);
       const next = saved === "conflict"
         ? { ...loadProgress(courses[id]), message: "El progreso cambió en otra pestaña. Se recargó la versión guardada; revisa la operación antes de intentarla de nuevo." }
-        : { progress, message: saved ? previous[id].message : [previous[id].message, "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión."].filter(Boolean).join(" ") };
+        : { progress, message: saved ? previous[id].message : [previous[id].message, previous[id].message.includes("No se pudo guardar el progreso") ? "" : "No se pudo guardar el progreso en este navegador. Tu avance solo está disponible en esta sesión."].filter(Boolean).join(" ") };
       progressRef.current = { ...previous, [id]: next };
       setProgressByCourse(progressRef.current);
     };
@@ -241,7 +241,7 @@ export default function App({ publication }) {
         }));
         conversation.reload();
         setProgressByCourse((previous) => ({ ...previous, ...cleared }));
-        setResetError([warning, legacyCleanupFailed() ? "No se pudieron borrar todas las copias anteriores del navegador." : ""].filter(Boolean).join(" "));
+        setResetError(warning);
         navigate(global ? rootLocation : { screen: "topics", topicId: null });
         setWorkspaceVersion((value) => value + 1);
         setConfirmReset(false);
@@ -764,7 +764,7 @@ export default function App({ publication }) {
         )}
         <section
           className="progress-controls learning-data"
-          aria-label="Progreso guardado"
+          aria-label="Progreso y conversaciones"
         >
           <div className="progress-summary">
             <p>Progreso y conversaciones de este navegador.</p>
