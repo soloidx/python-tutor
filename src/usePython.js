@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export function usePython(onResult) {
+export function usePython(onResult, enabled = true) {
   const worker = useRef(null);
   const timer = useRef(null);
   const receive = useRef(onResult);
@@ -8,6 +8,7 @@ export function usePython(onResult) {
   const [status, setStatus] = useState("loading");
   const [generation, setGeneration] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     setStatus("loading");
     let disposed = false;
     const instance = new Worker(new URL("python-worker.js", document.baseURI));
@@ -44,7 +45,7 @@ export function usePython(onResult) {
       clearTimeout(timer.current);
       instance.terminate();
     };
-  }, [generation]);
+  }, [generation, enabled]);
   function run(code, check) {
     if (status !== "ready") return;
     setStatus("running");

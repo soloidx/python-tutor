@@ -50,7 +50,17 @@ function ResourceArt({ kind, icon, iconFiles }) {
   );
 }
 
-export default function App({ publication, onPersonalIncorporated }) {
+// Only a trusted composition may supply personal execution configuration.
+// A personal identity without it fails closed; it must never use original checks.
+function personalExecution(courseId, exercise, resolve) {
+  if (exercise.type === "choice") return undefined;
+  let identity;
+  try { identity = JSON.parse(courseId); } catch { return undefined; }
+  if (!Array.isArray(identity) || identity[0] !== "personal") return undefined;
+  return resolve?.(courseId, exercise) || {};
+}
+
+export default function App({ publication, onPersonalIncorporated, personalExecutionFor }) {
   const { catalog, courses } = publication;
   const [legacyConflict, setLegacyConflict] = useState(inspectLegacyConflict);
   const [legacyError, setLegacyError] = useState("");
@@ -496,6 +506,7 @@ export default function App({ publication, onPersonalIncorporated }) {
         )}
         {view === "practice" && practiceRound && (
           <Practice
+            personalExecutionFor={(entry) => personalExecution(entry.course.id, entry.exercise, personalExecutionFor)}
             round={practiceRound}
             saved={practiceSaved && practiceStorageAvailable}
             notice={[practiceConflict, practiceRecovery.notice, practiceRecovery.recoveryWarning].filter(Boolean).join(" ")} 
@@ -857,6 +868,7 @@ export default function App({ publication, onPersonalIncorporated }) {
                   ))}
                 </div>
                 <LearningWorkspace
+                  personalExecutionFor={(exercise) => personalExecution(course.id, exercise, personalExecutionFor)}
                   course={course}
                   key={`${course.id}:${topic.id}:${workspaceVersion}`}
                   topic={topic}
@@ -993,6 +1005,7 @@ function LearningWorkspace({
   learningTab,
   setLearningTab,
   onConfigure,
+  personalExecutionFor,
 }) {
   useEffect(() => () => conversation.cancel(), [conversation]);
   const [exerciseIndex, setExerciseIndex] = useState(0);
@@ -1003,6 +1016,7 @@ function LearningWorkspace({
   return (
     <ExerciseWorkspace
       exercise={exercise}
+      personalExecution={personalExecutionFor?.(exercise)}
       approved={completed.includes(exercise.id)}
       onComplete={onComplete}
       navigation={(isRunning) => (
