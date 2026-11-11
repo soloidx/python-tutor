@@ -177,7 +177,7 @@ export function loadPractice(publication) {
     return { round: null, notice: null, storageAvailable: false };
   }
   const damaged = () => ({
-    recoveryWarning: preserveLearnerRecord(sourceKey, practiceRecoveryScope, "round", raw),
+    recoveryWarning: preserveLearnerRecord(sourceKey, practiceRecoveryScope, "round", raw, practiceStorageKey),
     round: createPracticeRound(publication),
     notice:
       "No pudimos recuperar la ronda guardada porque el registro está dañado. Comenzamos una ronda nueva con los ejercicios disponibles.",

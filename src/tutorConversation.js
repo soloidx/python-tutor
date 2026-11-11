@@ -33,13 +33,14 @@ const recovery = {
 };
 
 export function createConversationService() {
-  let state = { ...loadHistory(), active: null, notice: "" };
+  let state = { ...loadHistory(), active: null, notice: "", recoveredExchanges: [] };
   let controller = null;
   const listeners = new Set();
   let deletionWarning = "";
   let persistenceEpoch = 0;
   const publish = (next, persist) => {
     const previous = state;
+    const recoveryScope = next.active || previous.active;
     state = next;
     listeners.forEach((listener) => listener());
     if (next.exchanges === previous.exchanges) return;
@@ -61,8 +62,25 @@ export function createConversationService() {
         : [...changedCourses].map((courseId) => saveHistory(next.exchanges, courseId)).find(Boolean) || "";
       if (warning === historyConflict) {
         persistenceEpoch++;
+        const activeExchange = recoveryScope && (state.exchanges.find((exchange) => sameExchange(exchange, recoveryScope)) || next.exchanges.find((exchange) => sameExchange(exchange, recoveryScope)));
+        const recovered = activeExchange && {
+          ...activeExchange,
+          attempts: activeExchange.attempts.map((attempt) =>
+            attempt.status === "generating"
+              ? { ...attempt, status: "incomplete", error: "Respuesta interrumpida por un conflicto. El texto está disponible solo en esta sesión y no se ha guardado." }
+              : attempt,
+          ),
+        };
         controller?.abort();
-        state = { ...state, ...loadHistory(), active: null, storageWarning: historyConflict };
+        state = {
+          ...state,
+          ...loadHistory(),
+          active: null,
+          recoveredExchanges: recovered
+            ? [...state.recoveredExchanges.filter((exchange) => exchange.id !== recovered.id), recovered]
+            : state.recoveredExchanges,
+          storageWarning: historyConflict,
+        };
       } else {
         if (!warning) deletionWarning = "";
         state = { ...state, storageWarning: warning ? deletionWarning || warning : "" };
@@ -244,9 +262,14 @@ export function createConversationService() {
       return () => listeners.delete(listener);
     },
     send,
-    reload() {
+    reload({ clearRecovered } = {}) {
       persistenceEpoch++;
-      state = { ...state, ...loadHistory(), active: null };
+      const recoveredExchanges = clearRecovered === true
+        ? []
+        : clearRecovered
+          ? state.recoveredExchanges.filter((item) => item.courseId !== clearRecovered)
+          : state.recoveredExchanges;
+      state = { ...state, ...loadHistory(), active: null, recoveredExchanges };
       listeners.forEach((listener) => listener());
     },
     retry({ scope, exchangeId, config, onAccessIssue }) {
@@ -283,7 +306,12 @@ export function createConversationService() {
       );
       deletionWarning =
         "Se borró la conversación de este tema en esta sesión, pero no se pudo guardar el borrado: el historial borrado podría reaparecer al recargar. Los demás temas, el progreso y la Configuración del tutor se conservan. Puedes seguir aprendiendo; permite el almacenamiento o borra los datos del sitio en tu navegador.";
-      publish({ ...state, exchanges, notice: "" }, () =>
+      publish({
+        ...state,
+        exchanges,
+        recoveredExchanges: state.recoveredExchanges.filter((item) => item.courseId !== courseId || item.topicId !== topicId),
+        notice: "",
+      }, () =>
         exchanges.some((item) => item.courseId === courseId)
           ? saveHistory(exchanges, courseId)
           : removeHistory(courseId),

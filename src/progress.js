@@ -115,7 +115,7 @@ export function loadProgress(course) {
     assessmentResult,
   };
   const message = damaged
-    ? preserveLearnerRecord(key, course.id, "progress", raw)
+    ? preserveLearnerRecord(key, course.id, "progress", raw, progressStorageKey(course.id))
     : "";
   return { progress, message };
 }

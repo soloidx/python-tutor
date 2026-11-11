@@ -23,10 +23,14 @@ function backupPending(key) {
     return true;
   } catch { return false; }
 }
-export function preserveLearnerRecord(key, courseId, kind, raw) {
+export function preserveLearnerRecord(key, courseId, kind, raw, destinationKey = key) {
   const pending = protectedRecords.get(key);
-  if (pending?.raw === raw && pending.backedUp) return partialRecoveryWarning;
-  protectedRecords.set(key, { raw, courseId, kind, backedUp: false });
+  const record = pending?.raw === raw
+    ? pending
+    : { raw, courseId, kind, backedUp: false };
+  protectedRecords.set(key, record);
+  protectedRecords.set(destinationKey, record);
+  if (record.backedUp) return partialRecoveryWarning;
   if (navigator.locks) navigator.locks.request("python-tutor:learner", () => backupPending(key)).catch(() => {});
   // Loading is synchronous and may overlap another tab's write. Preserve the
   // source in memory and only make a backup while holding the learner lock.

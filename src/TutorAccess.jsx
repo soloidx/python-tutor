@@ -188,6 +188,19 @@ export function TutorPanel({
               </article>
             ))}
         </div>
+        {state.recoveredExchanges?.some((item) => item.courseId === courseId && item.topicId === topicId) && (
+          <section aria-label="Cambios recuperados de esta sesión" className="storage-warning">
+            <p>Estos cambios están disponibles para revisión en esta sesión; no están guardados y se perderán al recargar.</p>
+            {state.recoveredExchanges.filter((item) => item.courseId === courseId && item.topicId === topicId).map((exchange) => (
+              <article key={exchange.id}>
+                <p>{exchange.message}</p>
+                {exchange.attempts.map((attempt) => (
+                  <div key={attempt.id}><TutorMarkdown text={attempt.text} onCopy={copyCode} /><p>{attempt.error}</p></div>
+                ))}
+              </article>
+            ))}
+          </section>
+        )}
         {copied && <p>{copied}</p>}
         {state.notice && <p role="alert">{state.notice}</p>}
         {state.storageWarning && (

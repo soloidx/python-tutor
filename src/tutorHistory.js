@@ -344,7 +344,7 @@ export function loadHistory() {
         exchanges.push(...courseExchanges);
         if (damaged)
           recoveryWarnings.push(
-            preserveLearnerRecord(key, courseId, "history", raw),
+            preserveLearnerRecord(key, courseId, "history", raw, historyStorageKey(courseId)),
           );
         // Leave the source untouched until a later locked learner write.
       } catch {

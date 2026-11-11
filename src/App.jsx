@@ -253,7 +253,7 @@ export default function App({ publication }) {
           courses,
           conversation: { reset: removeHistory },
         }));
-        conversation.reload();
+        conversation.reload({ clearRecovered: global ? true : course.id });
         setProgressByCourse((previous) => ({ ...previous, ...cleared }));
         setResetError(warning);
         navigate(global ? rootLocation : { screen: "topics", topicId: null });

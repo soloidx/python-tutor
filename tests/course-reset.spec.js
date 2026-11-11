@@ -149,6 +149,7 @@ for (const global of [false, true]) {
     await expect(page.getByRole('alert').filter({ hasText: /sin sobrescribir/i }).first()).toBeVisible();
     await enterCourse(page);
     await reset(page, global);
+    await expect(page.getByRole('group', { name: 'Confirmar reinicio' })).not.toBeVisible();
     await expect(page.getByRole('alert').filter({ hasText: /podría reaparecer|no se pudo borrar/i })).toHaveCount(0);
     await page.reload();
     await enterCourse(page);
@@ -194,6 +195,7 @@ test('an approved exercise retired before course reset returns pending when repu
   await enterCourse(page);
   await expect(page.getByText('0 / 11 ejercicios', { exact: true })).toBeVisible();
   await reset(page);
+  await expect(page.getByRole('group', { name: 'Confirmar reinicio' })).not.toBeVisible();
   await serveCatalog(context, publication('exercise-returned-reset'));
   await page.reload();
   await page.getByRole('button', { name: 'Recargar para actualizar', exact: true }).click();
