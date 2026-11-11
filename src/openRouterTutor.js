@@ -59,6 +59,7 @@ export async function streamTutor({
   maxTokens,
   signal,
   onText,
+  timeoutMs = 60000,
 }) {
   const { ChatOpenRouter } = await import("@langchain/openrouter");
   if (signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -80,8 +81,9 @@ export async function streamTutor({
     siteUrl: window.location.origin,
   });
   let finishReason = null;
+  let usage = null;
   try {
-    const stream = await model.stream(messages, { signal, timeout: 60000 });
+    const stream = await model.stream(messages, { signal, timeout: timeoutMs });
     for await (const chunk of stream) {
       if (signal.aborted) break;
       if (typeof chunk.content === "string" && chunk.content)
@@ -90,10 +92,11 @@ export async function streamTutor({
         for (const part of chunk.content)
           if (part.type === "text") onText(part.text);
       }
+      if (Number.isSafeInteger(chunk.usage_metadata?.total_tokens) && chunk.usage_metadata.total_tokens >= 0) usage = chunk.usage_metadata;
       if (chunk.response_metadata?.finish_reason != null)
         finishReason = chunk.response_metadata.finish_reason;
     }
-    return { finishReason };
+    return { finishReason, usage };
   } catch (failure) {
     const error = new Error(
       failure.message || "No se pudo completar la respuesta.",

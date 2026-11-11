@@ -25,6 +25,7 @@ import { captureContext } from "./tutorContext.js";
 import { Icon } from "./Icon.jsx";
 import { ExerciseWorkspace } from "./ExerciseWorkspace.jsx";
 import { Practice } from "./Practice.jsx";
+import { PersonalGenerator } from "./PersonalGenerator.jsx";
 import { PracticeTutor } from "./PracticeTutor.jsx";
 import { createPracticeRound } from "./practiceRound.js";
 import { loadPractice, savePractice } from "./practiceStorage.js";
@@ -49,7 +50,7 @@ function ResourceArt({ kind, icon, iconFiles }) {
   );
 }
 
-export default function App({ publication }) {
+export default function App({ publication, onPersonalIncorporated }) {
   const { catalog, courses } = publication;
   const [legacyConflict, setLegacyConflict] = useState(inspectLegacyConflict);
   const [legacyError, setLegacyError] = useState("");
@@ -534,6 +535,7 @@ export default function App({ publication }) {
             )}
           />
         )}
+        {import.meta.env.DEV && <div hidden={view !== "personal-generator"}><PersonalGenerator onConfigure={() => setSettingsOpen(true)} visible={view === "personal-generator"} publication={publication} onIncorporated={onPersonalIncorporated} access={access} onClose={() => navigate(rootLocation)} /></div>}
         {view === "paths" && (
           <main className="courses catalog-page">
             <header className="catalog-heading">
@@ -548,6 +550,7 @@ export default function App({ publication }) {
                 a todos los temas
               </span>
             </header>
+            {import.meta.env.DEV && <button onClick={() => navigate({ screen: "personal-generator" })}>Crear ruta personal</button>}
             <div className="resource-grid">
               {catalog.learningPaths.map((item, index) => {
                 const summaries = item.courseIds.map((id) =>
@@ -570,7 +573,7 @@ export default function App({ publication }) {
                         iconFiles={publication.iconFiles}
                       />
                       <span className="resource-type">
-                        RUTA {String(index + 1).padStart(2, "0")}
+                        {item.personal ? "Personal" : `RUTA ${String(index + 1).padStart(2, "0")}`}
                       </span>
                       <span
                         className={`status-badge ${status === "Completado" ? "complete" : ""}`}
@@ -652,6 +655,7 @@ export default function App({ publication }) {
                       </span>
                     </div>
                     <h2>{item.title}</h2>
+                    {item.retiredOriginal && <span className="status-badge">Original retirado</span>}
                     <p className="resource-description">{item.description}</p>
                     <div className="resource-meta">
                       <span>{item.topics.length} temas</span>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import App from "./App.jsx";
+import { composePersonalPublication } from "./personalCatalog.js";
 import { originalPublication } from "./identity.js";
 import { loadCatalog } from "./catalog.js";
 import { readCatalogBackup, saveCatalogBackup, validatePublicationUpdate } from "./catalogCache.js";
@@ -24,10 +25,11 @@ export default function CatalogBootstrap() {
   useEffect(() => {
     const controller = new AbortController();
     setError("");
-    const activate = value => {
+    const activate = async value => {
       if (!active.current) {
         active.current = value;
-        setPublication(originalPublication(value));
+        const composed = import.meta.env.DEV ? await composePersonalPublication(originalPublication(value)) : originalPublication(value);
+        if (!controller.signal.aborted) setPublication(composed);
       }
     };
     // Download and verify the saved backup in parallel. Handle remote rejection
@@ -38,7 +40,7 @@ export default function CatalogBootstrap() {
     (async () => {
       const backup = await readCatalogBackup();
       if (controller.signal.aborted) return;
-      if (backup && !fresh.current) activate(backup);
+      if (backup && !fresh.current) await activate(backup);
       const { value, reason } = await remote;
       if (controller.signal.aborted) return;
       try {
@@ -47,10 +49,10 @@ export default function CatalogBootstrap() {
         validatePublicationUpdate(active.current, value);
         const saved = saveCatalogBackup(value);
         setTemporary(!saved);
-        if (!active.current) activate(value);
+        if (!active.current) await activate(value);
         else if (active.current.catalog.revision !== value.catalog.revision) setUpdated(true);
       } catch (reason) {
-        if (backup) activate(backup);
+        if (backup) await activate(backup);
         setError(reason.message || "Error de red al descargar el catálogo.");
       }
       fresh.current = false;
@@ -74,7 +76,8 @@ export default function CatalogBootstrap() {
           window.location.assign(url.href);
         }}>Recargar para actualizar</button>
       </aside>}
-      <App publication={publication} />
+      {publication.personalWarning && <aside role="alert">{publication.personalWarning}</aside>}
+      <App publication={publication} onPersonalIncorporated={async () => setPublication(await composePersonalPublication(originalPublication(active.current)))} />
     </> : <main className="courses">
       <h1>Python Tutor</h1>
       {error ? <><p role="alert">No se pudo cargar el catálogo. {error}</p>{retry}</> : <p role="status">Cargando catálogo…</p>}
