@@ -255,7 +255,7 @@ export function ExerciseWorkspace({
                   : python.status === "running"
                     ? "Ejecutando tu código…"
                     : python.status === "error"
-                      ? "Python necesita reiniciarse"
+                      ? personalExecution ? "Ejecutor separado no disponible" : "Python necesita reiniciarse"
                       : "Python listo"}
               </span>
               <span>UTF-8 · Python</span>

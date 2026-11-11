@@ -13,7 +13,10 @@ export function usePersonalPython(configuration, onResult) {
   const [status, setStatus] = useState("loading");
   const [generation, setGeneration] = useState(0);
   useEffect(() => {
-    if (!origin) return;
+    if (!origin) {
+      if (configuration) setStatus("error");
+      return;
+    }
     let disposed = false;
     alive.current = true;
     setStatus("loading");
