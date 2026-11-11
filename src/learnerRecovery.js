@@ -16,10 +16,10 @@ const protectedRecords = new Map();
 function backupPending(key) {
   const pending = protectedRecords.get(key);
   if (!pending || pending.backedUp) return true;
-  const copyKey = `${recoveryCoursePrefix(pending.courseId)}${pending.kind}:${Date.now()}:${crypto.randomUUID()}`;
+  const copyKey = pending.copyKey ||= `${recoveryCoursePrefix(pending.courseId)}${pending.kind}:${Date.now()}:${crypto.randomUUID()}`;
   try {
     learnerSet(copyKey, pending.raw);
-    pending.backedUp = true;
+    afterLearnerCommit(() => { pending.backedUp = true; });
     return true;
   } catch { return false; }
 }

@@ -1,4 +1,4 @@
-import { learnerTransaction } from "./learnerStore.js";
+import { learnerTransaction, inspectLegacyConflict, preserveLegacyConflict, readLegacyRecoveries } from "./learnerStore.js";
 import { removeHistory, historyChanged, storedCourseIds } from "./tutorHistory.js";
 import React, {
   useEffect,
@@ -51,6 +51,50 @@ function ResourceArt({ kind, icon, iconFiles }) {
 
 export default function App({ publication }) {
   const { catalog, courses } = publication;
+  const [legacyConflict, setLegacyConflict] = useState(inspectLegacyConflict);
+  const [legacyError, setLegacyError] = useState("");
+  const [legacyNeedsReview, setLegacyNeedsReview] = useState(false);
+  const legacyConflictRef = useRef(legacyConflict);
+  const legacyDetails = useRef(null);
+  const [legacyRecoveries, setLegacyRecoveries] = useState(readLegacyRecoveries);
+  useEffect(() => {
+    const refresh = () => {
+      const next = inspectLegacyConflict();
+      const previous = legacyConflictRef.current;
+      if (previous && next && (previous.raw !== next.raw || JSON.stringify(previous.after) !== JSON.stringify(next.after)))
+        setLegacyNeedsReview(true);
+      legacyConflictRef.current = next;
+      setLegacyConflict(next);
+      setLegacyRecoveries(readLegacyRecoveries());
+    };
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, []);
+  function readSessionSnapshot() {
+    return {
+      ...sessionRef.current,
+      conversations: conversation.getSnapshot().exchanges,
+      recoveredConversations: conversation.getSnapshot().recoveredExchanges,
+      drafts: [...document.querySelectorAll("textarea")].map((element) => ({
+        label: element.getAttribute("aria-label") || element.closest("label")?.textContent || "Borrador",
+        value: element.value,
+      })),
+    };
+  }
+  async function resolveLegacyConflict(useLegacy = false) {
+    try {
+      const result = await preserveLegacyConflict(legacyConflict, readSessionSnapshot, useLegacy);
+      if (result === "conflict") {
+        const next = inspectLegacyConflict();
+        legacyConflictRef.current = next;
+        setLegacyConflict(next);
+        setLegacyNeedsReview(true);
+        setLegacyError("Los datos volvieron a cambiar. Revisa las versiones actualizadas antes de continuar.");
+      } else window.location.reload();
+    } catch {
+      setLegacyError("No se pudieron conservar ambas versiones. Los datos originales siguen intactos; vuelve a intentarlo cuando el almacenamiento esté disponible.");
+    }
+  }
   const [conversation] = useState(createConversationService);
   const recoveryWarning = useSyncExternalStore(
     conversation.subscribe,
@@ -171,6 +215,8 @@ export default function App({ publication }) {
   const [pendingProgress, setPendingProgress] = useState(null);
   const progressRef = useRef(progressByCourse);
   progressRef.current = progressByCourse;
+  const sessionRef = useRef(null);
+  sessionRef.current = { progressByCourse, pendingProgress, pendingPractice, reviewingPractice, practiceRound };
   async function updateProgress(id, change) {
     const apply = () => {
       const previous = progressRef.current;
@@ -254,6 +300,7 @@ export default function App({ publication }) {
           conversation: { reset: removeHistory },
         }));
         conversation.reload({ clearRecovered: global ? true : course.id });
+        setLegacyRecoveries(readLegacyRecoveries());
         setProgressByCourse((previous) => ({ ...previous, ...cleared }));
         setResetError(warning);
         navigate(global ? rootLocation : { screen: "topics", topicId: null });
@@ -366,6 +413,51 @@ export default function App({ publication }) {
           )}
           {view === "learn" && <span>{topic.title}</span>}
         </nav>
+      {legacyConflict && (
+        <section className="storage-warning legacy-conflict" role="region" aria-label="Revisar datos de otra versión">
+          <p>Otra versión de la aplicación cambió datos de aprendizaje. Revisa ambas versiones antes de continuar guardando.</p>
+          <details ref={legacyDetails}>
+            <summary>Ver versiones disponibles</summary>
+            <p>Versión actual de este navegador:</p>
+            <pre>{JSON.stringify(legacyConflict.records, null, 2)}</pre>
+            <p>Datos anteriores y cambios de la otra versión:</p>
+            <pre>{JSON.stringify({ anterior: legacyConflict.before, otraVersion: legacyConflict.after }, null, 2)}</pre>
+          </details>
+          <button className="secondary" onClick={() => {
+            const data = JSON.stringify({ version: 1, current: legacyConflict.records, legacyBefore: legacyConflict.before, legacyAfter: legacyConflict.after, session: readSessionSnapshot() }, null, 2);
+            const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "python-tutor-recuperacion.json";
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+          }}>Descargar ambas versiones</button>
+          <p>Puedes mantener la versión actual o usar los cambios de la otra versión. La versión que no elijas y el trabajo de esta sesión se conservarán como copias de recuperación antes de recargar.</p>
+          {legacyNeedsReview && <button className="secondary" onClick={() => {
+            setLegacyNeedsReview(false);
+            setLegacyError("");
+            if (legacyDetails.current) legacyDetails.current.open = true;
+          }}>Revisar datos actualizados</button>}
+          <button className="secondary" disabled={legacyNeedsReview} onClick={() => resolveLegacyConflict(false)}>Conservar ambas versiones</button>
+          <button className="secondary" disabled={legacyNeedsReview} onClick={() => resolveLegacyConflict(true)}>Usar datos de otra versión</button>
+          {legacyError && <p role="alert">{legacyError}</p>}
+        </section>
+      )}
+      {legacyRecoveries.length > 0 && (
+        <details className="storage-warning legacy-conflict" aria-label="Copias de datos de otra versión">
+          <summary>Copias de datos de otra versión</summary>
+          <p>Estas copias conservan los datos anteriores y los cambios detectados. Puedes descargarlas para recuperarlos.</p>
+          <pre>{legacyRecoveries.map((item) => item.raw).join("\n")}</pre>
+          <button className="secondary" onClick={() => {
+            const url = URL.createObjectURL(new Blob([JSON.stringify(legacyRecoveries, null, 2)], { type: "application/json" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "python-tutor-copias-recuperacion.json";
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+          }}>Descargar copias de recuperación</button>
+        </details>
+      )}
         {recoveryWarning && (
           <p className="storage-warning" role="alert">
             {recoveryWarning}

@@ -2004,3 +2004,10 @@ textarea:focus-visible {
   .practice-tutor-dock { position: fixed; inset: 12px 12px 12px auto; width: min(400px, calc(100vw - 24px)); height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 18px 60px #17203330; }
   .practice-tutor-dock::backdrop { background: #17203366; }
 }
+
+.legacy-conflict pre {
+  max-height: 16rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

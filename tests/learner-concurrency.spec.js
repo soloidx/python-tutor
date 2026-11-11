@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { test, expect, enterCourse } from "./fixtures/catalog.js";
 
 test("a second tab does not erase recently completed learning", async ({ page, context }) => {
@@ -196,4 +197,119 @@ test("denied learner locks keep changes in the session with a warning", async ({
   await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
   await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("No se pudo proteger el reinicio");
+});
+
+test("legacy changes can be reviewed and preserved without replacing current learning", async ({ page, context }) => {
+  const key = "python-tutor:course-progress:v1:python-fundamentos";
+  await page.addInitScript((key) => {
+    if (!localStorage.getItem("python-tutor:learner-store:v1"))
+      localStorage.setItem(key, JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null }));
+  }, key);
+  await page.goto("/");
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"))).not.toBeNull();
+  const other = await context.newPage();
+  await other.goto("/");
+  const changed = JSON.stringify({ topicId: "valores-variables", completed: [], assessmentResult: null });
+  await other.evaluate(({ key, changed }) => localStorage.setItem(key, changed), { key, changed });
+  await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toBeVisible();
+  await page.getByText("Ver versiones disponibles", { exact: true }).click();
+  await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toContainText("python-fundamentos");
+  await page.getByLabel("Código Python").fill("# borrador de sesión");
+  await page.getByRole("button", { name: "Conservar ambas versiones", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" })).toBeVisible();
+  await expect(page.getByText("Copias de datos de otra versión", { exact: true })).toBeVisible();
+  await page.getByText("Copias de datos de otra versión", { exact: true }).click();
+  await expect(page.getByText("Descargar copias de recuperación", { exact: true })).toBeVisible();
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  const copies = await page.evaluate(() => window.__learnerTest.keys().filter((key) => key.startsWith("python-tutor:recovery:v1:")).map((key) => window.__learnerTest.getItem(key)));
+  expect(copies.some((copy) => copy.includes('"after"') && copy.includes('python-fundamentos'))).toBe(true);
+  expect(copies.some((copy) => copy.includes("# borrador de sesión"))).toBe(true);
+  expect(await other.evaluate((key) => localStorage.getItem(key), key)).toBe(changed);
+});
+
+test("failed legacy reconciliation preserves both versions and the session", async ({ page, context }) => {
+  const key = "python-tutor:course-progress:v1:python-fundamentos";
+  await page.addInitScript((key) => {
+    if (!localStorage.getItem("python-tutor:learner-store:v1"))
+      localStorage.setItem(key, JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null }));
+  }, key);
+  await page.goto("/");
+  await enterCourse(page);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"))).not.toBeNull();
+  const other = await context.newPage();
+  await other.goto("/");
+  const changed = JSON.stringify({ topicId: "valores-variables", completed: [], assessmentResult: null });
+  await other.evaluate(({ key, changed }) => localStorage.setItem(key, changed), { key, changed });
+  await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toBeVisible();
+  await page.getByLabel("Código Python").fill("# no perder");
+  const durable = await page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"));
+  await page.evaluate(() => {
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "python-tutor:learner-store:v1") throw new DOMException("Full", "QuotaExceededError");
+      return set.call(this, key, value);
+    };
+  });
+  await page.getByRole("button", { name: "Conservar ambas versiones", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "No se pudieron conservar ambas versiones" })).toBeVisible();
+  await expect(page.getByLabel("Código Python")).toHaveValue("# no perder");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Descargar ambas versiones" }).click(),
+  ]);
+  expect(await readFile(await download.path(), "utf8")).toContain("# no perder");
+  expect(await page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"))).toBe(durable);
+  expect(await other.evaluate((key) => localStorage.getItem(key), key)).toBe(changed);
+});
+
+test("a new legacy change requires another review before reconciliation", async ({ page, context }) => {
+  const key = "python-tutor:course-progress:v1:python-fundamentos";
+  await page.addInitScript((key) => {
+    if (!localStorage.getItem("python-tutor:learner-store:v1"))
+      localStorage.setItem(key, JSON.stringify({ topicId: "valores-variables", completed: [], assessmentResult: null }));
+  }, key);
+  await page.goto("/");
+  await enterCourse(page);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"))).not.toBeNull();
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.evaluate((key) => localStorage.setItem(key, "primera versión"), key);
+  await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toBeVisible();
+  const durable = await page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"));
+  await other.evaluate((key) => localStorage.setItem(key, "segunda versión"), key);
+  await expect(page.getByRole("button", { name: "Revisar datos actualizados" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Conservar ambas versiones" })).toBeDisabled();
+  expect(await page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"))).toBe(durable);
+  await page.getByRole("button", { name: "Revisar datos actualizados" }).click();
+  await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toContainText("segunda versión");
+  await page.getByRole("button", { name: "Conservar ambas versiones" }).click();
+  await expect(page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" })).toBeVisible();
+  expect(await other.evaluate((key) => localStorage.getItem(key), key)).toBe("segunda versión");
+});
+
+test("reviewed legacy learning can be made active while current learning is recoverable", async ({ page, context }) => {
+  const key = "python-tutor:course-progress:v1:python-fundamentos";
+  await page.addInitScript((key) => {
+    if (!localStorage.getItem("python-tutor:learner-store:v1"))
+      localStorage.setItem(key, JSON.stringify({ topicId: "valores-variables", completed: ["saludo"], assessmentResult: null }));
+  }, key);
+  await page.goto("/");
+  await enterCourse(page);
+  await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"))).not.toBeNull();
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.evaluate((key) => localStorage.setItem(key, JSON.stringify({ topicId: "valores-variables", completed: [], assessmentResult: null })), key);
+  await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toBeVisible();
+  await page.getByRole("button", { name: "Usar datos de otra versión" }).click();
+  await expect(page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" })).toBeVisible();
+  await enterCourse(page);
+  await expect(page.getByText("0 / 12 ejercicios", { exact: true })).toBeVisible();
+  await page.getByText("Copias de datos de otra versión", { exact: true }).click();
+  await expect(page.getByText("Descargar copias de recuperación")).toBeVisible();
+  const copies = await page.evaluate(() => window.__learnerTest.keys().filter((key) => key.startsWith("python-tutor:recovery:v1:")).map((key) => window.__learnerTest.getItem(key)));
+  expect(copies.some((copy) => copy.includes('"type":"current"') && copy.includes("saludo"))).toBe(true);
 });
