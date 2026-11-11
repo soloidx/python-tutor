@@ -17,6 +17,7 @@ export function Practice({
   onNewRound,
   onCourses,
   renderTutor,
+  personalExecutionFor,
 }) {
   const resolved = round.entries.filter(
     (entry) => entry.status === "resolved",
@@ -162,6 +163,7 @@ export function Practice({
                   <ExerciseWorkspace
                     key={`${round.id}:${current.key}`}
                     exercise={current.exercise}
+                    personalExecution={personalExecutionFor?.(current)}
                     state={current.work}
                     approved={current.status === "resolved"}
                     lockWhenApproved

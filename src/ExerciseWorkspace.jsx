@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Icon } from "./Icon.jsx";
 import { usePython } from "./usePython.js";
+import { usePersonalPython } from "./usePersonalPython.js";
 
 // Key the workspace by course + exercise identity when switching exercises.
 // Its visible state is optional/controlled; completion never writes course progress.
@@ -12,6 +13,7 @@ export function ExerciseWorkspace({
   state,
   onStateChange,
   navigation,
+  personalExecution,
   label = "EJERCICIO",
   children,
 }) {
@@ -62,7 +64,7 @@ export function ExerciseWorkspace({
   const setResult = (result) => update({ result });
   const setFeedback = (feedback) => update({ feedback });
   const isChoice = exercise.type === "choice";
-  const python = usePython((received) => {
+  const onPythonResult = (received) => {
     const lastCodeResult = execution.current
       ? {
           ...execution.current,
@@ -75,6 +77,14 @@ export function ExerciseWorkspace({
       lastCodeResult,
       feedback: received.passed
         ? `¡Correcto! ${exercise.success}`
+        : received.validationStatus === "limit" || received.validationStatus === "timeout"
+          ? "Se superó un límite; este intento no se ha validado."
+          : received.validationStatus === "unsupported"
+            ? "El resultado o la regla están fuera del perfil admitido."
+            : received.validationStatus === "load-error"
+              ? "No se pudo preparar el ejecutor separado; este intento no se ha validado."
+              : received.validationStatus === "error"
+                ? "Falló la evaluación; este intento no se ha validado."
         : received.error?.startsWith("Ejecución detenida")
           ? received.error
           : received.error
@@ -82,7 +92,10 @@ export function ExerciseWorkspace({
             : `Todavía no. ${exercise.retry}`,
     });
     if (received.passed) onComplete(execution.current.exerciseId);
-  });
+  };
+  const originalPython = usePython(onPythonResult, !personalExecution && !isChoice);
+  const personalPython = usePersonalPython(personalExecution, onPythonResult);
+  const python = personalExecution ? personalPython : originalPython;
   function selectOption(selectedOptionId) {
     update({
       selectedOptionId,
@@ -242,7 +255,7 @@ export function ExerciseWorkspace({
                   : python.status === "running"
                     ? "Ejecutando tu código…"
                     : python.status === "error"
-                      ? "Python necesita reiniciarse"
+                      ? personalExecution ? "Ejecutor separado no disponible" : "Python necesita reiniciarse"
                       : "Python listo"}
               </span>
               <span>UTF-8 · Python</span>

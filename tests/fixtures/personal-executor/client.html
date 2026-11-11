@@ -1,0 +1,6 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Contrato del ejecutor</title></head><body>
+<script type="module">
+import { createPersonalExecutor } from '/src/personalExecutor.js';
+window.statusHistory = [];
+window.executor = createPersonalExecutor({origin: '__EXECUTOR_ORIGIN__', onStatus: status => window.statusHistory.push(status)});
+</script></body></html>
