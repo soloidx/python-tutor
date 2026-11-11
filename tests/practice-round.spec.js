@@ -456,11 +456,11 @@ test("new rounds honor the configured code limit and controlled random draw", as
 // this neither relaxes the catalog contract nor adds a production testing API.
 test("empty practice offers Courses on a narrow screen", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.route("**/src/main.jsx", async (route) => {
+  await page.route(/\/src\/main\.jsx(?:\?.*)?$/, async (route) => {
     const response = await route.fetch();
     let body = await response.text();
     body = body.replace(
-      'import CatalogBootstrap from "/src/CatalogBootstrap.jsx"',
+      /import CatalogBootstrap from "\/src\/CatalogBootstrap\.jsx(?:\?[^"]*)?"/,
       'import App from "/src/App.jsx"',
     );
     body = body.replace(
@@ -577,10 +577,10 @@ test("restores a legacy practice round without overwriting it", async ({ page, c
 
 test("keeps original and personal courses with the same local ID independent", async ({ page, context }) => {
   // Simulate composition of a personal course; the publisher remains unchanged.
-  await page.route("**/src/CatalogBootstrap.jsx", async (route) => {
+  await page.route(/\/src\/CatalogBootstrap\.jsx(?:\?.*)?$/, async (route) => {
     const response = await route.fetch();
     const source = (await response.text()).replace(
-      "setPublication(originalPublication(value));",
+      "setPublication(composed);",
       `setPublication(((publication) => {
         const original = JSON.stringify(["original", "python-fundamentos"]);
         const personal = JSON.stringify(["personal", "python-fundamentos"]);
@@ -592,7 +592,7 @@ test("keeps original and personal courses with the same local ID independent", a
         publication.catalog.courses.push({ ...publication.catalog.courses[0], id: personal });
         publication.catalog.learningPaths[0].courseIds.push(personal);
         return publication;
-      })(originalPublication(value)));`,
+      })(composed));`,
     );
     await route.fulfill({ response, body: source });
   });

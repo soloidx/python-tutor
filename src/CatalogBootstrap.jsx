@@ -15,20 +15,22 @@ export default function CatalogBootstrap() {
   const [updated, setUpdated] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const fresh = useRef(new URLSearchParams(window.location.search).has("catalog-update"));
+  const refreshPersonal = useRef(new URLSearchParams(window.location.search).has("personal-refresh"));
   useEffect(() => {
     // This marker also works when browser storage writes are blocked. Consume
     // it once so subsequent ordinary reloads retain immediate backup loading.
     const url = new URL(window.location.href);
     url.searchParams.delete("catalog-update");
+    url.searchParams.delete("personal-refresh");
     window.history.replaceState(window.history.state, "", url);
   }, []);
   useEffect(() => {
     const controller = new AbortController();
     setError("");
-    const activate = async value => {
+    const activate = async (value, refresh = false) => {
       if (!active.current) {
         active.current = value;
-        const composed = import.meta.env.DEV ? await composePersonalPublication(originalPublication(value)) : originalPublication(value);
+        const composed = import.meta.env.DEV ? await composePersonalPublication(originalPublication(value), { refresh }) : originalPublication(value);
         if (!controller.signal.aborted) setPublication(composed);
       }
     };
@@ -40,7 +42,7 @@ export default function CatalogBootstrap() {
     (async () => {
       const backup = await readCatalogBackup();
       if (controller.signal.aborted) return;
-      if (backup && !fresh.current) await activate(backup);
+      if (backup && !fresh.current) await activate(backup, refreshPersonal.current);
       const { value, reason } = await remote;
       if (controller.signal.aborted) return;
       try {
@@ -49,10 +51,10 @@ export default function CatalogBootstrap() {
         validatePublicationUpdate(active.current, value);
         const saved = saveCatalogBackup(value);
         setTemporary(!saved);
-        if (!active.current) await activate(value);
+        if (!active.current) await activate(value, true);
         else if (active.current.catalog.revision !== value.catalog.revision) setUpdated(true);
       } catch (reason) {
-        if (backup) await activate(backup);
+        if (backup) await activate(backup, fresh.current);
         setError(reason.message || "Error de red al descargar el catálogo.");
       }
       fresh.current = false;
@@ -67,12 +69,8 @@ export default function CatalogBootstrap() {
       {updated && <aside role="status">
         <p>Hay contenido nuevo. Recargar para actualizar</p>
         <button className="primary" onClick={() => {
-          if (!temporary) {
-            window.location.reload();
-            return;
-          }
           const url = new URL(window.location.href);
-          url.searchParams.set("catalog-update", "1");
+          url.searchParams.set(temporary ? "catalog-update" : "personal-refresh", "1");
           window.location.assign(url.href);
         }}>Recargar para actualizar</button>
       </aside>}

@@ -293,11 +293,11 @@ test("corrupt record still explains recovery when the current pool is empty", as
   page,
 }) => {
   await page.addInitScript((key) => localStorage.setItem(key, "broken"), key);
-  await page.route("**/src/main.jsx", async (route) => {
+  await page.route(/\/src\/main\.jsx(?:\?.*)?$/, async (route) => {
     const response = await route.fetch();
     const body = (await response.text())
       .replace(
-        'import CatalogBootstrap from "/src/CatalogBootstrap.jsx"',
+        /import CatalogBootstrap from "\/src\/CatalogBootstrap\.jsx(?:\?[^"]*)?"/,
         'import App from "/src/App.jsx"',
       )
       .replace(
@@ -350,6 +350,11 @@ test("archived review preserves feedback from a legacy saved failed attempt", as
     .click();
   await page.getByLabel("Siete", { exact: true }).check();
   await page.getByRole("button", { name: "Comprobar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Revisar ejercicios", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate((key) => {
+    const round = JSON.parse(window.__learnerTest.getItem(key));
+    return round?.entries.filter(entry => entry.status === "resolved").length;
+  }, key)).toBe(2);
   // Older records can contain attempts made after approval. Current practice
   // locks approved answers, so seed this compatibility case at storage's edge.
   await page.evaluate((key) => {

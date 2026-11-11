@@ -2011,3 +2011,25 @@ textarea:focus-visible {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.personal-generator > form,
+.personal-generator section,
+.personal-generator .generator-conversation {
+  max-width: 52rem;
+  margin: 1.25rem 0;
+}
+.personal-generator label {
+  display: block;
+  margin: .75rem 0;
+}
+.personal-generator textarea {
+  display: block;
+  width: 100%;
+  min-height: 6rem;
+}
+.personal-generator button { margin: .25rem .5rem .25rem 0; }
+.generator-conversation { list-style: none; padding: 0; }
+.generator-conversation li { padding: .75rem 1rem; margin: .5rem 0; border: 1px solid #dce4ef; border-radius: .75rem; }
+.generator-conversation p { white-space: pre-wrap; margin: .35rem 0 0; }
+.personal-generator details { padding: .65rem 0; border-bottom: 1px solid #dce4ef; }
+.personal-generator summary { cursor: pointer; }

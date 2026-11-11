@@ -23,8 +23,11 @@ function readPaths() {
   const raw = learnerGet(pathsKey);
   if (raw === null) return [];
   const paths = JSON.parse(raw);
-  if (!Array.isArray(paths)) throw new Error("Las rutas personales guardadas están dañadas.");
+  if (!Array.isArray(paths) || new Set(paths.map(path => path?.id)).size !== paths.length) throw new Error("Las rutas personales guardadas están dañadas.");
   return paths;
+}
+function validatePath(path) {
+  if (!path || typeof path.id !== "string" || !path.id || typeof path.title !== "string" || !path.title.trim() || typeof path.description !== "string" || !path.description.trim() || !Array.isArray(path.copies) || !path.copies.length || path.copies.length > 10 || new Set(path.copies.map(copy => copy?.id)).size !== path.copies.length) throw new Error("Ruta inválida");
 }
 async function originalCopy(publication, localId) {
   const id = originalCourseId(localId);
@@ -40,12 +43,10 @@ async function originalCopy(publication, localId) {
 async function refreshCopies(publication, paths) {
   const refreshed = [];
   for (const path of paths) {
-    if (!Array.isArray(path?.copies)) { refreshed.push(path); continue; }
-    try {
-      await Promise.all(path.copies.map(verifyCopy));
-      const copies = await Promise.all(path.copies.map(async copy => await originalCopy(publication, copy.id) || copy));
-      refreshed.push({ ...path, copies });
-    } catch { refreshed.push(path); }
+    validatePath(path);
+    await Promise.all(path.copies.map(verifyCopy));
+    const copies = await Promise.all(path.copies.map(async copy => await originalCopy(publication, copy.id) || copy));
+    refreshed.push({ ...path, copies });
   }
   if (JSON.stringify(refreshed) === JSON.stringify(paths)) return paths;
   if (!navigator.locks) throw new Error("No se pueden proteger las copias entre pestañas.");
@@ -55,18 +56,19 @@ async function refreshCopies(publication, paths) {
   });
   return refreshed;
 }
-export async function composePersonalPublication(publication) {
+export async function composePersonalPublication(publication, { refresh = false } = {}) {
   let paths;
+  try { learnerGet(pathsKey); } catch { return publication; }
   try { paths = readPaths(); } catch { return { ...publication, personalWarning: "Las rutas personales guardadas están dañadas. Se conservan para recuperación." }; }
   let personalWarning = "";
-  try { paths = await refreshCopies(publication, paths); } catch { return { ...publication, personalWarning: "No se pudieron actualizar las copias de originales de tus rutas. Se conservan las copias anteriores; las rutas personales se ocultaron hasta resolver el guardado." }; }
+  try { if (refresh) paths = await refreshCopies(publication, paths); } catch { return { ...publication, personalWarning: "No se pudieron actualizar las copias de originales de tus rutas. Se conservan las copias anteriores; las rutas personales se ocultaron hasta resolver el guardado." }; }
   const courses = { ...publication.courses };
   const iconFiles = { ...publication.iconFiles };
   const valid = [];
   const retiredRecords = [];
   for (const path of paths) {
     try {
-      if (!path || typeof path.id !== "string" || typeof path.title !== "string" || !path.title.trim() || typeof path.description !== "string" || !path.description.trim() || !Array.isArray(path.copies) || !path.copies.length || path.copies.length > 10 || new Set(path.copies.map(copy => copy.id)).size !== path.copies.length) throw new Error("Ruta inválida");
+      validatePath(path);
       const verified = await Promise.all(path.copies.map(verifyCopy));
       for (let index = 0; index < verified.length; index++) {
         const copy = path.copies[index];
@@ -95,8 +97,12 @@ export async function incorporateOriginalPath({ publication, proposal, operation
     if (!copy) throw new Error("Un curso original ya no está disponible.");
     copies.push(copy);
   }
-  const paths = readPaths();
   const revision = learnerRevision();
+  const paths = readPaths();
+  for (const existing of paths) {
+    validatePath(existing);
+    await Promise.all(existing.copies.map(verifyCopy));
+  }
   const path = { id: operationId, title: proposal.title, description: proposal.description, copies };
   return performLearnerOperation({ id: operationId, revision, changes: [
     { key: pathsKey, value: JSON.stringify([...paths, path]) },

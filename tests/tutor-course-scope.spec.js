@@ -33,6 +33,10 @@ test("shares a course conversation across paths and isolates matching local topi
   expect(JSON.stringify(requests[2])).not.toContain("Pregunta de práctica");
   await page.getByRole("button", { name: "Borrar conversación del tema", exact: true }).click();
   await page.getByRole("button", { name: "Sí, borrar conversación", exact: true }).click();
+  await expect(page.getByText("Pregunta de fundamentos", { exact: true })).toHaveCount(0);
+  const courseId = JSON.stringify(["original", "python-fundamentos"]);
+  const historyKey = "python-tutor:course-conversations:v1:" + encodeURIComponent(courseId);
+  await expect.poll(() => page.evaluate(key => window.__learnerTest.getItem(key), historyKey)).toBeNull();
   await page.reload();
   await enterCourse(page, { course: "Python Práctica" });
   await tutor(page);

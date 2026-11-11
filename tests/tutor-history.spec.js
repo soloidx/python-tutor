@@ -368,10 +368,10 @@ test("a temporary legacy conversation read failure cannot mask prior messages", 
 
 test("study and tutor stay separate for original and personal courses with equal local IDs", async ({ page }) => {
   // Model composition at its browser boundary until personal content is available.
-  await page.route("**/src/CatalogBootstrap.jsx", async (route) => {
+  await page.route(/\/src\/CatalogBootstrap\.jsx(?:\?.*)?$/, async (route) => {
     const response = await route.fetch();
     const original = await response.text();
-    const marker = "setPublication(originalPublication(value));";
+    const marker = "setPublication(composed);";
     expect(original).toContain(marker);
     const source = original.replace(marker, `setPublication(((publication) => {
       const originalId = JSON.stringify(["original", "python-fundamentos"]);
@@ -383,7 +383,7 @@ test("study and tutor stay separate for original and personal courses with equal
       publication.catalog.courses.push({ ...publication.catalog.courses[0], id: personalId });
       for (const path of publication.catalog.learningPaths) path.courseIds.push(personalId);
       return publication;
-    })(originalPublication(value)));`);
+    })(composed));`);
     await route.fulfill({ response, body: source });
   });
 

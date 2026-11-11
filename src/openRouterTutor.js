@@ -92,7 +92,8 @@ export async function streamTutor({
         for (const part of chunk.content)
           if (part.type === "text") onText(part.text);
       }
-      if (Number.isSafeInteger(chunk.usage_metadata?.total_tokens) && chunk.usage_metadata.total_tokens >= 0) usage = chunk.usage_metadata;
+      const candidate = chunk.usage_metadata;
+      if (candidate && [candidate.input_tokens, candidate.output_tokens, candidate.total_tokens].every(value => Number.isSafeInteger(value) && value >= 0) && candidate.input_tokens + candidate.output_tokens === candidate.total_tokens) usage = candidate;
       if (chunk.response_metadata?.finish_reason != null)
         finishReason = chunk.response_metadata.finish_reason;
     }
