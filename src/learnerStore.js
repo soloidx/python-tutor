@@ -78,17 +78,26 @@ export function learnerTransaction(operation) {
 export function learnerRevision() {
   return JSON.stringify(snapshot());
 }
-export async function performLearnerOperation({ id, revision, apply }) {
-  if (typeof id !== "string" || !id || typeof apply !== "function")
+export async function performLearnerOperation({ id, revision, changes }) {
+  if (typeof id !== "string" || !id || !Array.isArray(changes))
     throw new TypeError("Invalid learner operation");
+  const edits = changes.map((change) => {
+    const { key, value } = change ?? {};
+    if (typeof key !== "string" || !key || key.startsWith("python-tutor:operation:v1:") ||
+      (value !== null && typeof value !== "string"))
+      throw new TypeError("Invalid learner operation change");
+    return { key, value };
+  });
   if (!navigator.locks) throw new Error("Learner locking unavailable");
   return navigator.locks.request("python-tutor:learner", () => {
     const marker = `python-tutor:operation:v1:${id}`;
     if (learnerGet(marker) !== null) return { status: "already-applied" };
     if (learnerRevision() !== revision) return { status: "conflict" };
     learnerTransaction(() => {
-      const result = apply();
-      if (result && typeof result.then === "function") throw new TypeError("Learner operations must be synchronous");
+      for (const { key, value } of edits) {
+        if (value === null) learnerRemove(key);
+        else learnerSet(key, value);
+      }
       learnerSet(marker, "complete");
     });
     return { status: "applied" };

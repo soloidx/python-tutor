@@ -34,3 +34,42 @@ test("a failed transaction cannot mark an uncommitted recovery copy as durable",
   expect(result.replacement).toBe("replacement");
   expect(result.copies).toEqual(["damaged source"]);
 });
+
+test("a rejected operation cannot write after its transaction ends", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const { learnerGet, learnerSet, learnerRevision, performLearnerOperation } = await import("/src/learnerStore.js");
+    let rejected = false;
+    try {
+      await performLearnerOperation({
+        id: "rejected",
+        revision: learnerRevision(),
+        apply: async () => {
+          await Promise.resolve();
+          learnerSet("late", "escaped");
+        },
+      });
+    } catch (error) {
+      rejected = error instanceof TypeError;
+    }
+    const operation = {
+      id: "accepted",
+      revision: learnerRevision(),
+      changes: [{ key: "accepted", value: "saved" }],
+    };
+    return {
+      rejected,
+      late: learnerGet("late"),
+      applied: await performLearnerOperation(operation),
+      repeated: await performLearnerOperation(operation),
+      accepted: learnerGet("accepted"),
+    };
+  });
+  expect(result).toEqual({
+    rejected: true,
+    late: null,
+    applied: { status: "applied" },
+    repeated: { status: "already-applied" },
+    accepted: "saved",
+  });
+});
