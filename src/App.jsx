@@ -989,6 +989,7 @@ function LearningWorkspace({
   learningTab,
   setLearningTab,
   onConfigure,
+  personalExecutionFor,
 }) {
   useEffect(() => () => conversation.cancel(), [conversation]);
   const [exerciseIndex, setExerciseIndex] = useState(0);
@@ -999,6 +1000,7 @@ function LearningWorkspace({
   return (
     <ExerciseWorkspace
       exercise={exercise}
+      personalExecution={personalExecutionFor?.(exercise)}
       approved={completed.includes(exercise.id)}
       onComplete={onComplete}
       navigation={(isRunning) => (

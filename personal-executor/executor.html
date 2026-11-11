@@ -1,0 +1,89 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><title>Ejecutor descartable</title>
+<script src="/protocol.js"></script><script>
+(() => {
+  'use strict';
+  const appOrigin = "__APP_ORIGIN__";
+  const P = ValidationProtocol;
+  let current = null, cachedAssets = null;
+  const seen = new Set();
+  const tell = message => parent.postMessage({v: 1, ...message}, appOrigin);
+  const problem = (type, message) => ({type, message, output: ''});
+  const hashes = Object.freeze({
+    'pyodide.asm.wasm': '5effb6a1a6cc4a1a85bec4622701aa797c031e1de923cbbaf2ad47abdc4ab325',
+    'python_stdlib.zip': '71fee17f88a6260ec8c9c7c063533ee59c021fdc88a1ce76247378d3c4a35f4c',
+    'pyodide-lock.json': 'f6e6f42f451f42affbbcddb00e8c9a3278dcbf399f57aab9f3f568839a7ff4a6',
+  });
+  async function assets(signal) {
+    if (cachedAssets) return cachedAssets;
+    const values = await Promise.all(['pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'].map(async name => {
+      const response = await fetch('/runtime/' + name, {signal, credentials: 'omit', cache: 'no-store', redirect: 'error'});
+      if (!response.ok) throw new Error('No se pudo cargar ' + name);
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength > 64 * 1024 * 1024) throw new Error('Asset público fuera del tamaño del prototipo.');
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const actual = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+      if (actual !== hashes[name]) throw new Error('Integridad incorrecta: ' + name);
+      return [name, bytes];
+    }));
+    if (signal.aborted) throw new Error('Carga cancelada.');
+    cachedAssets = Object.fromEntries(values);
+    return cachedAssets;
+  }
+  function stop(run) {
+    if (current !== run) return;
+    run.phase = 'closed';
+    clearTimeout(run.timer);
+    run.abort.abort();
+    run.port?.close();
+    run.worker?.terminate();
+    current = null;
+  }
+  function terminal(run, message) {
+    if (current !== run) return;
+    stop(run);
+    tell({...message, id: run.id});
+  }
+  addEventListener('message', async ({origin, source, data}) => {
+    if (origin !== appOrigin || source !== parent || !P.request(data)) return;
+    if (data.type === 'cancel') {
+      if (current?.id === data.id) terminal(current, {type: 'cancelled'});
+      return;
+    }
+    // One request at a time. Duplicates never replace a run or renew its deadline.
+    if (current || seen.has(data.id)) return;
+    seen.add(data.id);
+    const run = {id: data.id, phase: 'loading', worker: null, port: null, timer: null, abort: new AbortController()};
+    current = run;
+    tell({id: run.id, type: 'loading'});
+    run.timer = setTimeout(() => terminal(run, problem('load-error', 'La carga superó 45 segundos.')), 45000);
+    try {
+      const bytes = await assets(run.abort.signal);
+      if (current !== run) return;
+      run.worker = new Worker('/worker.js');
+      const channel = new MessageChannel();
+      run.port = channel.port1;
+      run.worker.onerror = () => terminal(run, problem(run.phase === 'loading' ? 'load-error' : 'execution-error', 'Falló el worker del prototipo.'));
+      // The public worker postMessage channel is not a source of observations.
+      run.port.onmessageerror = () => terminal(run, problem('execution-error', 'Error de datos en el canal.'));
+      run.port.onmessage = ({data: message}) => {
+        if (current !== run || !P.workerReply(message)) return;
+        if (message.type === 'ready') {
+          if (run.phase !== 'loading') return;
+          run.phase = 'running';
+          clearTimeout(run.timer);
+          run.timer = setTimeout(() => terminal(run, problem('timeout', 'La ejecución superó diez segundos.')), 10000);
+          tell({id: run.id, type: 'running', version: message.version});
+          run.port.postMessage({v: 1, type: 'run', code: data.code, names: data.names});
+        } else if (message.type === 'load-error') {
+          if (run.phase === 'loading') terminal(run, message);
+        } else if (run.phase === 'running' && ['observations', 'execution-error', 'unsupported', 'limit'].includes(message.type)) terminal(run, message);
+      };
+      run.port.start();
+      run.worker.postMessage({v: 1, type: 'bootstrap', assets: bytes, port: channel.port2}, [channel.port2]);
+    } catch (error) {
+      terminal(run, problem('load-error', String(error).slice(0, 20000)));
+    }
+  });
+  tell({type: 'executor-ready'});
+})();
+</script></html>

@@ -1,0 +1,21 @@
+const path=require('path'),{execFileSync}=require('child_process'),{createRequire}=require('module');
+const common=path.dirname(execFileSync('git',['rev-parse','--path-format=absolute','--git-common-dir'],{cwd:__dirname,encoding:'utf8'}).trim());
+const {chromium}=createRequire(path.join(require('fs').existsSync(path.resolve(__dirname,'../../../node_modules/playwright'))?path.resolve(__dirname,'../../..'):common,'package.json'))('playwright');
+const assert=require('assert/strict');
+(async()=>{const browser=await chromium.launch({channel:'chrome',headless:true});try{
+ const page=await browser.newPage(), errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.goto('http://127.0.0.1:4173/tests/fixtures/personal-executor/ui.html');
+ const run=page.getByRole('button',{name:'Ejecutar',exact:true});
+ await run.waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('.run-button').disabled);
+ await run.click();await page.getByText('Todavía no. Inténtalo otra vez.').waitFor();
+ await page.getByLabel('Código Python').fill('x = 42\nprint(x)');await run.click();await page.getByText('¡Correcto! Bien.').waitFor();
+ assert.equal(await page.getByTestId('learning-progress').innerText(),'Aprendido');
+ await page.getByRole('button',{name:'Práctica',exact:true}).click();
+ await page.waitForFunction(()=>!document.querySelector('.run-button').disabled);
+ assert.equal(await page.getByTestId('learning-progress').innerText(),'Aprendido');
+ assert.equal(await page.getByLabel('Progreso de la ronda').getAttribute('value'),'0');
+ await run.click();await page.getByText('Todavía no. Inténtalo otra vez.').waitFor();
+ await page.getByLabel('Código Python').fill('x = 42\nprint(x)');await run.click();await page.getByText('Ronda completada').waitFor();
+ assert.equal(await page.getByTestId('learning-progress').innerText(),'Aprendido');assert.deepEqual(errors,[]);
+ console.log('Aprender y Práctica corrigen el mismo ejercicio; sus progresos son independientes.');
+ }finally{await browser.close()}})().catch(error=>{console.error(error);process.exitCode=1});
