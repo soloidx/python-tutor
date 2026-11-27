@@ -2033,3 +2033,6 @@ textarea:focus-visible {
 .generator-conversation p { white-space: pre-wrap; margin: .35rem 0 0; }
 .personal-generator details { padding: .65rem 0; border-bottom: 1px solid #dce4ef; }
 .personal-generator summary { cursor: pointer; }
+
+.topic-workspace { display: grid; gap: 20px; }
+.topic-workspace > [hidden] { display: none; }

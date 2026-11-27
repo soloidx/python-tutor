@@ -152,6 +152,7 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
     return () => { cancelled = true; };
   }, [practiceRound, practiceStorageAvailable, reviewingPractice]);
   const [learningTab, setLearningTab] = useState("lesson");
+  const topicSessions = useRef(new Map());
   const focusTutorAfterSettings = useRef(false);
   const rootLocation = {
     screen: "paths",
@@ -882,6 +883,11 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
                   }
                   access={access}
                   conversation={conversation}
+                  session={(() => {
+                    const key = JSON.stringify([course.id, topic.id, workspaceVersion]);
+                    if (!topicSessions.current.has(key)) topicSessions.current.set(key, { tab: "lesson", exerciseIndex: 0, exercises: {} });
+                    return topicSessions.current.get(key);
+                  })()}
                   learningTab={learningTab}
                   setLearningTab={setLearningTab}
                   onConfigure={() => setSettingsOpen(true)}
@@ -1002,13 +1008,24 @@ function LearningWorkspace({
   onComplete,
   access,
   conversation,
+  session,
   learningTab,
   setLearningTab,
   onConfigure,
   personalExecutionFor,
 }) {
   useEffect(() => () => conversation.cancel(), [conversation]);
-  const [exerciseIndex, setExerciseIndex] = useState(0);
+  const [exerciseIndex, setExerciseIndexState] = useState(session.exerciseIndex);
+  const [tab, setTabState] = useState(session.tab);
+  const [, refreshExercise] = useState(0);
+  const [tutorOpen, setTutorOpen] = useState(false);
+  const previousLearningTab = useRef(learningTab);
+  const setTab = (value) => { session.tab = value; setTabState(value); setLearningTab(value); };
+  const setExerciseIndex = (value) => { session.exerciseIndex = value; setExerciseIndexState(value); };
+  useEffect(() => {
+    if (previousLearningTab.current !== learningTab && learningTab === "tutor") setTutorOpen(true);
+    previousLearningTab.current = learningTab;
+  }, [learningTab]);
   const exercise = topic.exercises[exerciseIndex];
   const topicCompleted = topic.exercises.filter((item) =>
     completed.includes(item.id),
@@ -1016,6 +1033,8 @@ function LearningWorkspace({
   return (
     <ExerciseWorkspace
       exercise={exercise}
+      state={session.exercises[exercise.id] || { code: exercise.starter || "" }}
+      onStateChange={(state) => { session.exercises[exercise.id] = state; refreshExercise((value) => value + 1); }}
       personalExecution={personalExecutionFor?.(exercise)}
       approved={completed.includes(exercise.id)}
       onComplete={onComplete}
@@ -1068,8 +1087,7 @@ function LearningWorkspace({
       label={`EJERCICIO ${exerciseIndex + 1}`}
     >
       {({ content, context }) => (
-        <div className="workspace">
-          <section className="lesson-panel panel">
+        <div className="topic-workspace">
             <div
               role="tablist"
               aria-label="Panel de aprendizaje"
@@ -1077,16 +1095,16 @@ function LearningWorkspace({
             >
               {[
                 ["lesson", "Lección"],
-                ["tutor", "Tutor"],
+                ["exercises", `Ejercicios (${topicCompleted}/${topic.exercises.length})`],
               ].map(([id, label]) => (
                 <button
                   key={id}
                   id={`${id}-tab`}
                   role="tab"
-                  aria-selected={learningTab === id}
+                  aria-selected={tab === id}
                   aria-controls={`${id}-panel`}
-                  tabIndex={learningTab === id ? 0 : -1}
-                  onClick={() => setLearningTab(id)}
+                  tabIndex={tab === id ? 0 : -1}
+                  onClick={() => setTab(id)}
                   onKeyDown={(event) => {
                     if (
                       ["ArrowRight", "ArrowLeft", "Home", "End"].includes(
@@ -1094,15 +1112,10 @@ function LearningWorkspace({
                       )
                     ) {
                       event.preventDefault();
-                      const next =
-                        event.key === "Home"
-                          ? "lesson"
-                          : event.key === "End"
-                            ? "tutor"
-                            : id === "lesson"
-                              ? "tutor"
-                              : "lesson";
-                      setLearningTab(next);
+                      const tabs = ["lesson", "exercises"];
+                      const index = tabs.indexOf(id);
+                      const next = event.key === "Home" ? tabs[0] : event.key === "End" ? tabs.at(-1) : tabs[(index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+                      setTab(next);
                       document.getElementById(`${next}-tab`).focus();
                     }
                   }}
@@ -1111,11 +1124,13 @@ function LearningWorkspace({
                 </button>
               ))}
             </div>
+          <section className="lesson-panel panel" hidden={tab !== "lesson"}>
             <div
               role="tabpanel"
+              tabIndex={0}
               id="lesson-panel"
               aria-labelledby="lesson-tab"
-              hidden={learningTab !== "lesson"}
+              hidden={tab !== "lesson"}
             >
               <div className="panel-heading">
                 <span className="lesson-label">
@@ -1142,11 +1157,13 @@ function LearningWorkspace({
                 </div>
               </div>
             </div>
+          </section>
+          <div role="tabpanel" tabIndex={0} id="exercises-panel" aria-labelledby="exercises-tab" hidden={tab !== "exercises"}>{content}</div>
+          {/* Temporary entry point until the dedicated Tutor panel is integrated. */}
+          <button className="secondary" onClick={() => setTutorOpen(!tutorOpen)} aria-expanded={tutorOpen} aria-controls="tutor-panel">Tutor</button>
+          <section className="lesson-panel panel" hidden={!tutorOpen}>
             <div
-              role="tabpanel"
               id="tutor-panel"
-              aria-labelledby="tutor-tab"
-              hidden={learningTab !== "tutor"}
             >
               <TutorPanel
                 onConfigure={onConfigure}
@@ -1166,7 +1183,6 @@ function LearningWorkspace({
               />
             </div>
           </section>
-          {content}
         </div>
       )}
     </ExerciseWorkspace>
