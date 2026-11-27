@@ -1,0 +1,19 @@
+{
+  "type": "collection",
+  "groups": [
+    { "id": "lista", "label": "Lista", "elements": [
+      { "id": "rojo", "key": "0", "value": "rojo" },
+      { "id": "azul", "key": "1", "value": "azul" },
+      { "id": "verde", "key": "2", "value": "verde" }
+    ] },
+    { "id": "diccionario", "label": "Diccionario", "elements": [
+      { "id": "titulo", "key": "titulo", "value": "Python" },
+      { "id": "paginas", "key": "paginas", "value": "100" }
+    ] }
+  ],
+  "steps": [
+    { "element": "verde", "line": 2, "explanation": "append añade verde al final de colores." },
+    { "element": "rojo", "line": 3, "explanation": "colores[0] consulta el primer elemento: rojo.", "output": "rojo" },
+    { "element": "titulo", "line": 6, "explanation": "La clave titulo consulta el valor Python.", "output": "Python" }
+  ]
+}

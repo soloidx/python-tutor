@@ -6,6 +6,12 @@ export function validateWalkthrough(value, example) {
   const id = x => typeof x === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(x);
   const distinct = xs => new Set(xs).size === xs.length;
   const line = x => Number.isInteger(x) && x > 0 && x <= example.split('\n').length;
+  if (obj(value) && value.type === 'collection') {
+    if (!Array.isArray(value.groups) || !value.groups.length || !value.groups.every(g => obj(g) && id(g.id) && text(g.label) && Array.isArray(g.elements) && g.elements.length && g.elements.every(e => obj(e) && id(e.id) && text(e.key) && text(e.value))) || !distinct(value.groups.map(g => g.id))) fail();
+    const elements = value.groups.flatMap(g => g.elements);
+    if (!distinct(elements.map(e => e.id)) || !value.groups.every(g => distinct(g.elements.map(e => e.key))) || !Array.isArray(value.steps) || !value.steps.length || !value.steps.every(step => obj(step) && elements.some(e => e.id === step.element) && line(step.line) && text(step.explanation) && (step.output === undefined || text(step.output)))) fail();
+    return value;
+  }
   if (obj(value) && value.type === 'sequence') {
     if (!Array.isArray(value.elements) || !value.elements.length || !value.elements.every(e => obj(e) && id(e.id) && text(e.label)) || !distinct(value.elements.map(e => e.id)) || !Array.isArray(value.steps) || value.steps.length !== value.elements.length || !value.steps.every((step, index) => obj(step) && step.element === value.elements[index].id && line(step.line) && text(step.explanation) && (step.output === undefined || text(step.output)))) fail();
     return value;

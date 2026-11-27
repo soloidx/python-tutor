@@ -2060,3 +2060,6 @@ textarea:focus-visible {
 .walkthrough-output pre { margin: .5rem 0 0; white-space: pre-wrap; }
 .walkthrough-controls svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; vertical-align: middle; }
 @media (max-width: 700px) { .walkthrough-layout { grid-template-columns: 1fr; } }
+.walkthrough-group h4 { margin: 0 0 .5rem; }
+.walkthrough-group { display: grid; gap: .4rem; }
+.walkthrough-entry { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; width: 100%; }
