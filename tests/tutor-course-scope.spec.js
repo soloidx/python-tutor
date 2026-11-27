@@ -2,7 +2,7 @@ import { test, expect, enterCourse } from "./fixtures/catalog.js";
 import { setup } from "./fixtures/tutor.js";
 
 async function tutor(page) {
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
 }
 async function send(page, message, count) {
   await page.getByLabel("Mensaje al tutor").fill(message);

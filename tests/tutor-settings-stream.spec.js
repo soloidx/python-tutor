@@ -12,7 +12,7 @@ const send = async (page, message) => {
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
 };
 const tutor = (page) =>
-  page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  page.getByRole("button", { name: "Tutor IA", exact: true }).click();
 
 test("confirmed key removal interrupts streaming, blocks access and preserves model and conversation after reload", async ({
   page,
@@ -43,7 +43,7 @@ test("confirmed key removal interrupts streaming, blocks access and preserves mo
     await page
       .getByRole("button", { name: "Eliminar clave", exact: true })
       .click();
-    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Configuración del tutor" })).not.toBeVisible();
     await expect.poll(() => fixture.closed).toBe(1);
     fixture.responses[0].end(frame("Tardío no permitido") + frame("", "stop"));
     await expect(page.getByText(/Respuesta interrumpida/)).toBeVisible();
@@ -156,7 +156,9 @@ test("pending, failed and cancelled settings leave streaming intact; a valid sav
   });
   const fixture = await streamingOpenRouter(page);
   try {
+    await page.getByRole("button", { name: "Cerrar Tutor" }).click();
     await page.getByLabel("Código Python").fill("# captura original");
+    await tutor(page);
     await send(page, "Pregunta antes del cambio");
     await expect.poll(() => fixture.responses.length).toBe(1);
     fixture.responses[0].write(frame("Parcial inicial"));
@@ -169,10 +171,10 @@ test("pending, failed and cancelled settings leave streaming intact; a valid sav
       .getByRole("button", { name: "Validar clave", exact: true })
       .click();
     await expect(
-      page.getByRole("dialog").getByText(/Clave rechazada/),
+      page.getByRole("dialog", { name: "Configuración del tutor" }).getByText(/Clave rechazada/),
     ).toBeVisible();
     expect(fixture.closed).toBe(0);
-    await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await page.getByRole("button", { name: "Volver", exact: true }).click();
     await expect(
       page.getByText(/Acceso listo · Tutor de prueba/),
     ).toBeVisible();
@@ -272,7 +274,7 @@ test("failed persistence during streaming applies access only after explicit ses
       .getByRole("button", { name: "Guardar y volver al tutor" })
       .click();
     await expect(
-      page.getByRole("dialog").getByText(/No se pudo guardar la configuración/),
+      page.getByRole("dialog", { name: "Configuración del tutor" }).getByText(/No se pudo guardar la configuración/),
     ).toBeVisible();
     expect(fixture.closed).toBe(0);
     expect(fixture.requests).toHaveLength(1);
@@ -340,7 +342,7 @@ test("save-time model rejection retains the previous access and uninterrupted re
     await expect(
       page.getByRole("button", { name: "Guardar y volver al tutor" }),
     ).toBeDisabled();
-    await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await page.getByRole("button", { name: "Volver", exact: true }).click();
     fixture.responses[0].end(
       frame(" y terminó con acceso anterior") + frame("", "stop"),
     );

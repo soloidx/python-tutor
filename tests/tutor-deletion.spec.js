@@ -4,7 +4,7 @@ import { streamingOpenRouter } from "./fixtures/openrouter.js";
 
 test.use({ actionTimeout: 8000, ignoreHTTPSErrors: true });
 async function tutor(page) {
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  if (!(await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible())) await page.getByRole("button", { name: "Tutor IA" }).click();
   await expect(
     page.getByRole("button", { name: "Enviar", exact: true }),
   ).toBeEnabled();
@@ -35,11 +35,13 @@ test("deletes only the confirmed topic conversation and keeps other history, pro
   page,
 }) => {
   const requests = await setup(page);
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page
     .getByLabel("Código Python")
     .fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
+  await tutor(page);
   await send(page, "Pregunta del primer tema");
   await topic(page, 2);
   await send(page, "Pregunta del segundo tema");
@@ -94,6 +96,7 @@ test("reset persists when deleting individual storage keys is blocked", async ({
   await page.evaluate(() => {
     Storage.prototype.removeItem = () => { throw new DOMException("Blocked", "SecurityError"); };
   });
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
   await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
   await expect(page.getByRole("button", { name: "Comenzar curso", exact: true })).toBeVisible();
@@ -120,6 +123,7 @@ test(`${scope} reset preserves an active response on cancel and removes every to
     await expect(
       page.getByText("Parcial antes de confirmar", { exact: true }),
     ).toBeVisible();
+    if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
     await page
       .getByRole("button", { name: scope === "course" ? "Reiniciar este curso" : "Reiniciar todo el aprendizaje", exact: true })
       .click();
@@ -131,6 +135,7 @@ test(`${scope} reset preserves an active response on cancel and removes every to
     await confirmation
       .getByRole("button", { name: "Cancelar", exact: true })
       .click();
+    await page.getByRole("button", { name: "Tutor IA" }).click();
     fixture.responses[0].write(frame(" y después de cancelar"));
     await expect(
       page.getByText("Parcial antes de confirmar y después de cancelar", {
@@ -138,6 +143,7 @@ test(`${scope} reset preserves an active response on cancel and removes every to
       }),
     ).toBeVisible();
     expect(fixture.closed).toBe(0);
+    if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
     await page
       .getByRole("button", { name: scope === "course" ? "Reiniciar este curso" : "Reiniciar todo el aprendizaje", exact: true })
       .click();
@@ -297,9 +303,11 @@ test("failed topic deletion reports session-only deletion, preserves other topic
 
 test("a failed reset preserves both conversation and progress", async ({ page }) => {
   await setup(page);
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
+  await tutor(page);
   await send(page, "Pregunta antes del reinicio");
   await page.evaluate(() => {
     const original = Storage.prototype.setItem;
@@ -308,6 +316,7 @@ test("a failed reset preserves both conversation and progress", async ({ page })
       return original.call(this, key, value);
     };
   });
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
   await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "No se pudo guardar el reinicio" })).toBeVisible();
@@ -356,6 +365,7 @@ test(`${scope} reset preserves the explicitly chosen session-only configuration`
       /Solo en esta sesión\. La configuración se perderá al recargar/,
     ),
   ).toBeVisible();
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page
     .getByRole("button", { name: scope === "course" ? "Reiniciar este curso" : "Reiniciar todo el aprendizaje", exact: true })
     .click();

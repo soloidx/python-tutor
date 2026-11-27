@@ -13,9 +13,11 @@ function shortPublication(revision, change = () => {}) {
 }
 
 async function approve(page, code) {
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await page.getByLabel('Código Python').fill(code);
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('¡Correcto!');
+  await page.getByRole('tab', { name: 'Lección', exact: true }).click();
 }
 
 async function activate(page, context, value) {
@@ -130,6 +132,7 @@ test('successive publications count current exercises and preserve approvals by 
 });
 
 async function approveFailedCorrection(page) {
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await page.getByLabel('Código Python').fill(saludo);
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Todavía no');

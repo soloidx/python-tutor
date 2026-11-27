@@ -35,6 +35,7 @@ function validCapture(capture, courseId, topicId) {
       "selectedOptionId",
       "selectionStatus",
       "feedback",
+      "walkthrough",
     ])
   )
     return false;
@@ -59,13 +60,27 @@ function validCapture(capture, courseId, topicId) {
     !capture.topic.explanation.every(text) ||
     !text(capture.topic.example) ||
     !text(capture.topic.takeaway) ||
-    !record(capture.exercise) ||
+    (capture.exercise !== undefined && (!record(capture.exercise) ||
     !nonEmptyText(capture.exercise.id) ||
     !nonEmptyText(capture.exercise.title) ||
-    !nonEmptyText(capture.exercise.prompt)
+    !nonEmptyText(capture.exercise.prompt)))
   )
     return false;
 
+  if (capture.exercise === undefined) {
+    if (!hasOnly(capture, ["course", "topic", "walkthrough"])) return false;
+    if (capture.walkthrough === undefined) return true;
+    const w = capture.walkthrough;
+    return hasOnly(w, ["type", "scenario", "step", "element", "stepNumber", "stepCount", "code", "output"]) &&
+      ["decision", "sequence", "collection"].includes(w.type) &&
+      (w.type === "decision" ? hasOnly(w.scenario, ["id", "label"]) && nonEmptyText(w.scenario.id) && nonEmptyText(w.scenario.label) : w.scenario === null) &&
+      hasOnly(w.step, ["line", "element", "explanation", "output"]) &&
+      Number.isSafeInteger(w.step.line) && w.step.line > 0 && nonEmptyText(w.step.element) && text(w.step.explanation) &&
+      (w.step.output === undefined || text(w.step.output)) &&
+      (w.type === "collection" ? hasOnly(w.element, ["id", "key", "value"]) && nonEmptyText(w.element.key) && nonEmptyText(w.element.value) : hasOnly(w.element, ["id", "label"]) && nonEmptyText(w.element.label)) && w.element.id === w.step.element &&
+      Number.isSafeInteger(w.stepNumber) && w.stepNumber > 0 && Number.isSafeInteger(w.stepCount) && w.stepCount >= w.stepNumber &&
+      text(w.code) && text(w.output);
+  }
   const type = capture.exercise.type;
   if (type === undefined || type === "code") {
     if (
@@ -177,8 +192,6 @@ function validExchange(item, courseId) {
     typeof item.message === "string" &&
     item.capture?.topic?.id === item.topicId &&
     validCapture(item.capture, courseId, item.topicId) &&
-    typeof item.capture?.exercise?.id === "string" &&
-    typeof item.capture?.exercise?.title === "string" &&
     Array.isArray(item.attempts) &&
     item.attempts.length > 0 &&
     item.attempts.every(validAttempt)

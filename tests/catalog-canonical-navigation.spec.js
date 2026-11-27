@@ -28,6 +28,7 @@ test('opens canonical catalog identities and keeps shared learning when a new re
   await page.goto('/');
   await enterCourse(page, { course: 'Datos abiertos' });
   await expect(page.getByRole('heading', { name: 'Lectura datos-1', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await expect(page.getByRole('heading', { name: 'Registro datos-1', exact: true })).toBeVisible();
   await page.getByLabel('Código Python').fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
@@ -42,6 +43,7 @@ test('opens canonical catalog identities and keeps shared learning when a new re
   await expect(page.getByRole('button', { name: 'Ver temas de Python Fundamentos', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Repasar Datos públicos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lectura datos-2', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await expect(page.getByRole('heading', { name: 'Registro datos-2', exact: true })).toBeVisible();
   await expect(page.getByText('1 / 1 ejercicios', { exact: true })).toBeVisible();
   // Course drafts retain their existing session-only behavior.

@@ -4,6 +4,8 @@ test.use({ actionTimeout: 8000 });
 test('course reset forgets position and shares its empty state across paths', async ({ page }) => {
   await page.goto('/');
   await enterCourse(page);
+  if (await page.getByRole('button', { name: 'Cerrar Tutor' }).isVisible()) await page.getByRole('button', { name: 'Cerrar Tutor' }).click();
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await page.getByLabel('Código Python').fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('¡Correcto!');
@@ -25,15 +27,18 @@ test('course reset forgets position and shares its empty state across paths', as
 });
 
 async function approve(page) {
+  if (await page.getByRole('button', { name: 'Cerrar Tutor' }).isVisible()) await page.getByRole('button', { name: 'Cerrar Tutor' }).click();
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await page.getByLabel('Código Python').fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('¡Correcto!');
 }
 async function ask(page, message) {
-  await page.getByRole('tab', { name: 'Tutor', exact: true }).click();
+  await page.getByRole('button', { name: 'Tutor IA', exact: true }).click();
   await page.getByLabel('Mensaje al tutor').fill(message);
   await page.getByRole('button', { name: 'Enviar', exact: true }).click();
   await expect(page.getByText('Respuesta completa', { exact: true }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Cerrar Tutor' }).click();
 }
 async function reset(page, global = false) {
   await page.getByRole('button', { name: global ? 'Reiniciar todo el aprendizaje' : 'Reiniciar este curso', exact: true }).click();
@@ -73,7 +78,7 @@ test('course reset removes retired approvals, assessment, history and recovery c
   await page.getByRole('button', { name: 'Todas las rutas', exact: true }).click();
   await enterCourse(page, { course: 'Python Práctica' });
   await expect(page.getByText('1 / 12 ejercicios', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Tutor', exact: true }).click();
+  await page.getByRole('button', { name: 'Tutor IA', exact: true }).click();
   await expect(page.getByText('Conversación de otro curso', { exact: true })).toBeVisible();
 });
 
@@ -117,7 +122,7 @@ test('global reset includes courses retired from the catalog and their recovery 
   await page.getByRole('button', { name: 'Recargar para actualizar', exact: true }).click();
   await enterCourse(page, { course: 'Python Práctica' });
   await expect(page.getByText('0 / 12 ejercicios', { exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Tutor', exact: true }).click();
+  await page.getByRole('button', { name: 'Tutor IA', exact: true }).click();
   await expect(page.getByText('Curso que se retira', { exact: true })).toHaveCount(0);
   expect(requests).toHaveLength(2);
 });
@@ -154,7 +159,7 @@ for (const global of [false, true]) {
     await page.reload();
     await enterCourse(page);
     await expect(page.getByText('0 / 12 ejercicios', { exact: true })).toBeVisible();
-    await page.getByRole('tab', { name: 'Tutor', exact: true }).click();
+    await page.getByRole('button', { name: 'Tutor IA', exact: true }).click();
     await expect(page.getByText('Original protegido', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('alert').filter({ hasText: /recuperación parcial/i })).toHaveCount(0);
   });
@@ -201,6 +206,7 @@ test('an approved exercise retired before course reset returns pending when repu
   await page.getByRole('button', { name: 'Recargar para actualizar', exact: true }).click();
   await enterCourse(page);
   await expect(page.getByText('0 / 12 ejercicios', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await expect(page.getByRole('button', { name: /1\. Tu primera variable/ })).not.toContainText('Completado');
 });
 

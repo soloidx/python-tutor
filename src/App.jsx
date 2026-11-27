@@ -1,3 +1,5 @@
+import DecisionWalkthrough from "./DecisionWalkthrough.jsx";
+import { visibleWalkthrough } from "./walkthroughState.js";
 import { learnerTransaction, inspectLegacyConflict, preserveLegacyConflict, readLegacyRecoveries } from "./learnerStore.js";
 import { removeHistory, historyChanged, storedCourseIds } from "./tutorHistory.js";
 import React, {
@@ -113,6 +115,7 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
   );
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tutorOpen, setTutorOpen] = useState(false);
   const [practiceRecovery] = useState(() => loadPractice(publication));
   const [practiceRound, setPracticeRound] = useState(practiceRecovery.round);
   const [practiceStorageAvailable, setPracticeStorageAvailable] = useState(
@@ -152,6 +155,7 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
     return () => { cancelled = true; };
   }, [practiceRound, practiceStorageAvailable, reviewingPractice]);
   const [learningTab, setLearningTab] = useState("lesson");
+  const topicSessions = useRef(new Map());
   const focusTutorAfterSettings = useRef(false);
   const rootLocation = {
     screen: "paths",
@@ -174,7 +178,6 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
   useEffect(() => {
     history.replaceState(rootLocation, "");
     const onBack = (event) => {
-      conversation.cancel();
       setResumeNotice("");
       setLocation(event.state?.screen ? event.state : rootLocation);
     };
@@ -186,14 +189,13 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
       focusTutorAfterSettings.current = false;
       if (location.screen === "practice")
         document.querySelector(".practice-tutor textarea")?.focus();
-      else document.getElementById("tutor-tab")?.focus();
+      else document.querySelector(".topic-tutor-dock textarea")?.focus();
     }
   }, [settingsOpen]);
   function navigate(next) {
     if (next.screen === "practice")
       setPracticeRound((round) => round || createPracticeRound(publication));
     setConfirmReset(false);
-    conversation.cancel();
     setResumeNotice("");
     const value = { ...location, ...next };
     if (value.screen === "paths") Object.assign(value, rootLocation);
@@ -882,8 +884,15 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
                   }
                   access={access}
                   conversation={conversation}
+                  session={(() => {
+                    const key = JSON.stringify([course.id, topic.id, workspaceVersion]);
+                    if (!topicSessions.current.has(key)) topicSessions.current.set(key, { tab: "lesson", exerciseIndex: 0, exercises: {} });
+                    return topicSessions.current.get(key);
+                  })()}
                   learningTab={learningTab}
                   setLearningTab={setLearningTab}
+                  tutorOpen={tutorOpen}
+                  setTutorOpen={setTutorOpen}
                   onConfigure={() => setSettingsOpen(true)}
                 />
                 {course.assessment && (
@@ -986,7 +995,7 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
           onSaved={() => {
             focusTutorAfterSettings.current = true;
             setSettingsOpen(false);
-            setLearningTab("tutor");
+            if (view === "learn") setTutorOpen(true);
             if (course && view !== "learn" && view !== "practice") startCourse(course);
           }}
         />
@@ -1002,13 +1011,24 @@ function LearningWorkspace({
   onComplete,
   access,
   conversation,
+  session,
   learningTab,
   setLearningTab,
   onConfigure,
   personalExecutionFor,
+  tutorOpen,
+  setTutorOpen,
 }) {
-  useEffect(() => () => conversation.cancel(), [conversation]);
-  const [exerciseIndex, setExerciseIndex] = useState(0);
+  const [exerciseIndex, setExerciseIndexState] = useState(session.exerciseIndex);
+  const [tab, setTabState] = useState(session.tab);
+  const [, refreshExercise] = useState(0);
+  const previousLearningTab = useRef(learningTab);
+  const setTab = (value) => { session.tab = value; setTabState(value); setLearningTab(value); };
+  const setExerciseIndex = (value) => { session.exerciseIndex = value; setExerciseIndexState(value); };
+  useEffect(() => {
+    if (previousLearningTab.current !== learningTab && learningTab === "tutor") setTutorOpen(true);
+    previousLearningTab.current = learningTab;
+  }, [learningTab]);
   const exercise = topic.exercises[exerciseIndex];
   const topicCompleted = topic.exercises.filter((item) =>
     completed.includes(item.id),
@@ -1016,6 +1036,8 @@ function LearningWorkspace({
   return (
     <ExerciseWorkspace
       exercise={exercise}
+      state={session.exercises[exercise.id] || { code: exercise.starter || "" }}
+      onStateChange={(state) => { session.exercises[exercise.id] = state; refreshExercise((value) => value + 1); }}
       personalExecution={personalExecutionFor?.(exercise)}
       approved={completed.includes(exercise.id)}
       onComplete={onComplete}
@@ -1068,8 +1090,7 @@ function LearningWorkspace({
       label={`EJERCICIO ${exerciseIndex + 1}`}
     >
       {({ content, context }) => (
-        <div className="workspace">
-          <section className="lesson-panel panel">
+        <div className="topic-workspace">
             <div
               role="tablist"
               aria-label="Panel de aprendizaje"
@@ -1077,16 +1098,16 @@ function LearningWorkspace({
             >
               {[
                 ["lesson", "Lección"],
-                ["tutor", "Tutor"],
+                ["exercises", `Ejercicios (${topicCompleted}/${topic.exercises.length})`],
               ].map(([id, label]) => (
                 <button
                   key={id}
                   id={`${id}-tab`}
                   role="tab"
-                  aria-selected={learningTab === id}
+                  aria-selected={tab === id}
                   aria-controls={`${id}-panel`}
-                  tabIndex={learningTab === id ? 0 : -1}
-                  onClick={() => setLearningTab(id)}
+                  tabIndex={tab === id ? 0 : -1}
+                  onClick={() => setTab(id)}
                   onKeyDown={(event) => {
                     if (
                       ["ArrowRight", "ArrowLeft", "Home", "End"].includes(
@@ -1094,15 +1115,10 @@ function LearningWorkspace({
                       )
                     ) {
                       event.preventDefault();
-                      const next =
-                        event.key === "Home"
-                          ? "lesson"
-                          : event.key === "End"
-                            ? "tutor"
-                            : id === "lesson"
-                              ? "tutor"
-                              : "lesson";
-                      setLearningTab(next);
+                      const tabs = ["lesson", "exercises"];
+                      const index = tabs.indexOf(id);
+                      const next = event.key === "Home" ? tabs[0] : event.key === "End" ? tabs.at(-1) : tabs[(index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+                      setTab(next);
                       document.getElementById(`${next}-tab`).focus();
                     }
                   }}
@@ -1111,11 +1127,13 @@ function LearningWorkspace({
                 </button>
               ))}
             </div>
+          <section className="lesson-panel panel" hidden={tab !== "lesson"}>
             <div
               role="tabpanel"
+              tabIndex={0}
               id="lesson-panel"
               aria-labelledby="lesson-tab"
-              hidden={learningTab !== "lesson"}
+              hidden={tab !== "lesson"}
             >
               <div className="panel-heading">
                 <span className="lesson-label">
@@ -1136,41 +1154,58 @@ function LearningWorkspace({
                 <pre className="example">
                   <code>{topic.example}</code>
                 </pre>
+                {topic.walkthrough && <DecisionWalkthrough walkthrough={topic.walkthrough} example={topic.example} session={session} />}
                 <div className="takeaway">
                   <Icon name="bulb" />
                   <p>{topic.takeaway}</p>
                 </div>
               </div>
             </div>
-            <div
-              role="tabpanel"
-              id="tutor-panel"
-              aria-labelledby="tutor-tab"
-              hidden={learningTab !== "tutor"}
-            >
-              <TutorPanel
-                onConfigure={onConfigure}
-                access={access}
-                conversation={conversation}
-                courseId={course.id}
-                topicId={topic.id}
-                topicTitle={topic.title}
-                capture={() =>
-                  captureContext({
-                    course,
-                    topic,
-                    exercise,
-                    ...context,
-                  })
-                }
-              />
-            </div>
           </section>
-          {content}
+          <div role="tabpanel" tabIndex={0} id="exercises-panel" aria-labelledby="exercises-tab" hidden={tab !== "exercises"}>{content}</div>
+          <button className="tutor-launcher" onClick={() => setTutorOpen(true)} aria-expanded={tutorOpen} aria-controls="tutor-panel">Tutor IA</button>
+          <TopicTutor open={tutorOpen} onClose={() => setTutorOpen(false)}>
+            <TutorPanel
+              onClose={() => setTutorOpen(false)}
+              onConfigure={onConfigure}
+              access={access}
+              conversation={conversation}
+              courseId={course.id}
+              topicId={topic.id}
+              topicTitle={topic.title}
+              closeLabel="Cerrar Tutor"
+              draftSession={session}
+              capture={() => captureContext({ course, topic, ...(tab === "lesson" ? { walkthrough: topic.walkthrough && visibleWalkthrough(topic.walkthrough, topic.example, session.walkthrough) } : { exercise, ...context }) })}
+            />
+          </TopicTutor>
         </div>
       )}
     </ExerciseWorkspace>
   );
+}
+
+function TopicTutor({ open, onClose, children }) {
+  const dialog = useRef(null);
+  useEffect(() => {
+    const node = dialog.current;
+    if (open) {
+      if (matchMedia("(max-width: 700px)").matches) node.showModal();
+      else node.show();
+      node.querySelector('[aria-label="Cerrar Tutor"]')?.focus();
+    } else if (node.open) {
+      node.close();
+      document.querySelector('.tutor-launcher')?.focus();
+    }
+  }, [open]);
+  return <dialog ref={dialog} id="tutor-panel" className="topic-tutor-dock" aria-label="Tutor IA" onKeyDown={(event) => {
+    if (event.key === "Escape") { event.preventDefault(); onClose(); }
+    if (event.key === "Tab" && matchMedia("(max-width: 700px)").matches) {
+      const controls = [...dialog.current.querySelectorAll('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter((element) => element.getClientRects().length);
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+  }} onCancel={(event) => { event.preventDefault(); onClose(); }}>{children}</dialog>;
 }
 
 function FinalAssessment({ course, result, onResult, onBack }) {

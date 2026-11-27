@@ -11,7 +11,7 @@ async function send(page, message, count) {
   ).toHaveCount(count);
 }
 async function tutor(page) {
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  if (!(await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible())) await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Enviar", exact: true }),
   ).toBeEnabled();
@@ -21,12 +21,18 @@ test("recovers a topic conversation and original exercise captures after reload 
   page,
 }) => {
   const requests = await setup(page);
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# captura original");
+  await tutor(page);
   await send(page, "Pregunta original", 1);
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page.getByRole("button", { name: /2\. Un valor que cambia/ }).click();
   await tutor(page);
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# otro ejercicio");
+  await tutor(page);
   await send(page, "Segunda pregunta", 2);
   await page.reload();
   await enterCourse(page);
@@ -37,6 +43,7 @@ test("recovers a topic conversation and original exercise captures after reload 
   await expect(
     page.getByText("Segunda pregunta", { exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await expect(page.getByLabel("Código Python")).not.toHaveValue(
     "# otro ejercicio",
   );
@@ -80,7 +87,10 @@ test("retains fifty exchanges, removes the oldest with notice, and sends only te
 }) => {
   test.setTimeout(120000);
   const requests = await setup(page, model, "Respuesta breve");
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("");
+  await tutor(page);
   await page.route("https://openrouter.ai/api/v1/chat/completions", (route) => {
     requests.push(route.request().postDataJSON());
     return route.fulfill({
@@ -239,11 +249,20 @@ test("omits oldest complete captures to fit capacity while preserving current an
     { ...model, context_length: 8192 },
     "Respuesta breve",
   );
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# original " + "a".repeat(3000));
+  await tutor(page);
   await send(page, "Pregunta antigua", 1);
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# reciente");
+  await tutor(page);
   await send(page, "Pregunta reciente", 2);
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# actual");
+  await tutor(page);
   await send(page, "Pregunta actual", 3);
   await expect(page.getByRole("alert")).toContainText(
     "por capacidad del modelo",
@@ -389,7 +408,7 @@ test("study and tutor stay separate for original and personal courses with equal
 
   const requests = await setup(page);
   await send(page, "Pregunta del original", 1);
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();

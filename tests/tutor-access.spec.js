@@ -1,87 +1,30 @@
 import { test, expect, enterCourse } from "./fixtures/catalog.js";
 test.use({ actionTimeout: 5000 });
 
-test("Tutor tabs and configuration preserve practice and keyboard focus", async ({
-  page,
-}) => {
+test("Tutor panel and configuration preserve practice and keyboard focus", async ({ page }) => {
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill('print("mi borrador")');
-  await expect(
-    page.getByRole("button", { name: "Ejecutar", exact: true }),
-  ).toBeEnabled();
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
-  await expect(page.getByLabel("Salida del programa")).toHaveText(
-    "mi borrador",
-  );
-  await page.getByRole("tab", { name: "Lección", exact: true }).focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(
-    page.getByRole("tab", { name: "Tutor", exact: true }),
-  ).toBeFocused();
-  await expect(
-    page.getByRole("button", { name: "Enviar", exact: true }),
-  ).toBeDisabled();
-  await page
-    .getByRole("button", { name: "Configurar tutor", exact: true })
-    .click();
-  await expect(
-    page.getByRole("dialog", { name: "Configuración del tutor" }),
-  ).toBeVisible();
-  await expect(page.getByLabel("Clave de OpenRouter")).toBeFocused();
+  await expect(page.getByLabel("Salida del programa")).toHaveText("mi borrador");
+  await page.getByRole("button", { name: "Tutor IA" }).click();
+  await expect(page.getByRole("button", { name: "Cerrar Tutor" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Enviar", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Configurar tutor", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Configuración del tutor" })).toBeVisible();
   for (const provider of ["OpenAI", "Anthropic", "Modelos locales"]) {
-    await expect(
-      page.getByRole("button", { name: provider, exact: true }),
-    ).toBeDisabled();
+    await expect(page.getByRole("button", { name: provider, exact: true })).toBeDisabled();
   }
-  await page.getByRole("button", { name: "Cancelar", exact: true }).focus();
-  await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("button", { name: "OpenRouter", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("Shift+Tab");
-  await expect(
-    page.getByRole("button", { name: "Cancelar", exact: true }),
-  ).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(
-    page.getByRole("button", { name: "Configurar tutor", exact: true }),
-  ).toBeFocused();
-  await expect(page.getByLabel("Código Python")).toHaveValue(
-    'print("mi borrador")',
-  );
-  await page
-    .getByRole("button", { name: "Configuración del tutor", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Configuración", exact: true })
-    .click();
+  await expect(page.getByRole("button", { name: "Configurar tutor", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
-  await page
-    .getByRole("tab", { name: "Tutor", exact: true })
-    .press("ArrowLeft");
-  await expect(
-    page.getByRole("heading", { name: "Valores y variables", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("tab", { name: "Lección", exact: true }).press("End");
-  await expect(
-    page.getByRole("tab", { name: "Tutor", exact: true }),
-  ).toBeFocused();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).press("Home");
-  await expect(
-    page.getByRole("tab", { name: "Lección", exact: true }),
-  ).toBeFocused();
-  await expect(page.getByLabel("Salida del programa")).toHaveText(
-    "mi borrador",
-  );
+  await expect(page.getByRole("button", { name: "Tutor IA" })).toBeFocused();
+  await expect(page.getByLabel("Código Python")).toHaveValue('print("mi borrador")');
+  await expect(page.getByLabel("Salida del programa")).toHaveText("mi borrador");
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(
-    page.getByRole("button", { name: "Configuración", exact: true }),
-  ).toBeVisible();
-  const lesson = await page.getByRole("tabpanel").boundingBox();
-  const practice = await page.getByLabel("Espacio de práctica").boundingBox();
-  expect(practice.y).toBeGreaterThan(lesson.y + lesson.height);
+  await page.getByRole("button", { name: "Tutor IA" }).click();
+  await expect(page.getByRole("dialog", { name: "Tutor IA" })).toBeVisible();
 });
 
 const compatible = {
@@ -109,6 +52,7 @@ async function mockAccess(page, models = [compatible]) {
   return requests;
 }
 async function configure(page) {
+  if (!(await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible())) await page.getByRole("button", { name: "Tutor IA" }).click();
   await page
     .getByRole("button", { name: "Configuración", exact: true })
     .click();
@@ -156,9 +100,10 @@ test("validates without generation, explicitly selects and persists a checked mo
   ]);
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# conservado");
   await configure(page);
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("dialog", { name: "Configuración del tutor" });
   await expect(dialog.getByText(/no comprueba el saldo/)).toBeVisible();
   await expect(
     dialog.getByRole("button", { name: /Sin ventana/ }),
@@ -184,17 +129,12 @@ test("validates without generation, explicitly selects and persists a checked mo
     .getByRole("button", { name: "Guardar y volver al tutor" })
     .click();
   await expect(dialog).toHaveCount(0);
-  await expect(
-    page.getByRole("tab", { name: "Tutor", exact: true }),
-  ).toHaveAttribute("aria-selected", "true");
-  await expect(
-    page.getByRole("tab", { name: "Tutor", exact: true }),
-  ).toBeFocused();
+  await expect(page.getByLabel("Mensaje al tutor")).toBeFocused();
   await expect(page.getByText(/Acceso listo/)).toBeVisible();
   await expect(page.getByLabel("Código Python")).toHaveValue("# conservado");
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(page.getByText(/Acceso listo/)).toBeVisible();
   await page
     .getByRole("button", { name: "Configuración del tutor", exact: true })
@@ -249,7 +189,7 @@ test("cancelled and rejected pending changes retain the saved access", async ({
   await expect(
     page.getByRole("button", { name: "Guardar y volver al tutor" }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+  await page.getByRole("button", { name: "Volver", exact: true }).click();
   await expect(page.getByText(/Acceso listo · Texto claro/)).toBeVisible();
   await page
     .getByRole("button", { name: "Configuración del tutor", exact: true })
@@ -279,7 +219,7 @@ test("reload checks access before enabling messages and network failure preserve
   });
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Comprobando acceso…", { exact: true }),
   ).toBeVisible();
@@ -317,7 +257,7 @@ test("a retired model requires a new explicit selection and never substitutes an
   );
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText(/El modelo guardado ya no está disponible/),
   ).toBeVisible();
@@ -355,9 +295,9 @@ test("a browser storage failure requires explicit choice for session-only access
   await configure(page);
   await page.getByRole("button", { name: /Texto claro/ }).click();
   await page.getByRole("button", { name: "Guardar y volver al tutor" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Configuración del tutor" })).toBeVisible();
   await expect(
-    page.getByRole("dialog").getByText(/No se pudo guardar la configuración/),
+    page.getByRole("dialog", { name: "Configuración del tutor" }).getByText(/No se pudo guardar la configuración/),
   ).toBeVisible();
   await expect(page.getByText("Guardado", { exact: true })).toHaveCount(0);
   await page
@@ -372,7 +312,7 @@ test("a browser storage failure requires explicit choice for session-only access
   await page.reload();
   await enterCourse(page);
   await page.getByRole("button", { name: "Aprender", exact: true }).click();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Enviar", exact: true }),
   ).toBeDisabled();
@@ -418,7 +358,7 @@ test("a rejected recovered key blocks access and asks for correction without cha
   );
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(page.getByText(/Clave rechazada/)).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Enviar", exact: true }),

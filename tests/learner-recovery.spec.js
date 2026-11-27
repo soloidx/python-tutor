@@ -37,6 +37,8 @@ test("partial learner recovery keeps approvals, position and valid assessment an
   await serveCatalog(context, value);
   await page.goto("/");
   await enterCourse(page);
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page
     .getByLabel("Código Python")
     .fill('nombre = "Ada"\nprint("Hola, " + nombre)');
@@ -114,7 +116,7 @@ test("history recovery preserves valid exchanges and attempts, interrupts saved 
     .getByRole("button", { name: "Todas las rutas", exact: true })
     .click();
   await enterCourse(page, { course: "Python Práctica" });
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await page.getByLabel("Mensaje al tutor").fill("Pregunta de otro curso");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(
@@ -149,7 +151,7 @@ test("history recovery preserves valid exchanges and attempts, interrupts saved 
     page.getByRole("alert").filter({ hasText: /recuperación parcial/i }),
   ).toBeVisible();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Pregunta conservada", { exact: true }),
   ).toBeVisible();
@@ -176,13 +178,13 @@ test("history recovery preserves valid exchanges and attempts, interrupts saved 
     .getByRole("button", { name: "Todas las rutas", exact: true })
     .click();
   await enterCourse(page, { course: "Python Práctica" });
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Pregunta de otro curso", { exact: true }),
   ).toBeVisible();
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Parcial conservado", { exact: true }),
   ).toBeVisible();
@@ -194,6 +196,8 @@ test("failed recovery copies protect original learner data through visits and ne
 }) => {
   await page.goto("/");
   await enterCourse(page);
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page
     .getByLabel("Código Python")
     .fill('nombre = "Ada"\nprint("Hola, " + nombre)');
@@ -228,7 +232,10 @@ test("failed recovery copies protect original learner data through visits and ne
   await expect(
     page.getByText("1 / 12 ejercicios", { exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByRole("button", { name: /2\. Un valor que cambia/ }).click();
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page
     .getByLabel("Código Python")
     .fill("edad = 20\nedad = edad + 1\nprint(edad)");
@@ -282,7 +289,7 @@ test("a damaged latest attempt never turns an older completed answer into a conf
   });
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Pregunta con reintento dañado", { exact: true }),
   ).toBeVisible();
@@ -329,7 +336,7 @@ test("failed conversation backup keeps the original through a new answer and rel
       .filter({ hasText: /sin sobrescribir/i }),
   ).toBeVisible();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Pregunta válida guardada", { exact: true }),
   ).toBeVisible();
@@ -347,7 +354,7 @@ test("failed conversation backup keeps the original through a new answer and rel
   ).toBe(raw);
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Pregunta válida guardada", { exact: true }),
   ).toBeVisible();
@@ -363,11 +370,14 @@ test("an unavailable catalog preserves learner data and never creates recovery c
 }) => {
   const { setup } = await import("./fixtures/tutor.js");
   const requests = await setup(page);
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page
     .getByLabel("Código Python")
     .fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
+  await page.getByRole("button", { name: "Tutor IA" }).click();
   await page
     .getByLabel("Mensaje al tutor")
     .fill("Conversación antes de desconectar");
@@ -393,7 +403,7 @@ test("an unavailable catalog preserves learner data and never creates recovery c
   await expect(
     page.getByText("1 / 12 ejercicios", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(
     page.getByText("Conversación antes de desconectar", { exact: true }),
   ).toBeVisible();

@@ -32,8 +32,10 @@ export async function setup(
   });
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
+  await page.getByRole("button", { name: "Tutor IA" }).click();
   await page
-    .getByRole("button", { name: "Configuración", exact: true })
+    .getByRole("button", { name: "Configuración del tutor", exact: true })
     .click();
   await page.getByLabel("Clave de OpenRouter").fill("sk-or-fictitious");
   await page
@@ -41,9 +43,7 @@ export async function setup(
     .click();
   await page.getByRole("button", { name: /Tutor de prueba/ }).click();
   await page.getByRole("button", { name: "Guardar y volver al tutor" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(
-    page.getByRole("tab", { name: "Tutor", exact: true }),
-  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("dialog", { name: "Configuración del tutor" })).not.toBeVisible();
+  await expect(page.getByLabel("Mensaje al tutor")).toBeVisible();
   return requests;
 }

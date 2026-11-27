@@ -532,9 +532,11 @@ test("practice saves visible work without authored answers or making course draf
     .getByRole("button", { name: "Cursos y rutas", exact: true })
     .click();
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill('nombre = "Solo curso"');
   await page.reload();
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await expect(page.getByLabel("Código Python")).not.toHaveValue(
     'nombre = "Solo curso"',
   );

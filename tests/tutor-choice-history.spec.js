@@ -201,17 +201,18 @@ test("retries an immutable choice capture after changing the attempt and reloadi
 }) => {
   await serveCatalog(context, mixedPublication());
   const requests = await setup(page, model, "Respuesta parcial", "length");
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   const practice = page.getByLabel("Espacio de práctica");
   await practice
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
     .click();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
 
   await practice.getByLabel("Compara edad con 7").check();
   await practice
     .getByRole("button", { name: "Comprobar", exact: true })
     .click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await page.getByLabel("Mensaje al tutor").fill("Ayúdame con esta selección");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByText(/límite de salida/)).toBeVisible();
@@ -224,14 +225,16 @@ test("retries an immutable choice capture after changing the attempt and reloadi
     lastResult: { optionId: "compara", correct: false },
   });
 
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await practice.getByLabel("Guarda 7 en edad").check();
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
     .click();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await page.route("https://openrouter.ai/api/v1/chat/completions", (route) => {
     requests.push(route.request().postDataJSON());
     return route.fulfill({
@@ -258,12 +261,13 @@ test("blocks a choice capture whose fixed serialized content exceeds the model",
 }) => {
   await serveCatalog(context, oversizedChoicePublication());
   const requests = await setup(page, { ...model, context_length: 3000 });
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page
     .getByLabel("Espacio de práctica")
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
     .click();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await page.getByLabel("Mensaje al tutor").fill("Ayuda");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(/contenido fijo/);

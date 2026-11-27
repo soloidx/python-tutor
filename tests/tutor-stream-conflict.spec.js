@@ -21,10 +21,11 @@ test("a conflict during streaming keeps the received partial available for revie
     await expect(page.getByRole("region", { name: "Cambios recuperados de esta sesión" })).toContainText("Fragmento que debe conservarse");
     await expect(page.getByRole("region", { name: "Cambios recuperados de esta sesión" })).toContainText("no están guardados");
     await expect.poll(() => stream.closed).toBe(1);
+    await page.getByRole("button", { name: "Cerrar Tutor" }).click();
     await page.getByRole("button", { name: "Reiniciar este curso", exact: true }).click();
     await page.getByRole("button", { name: "Sí, reiniciar", exact: true }).click();
     await page.getByRole("button", { name: "Comenzar curso", exact: true }).click();
-    await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+    await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
     await expect(page.getByRole("region", { name: "Cambios recuperados de esta sesión" })).toHaveCount(0);
   } finally { await stream.close(); }
 });

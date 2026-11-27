@@ -130,6 +130,7 @@ test('exige dos aprobaciones y muestra solo el temario de originales disponibles
   await expect(page.getByRole('heading', { name: 'Python Fundamentos', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Ver temas de Python Fundamentos' }).click();
   await page.getByRole('button', { name: 'Comenzar curso' }).click();
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await page.getByLabel('Código Python').fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('¡Correcto!');

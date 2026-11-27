@@ -171,7 +171,7 @@ for (const scenario of [
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect(page.getByText(scenario.text).first()).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Detener", exact: true }),
+      page.getByRole("button", { name: "Detener respuesta", exact: true }),
     ).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Enviar", exact: true }))[
       scenario.blocked ? "toBeDisabled" : "toBeEnabled"
@@ -264,7 +264,7 @@ test("late stop frames cannot complete a cancelled attempt or affect the single 
     await expect(
       page.getByText("Parcial antiguo", { exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Detener", exact: true }).click();
+    await page.getByRole("button", { name: "Detener respuesta", exact: true }).click();
     await expect.poll(() => fixture.closed).toBe(1);
     const retry = page.getByRole("button", {
       name: "Reintentar respuesta",
@@ -281,7 +281,7 @@ test("late stop frames cannot complete a cancelled attempt or affect the single 
       page.getByText("Parcial nuevo", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Detener", exact: true }),
+      page.getByRole("button", { name: "Detener respuesta", exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/Respuesta interrumpida/)).toBeVisible();
     await expect(

@@ -11,6 +11,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Valores y variables", exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await expect(
     page.getByRole("button", { name: "Ejecutar", exact: true }),
   ).toBeEnabled();
@@ -76,6 +77,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
 
   await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   const expressionsStarter = await page
     .getByLabel("Código Python")
     .inputValue();
@@ -97,6 +99,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("button", { name: /01 Valores y variables Completado/ }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await expect(page.getByLabel("Código Python")).toHaveValue(
     expressionsStarter,
   );
@@ -105,9 +108,6 @@ test("a beginner progresses through fundamentals with real Python", async ({
     page.getByRole("button", { name: "Ejecutar", exact: true }),
   ).toBeEnabled();
 
-  await expect(
-    page.getByRole("heading", { name: "Expresiones y salida", exact: true }),
-  ).toBeVisible();
   await page.getByRole("button", { name: "Dame una pista" }).click();
   await expect(page.getByText("Pista 1 de 2")).toBeVisible();
   await page.getByRole("button", { name: "Otra pista" }).click();
@@ -141,6 +141,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Condicionales", exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByRole("button", { name: "Dame una pista" }).click();
   await page.getByRole("button", { name: "Otra pista" }).click();
   await expect(page.getByText("Pista 2 de 2")).toBeVisible();
@@ -179,6 +180,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Bucles", exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByRole("button", { name: "Dame una pista" }).click();
   await page.getByRole("button", { name: "Otra pista" }).click();
   await expect(page.getByText("Pista 2 de 2")).toBeVisible();
@@ -210,6 +212,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Funciones", exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByRole("button", { name: "Dame una pista" }).click();
   await page.getByRole("button", { name: "Otra pista" }).click();
   await expect(page.getByText("Pista 2 de 2")).toBeVisible();
@@ -245,6 +248,7 @@ test("a beginner progresses through fundamentals with real Python", async ({
   await expect(
     page.getByRole("heading", { name: "Listas y diccionarios", exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByRole("button", { name: "Dame una pista" }).click();
   await page.getByRole("button", { name: "Otra pista" }).click();
   await expect(page.getByText("Pista 2 de 2")).toBeVisible();
@@ -290,9 +294,11 @@ test("a beginner progresses through fundamentals with real Python", async ({
     });
     await expect(topicButton).toBeVisible();
     await topicButton.click();
+    await page.getByRole("tab", { name: "Lección", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
+    await page.getByRole("tab", { name: /Ejercicios/ }).click();
     await expect(
       page.getByText("2 de 2 ejercicios completados", { exact: true }),
     ).toBeVisible();
