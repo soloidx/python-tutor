@@ -1,3 +1,4 @@
+import { validateWalkthrough } from "./walkthrough.js";
 import { validateSvgIcon } from "./svgIcon.js";
 // One predetermined public source; publishing and operating it are external to this app.
 export const catalogBaseUrl = "https://www.ider.ninja/python-tutor-content/";
@@ -157,6 +158,7 @@ export function validateCourse(course, expectedId) {
     topic.explanation.forEach((paragraph) =>
       text(paragraph, "topic.explanation"),
     );
+    if (topic.walkthrough !== undefined) validateWalkthrough(topic.walkthrough, topic.example);
     list(topic.exercises, "topic.exercises");
     for (const exercise of topic.exercises) {
       object(exercise, "exercise");

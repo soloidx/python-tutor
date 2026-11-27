@@ -125,3 +125,9 @@ For authoring, the content repository stores SVG originals in `content/icons/`. 
 ## Coordinated publication order
 
 Prepare and release a contract-compatible consumer first. In the publisher, validate editable sources, run `npm run build`, and verify the complete publication with `npm run check`. Upload newly generated immutable course and icon files before replacing `catalog.json`; update the catalog last so every referenced byte is already available. The consumer activates a new revision on the next reload, while preserving the prior complete backup if any download, hash, or validation fails. Do not rewrite or delete historical hashed files, deploy a second content channel, or treat this order as a deployment performed by the application repository.
+
+## Optional decision walkthrough
+
+A topic may include `walkthrough` with `type: "decision"`, three uniquely identified `elements` (`condition`, `if`, `else`) with nonempty labels, and a nonempty `scenarios` array. Each scenario has a unique slug `id`, a label, a `replacement` with a one-based `line` in the topic's `example` and a single-line `code`, and a nonempty ordered `steps` array. A step names an existing one-based `line` and `element`, supplies an `explanation`, and may supply nonempty `output`. Output contributions accumulate in order. The diagram selects the first step referring to an element; the controls visit every step. State is kept per course and topic for the current session.
+
+In editable content, `walkthrough` is instead a reference of the form `walkthroughs/<slug>.json`. The publisher checks that the resolved file stays inside the content tree, validates its contents against the topic example, and embeds it in the course before hashing. A declared invalid walkthrough rejects the complete publication; old topics and backups without one remain valid. Release the compatible consumer first, then publish the new immutable course before the catalog, retaining historical files.

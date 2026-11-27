@@ -1,3 +1,4 @@
+import DecisionWalkthrough from "./DecisionWalkthrough.jsx";
 import { learnerTransaction, inspectLegacyConflict, preserveLegacyConflict, readLegacyRecoveries } from "./learnerStore.js";
 import { removeHistory, historyChanged, storedCourseIds } from "./tutorHistory.js";
 import React, {
@@ -1152,6 +1153,7 @@ function LearningWorkspace({
                 <pre className="example">
                   <code>{topic.example}</code>
                 </pre>
+                {topic.walkthrough && <DecisionWalkthrough walkthrough={topic.walkthrough} example={topic.example} session={session} />}
                 <div className="takeaway">
                   <Icon name="bulb" />
                   <p>{topic.takeaway}</p>

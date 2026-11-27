@@ -2046,3 +2046,17 @@ textarea:focus-visible {
 .topic-tutor-dock .tutor-panel-actions button { min-width: 44px; min-height: 44px; }
 .topic-tutor-dock .tutor-body { flex: 1; height: auto; min-height: 0; max-height: none; }
 @media (max-width: 700px) { .topic-tutor-dock { width: 100vw; } }
+
+.walkthrough { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid #b9c9d8; border-radius: 12px; }
+.walkthrough-scenarios, .walkthrough-controls { display: flex; gap: .75rem; align-items: center; margin: 1rem 0; }
+.walkthrough-scenarios button[aria-pressed="true"], .walkthrough-element[aria-pressed="true"] { background: #205a91; color: white; }
+.walkthrough-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.walkthrough-diagram { display: grid; gap: .75rem; align-content: center; }
+.walkthrough-element { padding: .75rem; border: 1px solid #789; border-radius: 8px; text-align: center; }
+.walkthrough-code { overflow: auto; background: #182635; color: white; padding: 1rem; border-radius: 8px; }
+.walkthrough-code span { display: block; }
+.walkthrough-code span.active { background: #385f7b; }
+.walkthrough-output { background: #e5f3ea; border-radius: 8px; padding: .75rem; }
+.walkthrough-output pre { margin: .5rem 0 0; white-space: pre-wrap; }
+.walkthrough-controls svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; vertical-align: middle; }
+@media (max-width: 700px) { .walkthrough-layout { grid-template-columns: 1fr; } }
