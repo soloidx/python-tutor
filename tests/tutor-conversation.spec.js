@@ -3,6 +3,14 @@ import { streamingOpenRouter } from "./fixtures/openrouter.js";
 import { test, expect, enterCourse } from "./fixtures/catalog.js";
 
 test.use({ actionTimeout: 8000, ignoreHTTPSErrors: true });
+async function edit(page) {
+  if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
+}
+async function tutor(page) {
+  if (!(await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible())) await page.getByRole("button", { name: "Tutor IA" }).click();
+}
+
 
 test("sends a Spanish tutor policy and allowed context through real LangChain; copies without editing or executing", async ({
   page,
@@ -10,9 +18,11 @@ test("sends a Spanish tutor policy and allowed context through real LangChain; c
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const requests = await setup(page);
+  await edit(page);
   await page
     .getByLabel("Código Python")
     .fill('# mi borrador\nprint("borrador")');
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("No entiendo");
   await page.getByLabel("Mensaje al tutor").press("Shift+Enter");
   await page.getByLabel("Mensaje al tutor").press("Enter");
@@ -59,10 +69,14 @@ test("records the code behind an earlier result and refreshes the next context w
   await expect(
     page.getByRole("button", { name: "Ejecutar", exact: true }),
   ).toBeEnabled();
+  await edit(page);
   await page.getByLabel("Código Python").fill('print("anterior")');
+  await edit(page);
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByLabel("Salida del programa")).toHaveText("anterior");
+  await edit(page);
   await page.getByLabel("Código Python").fill('print("nuevo")');
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Explica mi resultado");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(
@@ -76,8 +90,10 @@ test("records the code behind an earlier result and refreshes the next context w
     previous: true,
     code: 'print("anterior")',
   });
+  await edit(page);
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByLabel("Salida del programa")).toHaveText("nuevo");
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Ahora");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(
@@ -86,9 +102,10 @@ test("records the code behind an earlier result and refreshes the next context w
   expect(
     JSON.parse(requests[1].messages.at(-1).content).capture.lastResult,
   ).toEqual({ output: "nuevo", error: null, previous: false });
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  await edit(page);
   await page.getByRole("button", { name: /2\. Un valor que cambia/ }).click();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await tutor(page);
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Otro ejercicio");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(
@@ -105,7 +122,9 @@ test("streams one immutable capture, keeps its exercise identity, and stops the 
   await setup(page);
   const fixture = await streamingOpenRouter(page);
   try {
+    await edit(page);
     await page.getByLabel("Código Python").fill("# original");
+    await tutor(page);
     await page.getByLabel("Mensaje al tutor").fill("Ayúdame");
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect.poll(() => fixture.responses.length).toBe(1);
@@ -116,19 +135,22 @@ test("streams one immutable capture, keeps its exercise identity, and stops the 
     await expect(
       page.getByRole("button", { name: "Enviar", exact: true }),
     ).toBeDisabled();
+    await tutor(page);
     await page.getByLabel("Mensaje al tutor").fill("No enviar todavía");
     await page.getByLabel("Mensaje al tutor").press("Enter");
+    await edit(page);
     await page.getByLabel("Código Python").fill('print("posterior")');
     await expect(
       page.getByRole("button", { name: "Ejecutar", exact: true }),
     ).toBeEnabled();
-    await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
+    await edit(page);
+  await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
     await expect(page.getByLabel("Salida del programa")).toHaveText(
       "posterior",
     );
-    await page.getByRole("tab", { name: "Lección", exact: true }).click();
+    await edit(page);
     await page.getByRole("button", { name: /2\. Un valor que cambia/ }).click();
-    await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+    await tutor(page);
     await expect(
       page.getByText("Tu primera variable", { exact: true }),
     ).toBeVisible();
@@ -140,7 +162,7 @@ test("streams one immutable capture, keeps its exercise identity, and stops the 
       lastResult: null,
       exercise: { id: "saludo" },
     });
-    await page.getByRole("button", { name: "Detener", exact: true }).click();
+    await page.getByRole("button", { name: "Detener respuesta", exact: true }).click();
     await expect(page.getByText(/Respuesta interrumpida/)).toBeVisible();
     await expect.poll(() => fixture.closed).toBe(1);
     await expect(
@@ -181,6 +203,7 @@ for (const [name, metadata, expected] of [
     page,
   }) => {
     const requests = await setup(page, metadata);
+    await tutor(page);
     await page.getByLabel("Mensaje al tutor").fill("Una pista");
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect(
@@ -188,7 +211,9 @@ for (const [name, metadata, expected] of [
     ).toBeVisible();
     expect(requests[0].max_tokens).toBe(expected);
     const oversized = "# " + "x".repeat(17000);
+    await edit(page);
     await page.getByLabel("Código Python").fill(oversized);
+    await tutor(page);
     await page.getByLabel("Mensaje al tutor").fill("Explica");
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText(
@@ -203,7 +228,9 @@ test("explains when fixed topic content cannot fit the small window", async ({
   page,
 }) => {
   const requests = await setup(page, { ...model, context_length: 3000 });
+  await edit(page);
   await page.getByLabel("Código Python").fill("");
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Ayuda");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
@@ -217,6 +244,7 @@ for (const finish of ["length", null])
     page,
   }) => {
     await setup(page, model, "Texto parcial", finish);
+    await tutor(page);
     await page.getByLabel("Mensaje al tutor").fill("Ayuda");
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect(
@@ -228,12 +256,13 @@ for (const finish of ["length", null])
     ).toHaveCount(0);
   });
 
-test("leaving the topic cancels and returning never resends", async ({
+test("changing topic retains the originating response without resending", async ({
   page,
 }) => {
   await setup(page);
   const fixture = await streamingOpenRouter(page);
   try {
+    await tutor(page);
     await page.getByLabel("Mensaje al tutor").fill("Ayuda");
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect.poll(() => fixture.responses.length).toBe(1);
@@ -242,12 +271,13 @@ test("leaving the topic cancels and returning never resends", async ({
       page.getByText("Parcial del tema", { exact: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
-    await expect.poll(() => fixture.closed).toBe(1);
+    expect(fixture.closed).toBe(0);
+    fixture.responses[0].end(frame(" terminada") + frame("", "stop"));
     await page.getByRole("button", { name: /01 Valores y variables/ }).click();
     await expect(
-      page.getByText("Parcial del tema", { exact: true }),
+      page.getByText("Parcial del tema terminada", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText(/Respuesta interrumpida/)).toBeVisible();
+    await expect(page.getByText("Respuesta completa", { exact: true })).toBeVisible();
     expect(fixture.requests).toHaveLength(1);
   } finally {
     await fixture.close();
@@ -266,6 +296,7 @@ test("preserves partial text and rejects an HTTP 200 SSE error even if it claims
         `data: ${JSON.stringify({ error: { code: 402, message: "Insufficient credits" }, choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`,
     }),
   );
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Ayuda");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByText("Ayuda parcial", { exact: true })).toBeVisible();
@@ -283,12 +314,15 @@ test("applies the smaller input budget of a modest window", async ({
   page,
 }) => {
   const requests = await setup(page, { ...model, context_length: 8192 });
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Ayuda");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(
     page.getByText("Respuesta completa", { exact: true }),
   ).toBeVisible();
+  await edit(page);
   await page.getByLabel("Código Python").fill("#" + "a".repeat(6500));
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Otra pregunta");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
@@ -304,12 +338,16 @@ test("counts the immutable code behind a previous result as fixed content", asyn
   await expect(
     page.getByRole("button", { name: "Ejecutar", exact: true }),
   ).toBeEnabled();
+  await edit(page);
   await page
     .getByLabel("Código Python")
     .fill("#" + "a".repeat(17000) + '\nprint("resultado")');
+  await edit(page);
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByLabel("Salida del programa")).toHaveText("resultado");
+  await edit(page);
   await page.getByLabel("Código Python").fill("");
+  await tutor(page);
   await page.getByLabel("Mensaje al tutor").fill("Explica");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
