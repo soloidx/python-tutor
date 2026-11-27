@@ -8,6 +8,7 @@ test("a second tab does not erase recently completed learning", async ({ page, c
   await enterCourse(page);
   await enterCourse(other);
 
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre, end="")');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
@@ -58,7 +59,7 @@ test("a stale tab cannot overwrite a newer tutor conversation", async ({ page, c
   await expect(other.getByLabel("Mensaje al tutor")).toHaveValue("Segunda pregunta");
   await other.reload();
   await enterCourse(other);
-  await other.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await other.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(other.getByText("Primera pregunta", { exact: true })).toBeVisible();
 });
 
@@ -68,6 +69,7 @@ test("a stale reset does not erase progress from another tab", async ({ page, co
   await other.goto("/");
   await enterCourse(page);
   await enterCourse(other);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre, end="")');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
@@ -85,7 +87,8 @@ test("a failed reset leaves the last durable learning intact", async ({ page }) 
   await page.getByLabel("Mensaje al tutor").fill("Conversación conservada");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByText("Respuesta completa", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill('nombre = "Ada"\nprint("Hola, " + nombre, end="")');
   await page.getByRole("button", { name: "Ejecutar", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("¡Correcto!");
@@ -102,7 +105,7 @@ test("a failed reset leaves the last durable learning intact", async ({ page }) 
   await page.reload();
   await enterCourse(page);
   await expect(page.getByText("1 / 12 ejercicios", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(page.getByText("Conversación conservada", { exact: true })).toBeVisible();
 });
 
@@ -216,6 +219,7 @@ test("legacy changes can be reviewed and preserved without replacing current lea
   await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toBeVisible();
   await page.getByText("Ver versiones disponibles", { exact: true }).click();
   await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toContainText("python-fundamentos");
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# borrador de sesión");
   await page.getByRole("button", { name: "Conservar ambas versiones", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cursos y rutas de aprendizaje" })).toBeVisible();
@@ -244,6 +248,7 @@ test("failed legacy reconciliation preserves both versions and the session", asy
   const changed = JSON.stringify({ topicId: "valores-variables", completed: [], assessmentResult: null });
   await other.evaluate(({ key, changed }) => localStorage.setItem(key, changed), { key, changed });
   await expect(page.getByRole("region", { name: "Revisar datos de otra versión" })).toBeVisible();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await page.getByLabel("Código Python").fill("# no perder");
   const durable = await page.evaluate(() => localStorage.getItem("python-tutor:learner-store:v1"));
   await page.evaluate(() => {

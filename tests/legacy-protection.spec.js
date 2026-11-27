@@ -41,13 +41,13 @@ test("damaged legacy conversation cannot be masked when backup fails", async ({ 
   await blockRecoveryCopies(page);
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await page.getByLabel("Mensaje al tutor").fill("Pregunta de sesión");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(page.getByText("Respuesta completa", { exact: true })).toHaveCount(2);
   await page.reload();
   await enterCourse(page);
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+  await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
   await expect(page.getByText("Pregunta original", { exact: true })).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: "recuperación parcial" })).toBeVisible();
   await expect(page.getByText("Pregunta de sesión", { exact: true })).toHaveCount(0);
