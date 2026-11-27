@@ -6,6 +6,10 @@ export function validateWalkthrough(value, example) {
   const id = x => typeof x === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(x);
   const distinct = xs => new Set(xs).size === xs.length;
   const line = x => Number.isInteger(x) && x > 0 && x <= example.split('\n').length;
+  if (obj(value) && value.type === 'sequence') {
+    if (!Array.isArray(value.elements) || !value.elements.length || !value.elements.every(e => obj(e) && id(e.id) && text(e.label)) || !distinct(value.elements.map(e => e.id)) || !Array.isArray(value.steps) || value.steps.length !== value.elements.length || !value.steps.every((step, index) => obj(step) && step.element === value.elements[index].id && line(step.line) && text(step.explanation) && (step.output === undefined || text(step.output)))) fail();
+    return value;
+  }
   if (!obj(value) || value.type !== 'decision' || !Array.isArray(value.elements) || value.elements.length !== 3 || !Array.isArray(value.scenarios) || !value.scenarios.length) fail();
   if (!value.elements.every(e => obj(e) && id(e.id) && text(e.label)) || !distinct(value.elements.map(e => e.id)) || !['condition','if','else'].every(role => value.elements.some(e => e.id === role))) fail();
   if (!value.scenarios.every(s => obj(s) && id(s.id) && text(s.label) && obj(s.replacement) && line(s.replacement.line) && text(s.replacement.code) && !s.replacement.code.includes('\n') && Array.isArray(s.steps) && s.steps.length && s.steps.every(step => obj(step) && line(step.line) && value.elements.some(e => e.id === step.element) && text(step.explanation) && (step.output === undefined || text(step.output)))) || !distinct(value.scenarios.map(s => s.id))) fail();

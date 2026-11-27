@@ -3,14 +3,15 @@ import React, { useState } from 'react';
 export default function DecisionWalkthrough({ walkthrough, example, session }) {
   const [position, setPosition] = useState(session.walkthrough || { scenario: 0, step: 0 });
   const change = next => { session.walkthrough = next; setPosition(next); };
-  const scenario = walkthrough.scenarios[position.scenario];
+  const isSequence = walkthrough.type === 'sequence';
+  const scenario = isSequence ? { steps: walkthrough.steps } : walkthrough.scenarios[position.scenario];
   const step = scenario.steps[position.step];
   const lines = example.split('\n');
-  lines[scenario.replacement.line - 1] = scenario.replacement.code;
+  if (scenario.replacement) lines[scenario.replacement.line - 1] = scenario.replacement.code;
   const output = scenario.steps.slice(0, position.step + 1).flatMap(item => item.output ? [item.output] : []).join('\n');
   return <section className="walkthrough" aria-label="Recorrido interactivo">
-    <h3>Decisión</h3>
-    <div className="walkthrough-scenarios" aria-label="Escenarios">{walkthrough.scenarios.map((item, index) => <button type="button" key={item.id} aria-pressed={index === position.scenario} onClick={() => change({ scenario:index, step:0 })}>{item.label}</button>)}</div>
+    <h3>{isSequence ? 'Secuencia' : 'Decisión'}</h3>
+    {!isSequence && <div className="walkthrough-scenarios" aria-label="Escenarios">{walkthrough.scenarios.map((item, index) => <button type="button" key={item.id} aria-pressed={index === position.scenario} onClick={() => change({ scenario:index, step:0 })}>{item.label}</button>)}</div>}
     <div className="walkthrough-layout"><div className="walkthrough-diagram">{walkthrough.elements.map(element => {
       const index = scenario.steps.findIndex(item => item.element === element.id);
       return index < 0 ? <div key={element.id} className="walkthrough-element">{element.label}</div> : <button type="button" key={element.id} className="walkthrough-element" aria-pressed={step.element === element.id} onClick={() => change({ ...position, step:index })}>{element.label}</button>;
