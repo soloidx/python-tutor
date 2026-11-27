@@ -116,6 +116,7 @@ test("keeps the previous complete backup when a mixed update is invalid", async 
   await serveCatalog(context, mixedPublication("choice-backup-1"));
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await expect(
     page.getByRole("button", { name: /2\. Interpretar una asignación/ }),
   ).toBeVisible();
@@ -143,6 +144,7 @@ test("loads a mixed publication and presents a choice exercise", async ({
   await serveCatalog(context, mixedPublication());
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
 
   const practice = page.getByLabel("Espacio de práctica");
   await practice
@@ -170,17 +172,19 @@ test("choice controls support keyboard navigation and announce an accessible res
   await serveCatalog(context, mixedPublication("choice-accessibility"));
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
 
   const lessonTab = page.getByRole("tab", { name: "Lección", exact: true });
-  const tutorTab = page.getByRole("tab", { name: "Tutor", exact: true });
+  const exercisesTab = page.getByRole("tab", { name: /Ejercicios/ });
   await lessonTab.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(tutorTab).toBeFocused();
-  await expect(tutorTab).toHaveAttribute("aria-selected", "true");
+  await expect(exercisesTab).toBeFocused();
+  await expect(exercisesTab).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowLeft");
   await expect(lessonTab).toBeFocused();
   await expect(lessonTab).toHaveAttribute("aria-selected", "true");
 
+  await exercisesTab.click();
   const practice = page.getByLabel("Espacio de práctica");
   await practice
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
@@ -222,6 +226,7 @@ test("checks one choice at a time and keeps approval separate from feedback", as
   await serveCatalog(context, mixedPublication("choice-feedback"));
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   const practice = page.getByLabel("Espacio de práctica");
   await practice
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
@@ -262,6 +267,7 @@ test("checks one choice at a time and keeps approval separate from feedback", as
 
   await page.reload();
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   const reloadedPractice = page.getByLabel("Espacio de práctica");
   await reloadedPractice
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
@@ -295,6 +301,7 @@ test("choice practice remains usable on a narrow screen without Python controls"
   await serveCatalog(context, mixedPublication("choice-mobile"));
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   const practice = page.getByLabel("Espacio de práctica");
   await practice
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
@@ -315,17 +322,17 @@ test("sends an allowlisted choice capture for checked and pending attempts", asy
 }) => {
   await serveCatalog(context, mixedPublication("choice-capture"));
   const requests = await setup(page);
-  await page.getByRole("tab", { name: "Lección", exact: true }).click();
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   const practice = page.getByLabel("Espacio de práctica");
   await practice
     .getByRole("button", { name: /2\. Interpretar una asignación/ })
     .click();
-  await page.getByRole("tab", { name: "Tutor", exact: true }).click();
 
   await practice.getByLabel("Compara edad con 7").check();
   await practice
     .getByRole("button", { name: "Comprobar", exact: true })
     .click();
+  await page.getByRole("button", { name: "Tutor IA" }).click();
   await page.getByLabel("Mensaje al tutor").fill("No entiendo");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(
@@ -353,10 +360,12 @@ test("sends an allowlisted choice capture for checked and pending attempts", asy
   expect(JSON.stringify(checked.capture.exercise)).not.toContain("explanation");
   expect(checked.capture.draft).toBeUndefined();
 
+  await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await practice.getByLabel("Muestra 7 en pantalla").check();
   await expect(practice.locator(".choice-feedback")).toContainText(
     "Elige una opción para comprobar tu respuesta.",
   );
+  await page.getByRole("button", { name: "Tutor IA" }).click();
   await page.getByLabel("Mensaje al tutor").fill("Dame una pista");
   await page.getByRole("button", { name: "Enviar", exact: true }).click();
   await expect(
@@ -388,6 +397,7 @@ test("choice hints and fallback feedback work without a tutor while course draft
   );
   await page.goto("/");
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   const practice = page.getByLabel("Espacio de práctica");
   await practice
     .getByLabel("Código Python")
@@ -417,7 +427,7 @@ test("choice hints and fallback feedback work without a tutor while course draft
   await practice
     .getByRole("button", { name: /1\. Tu primera variable/ })
     .click();
-  await expect(practice.getByLabel("Código Python")).not.toHaveValue(
+  await expect(practice.getByLabel("Código Python")).toHaveValue(
     /Borrador temporal/,
   );
   await practice
@@ -430,6 +440,7 @@ test("choice hints and fallback feedback work without a tutor while course draft
   await expect(practice.getByRole("status")).toContainText("¡Correcto!");
   await page.reload();
   await enterCourse(page);
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await expect(practice.getByLabel("Código Python")).not.toHaveValue(
     'nombre = "Ada"\nprint("Hola, " + nombre)',
   );

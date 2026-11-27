@@ -5,9 +5,11 @@ test('course approvals and resume are shared across paths and isolated from othe
   const path = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Primeros pasos con Python', exact: true }) });
   await expect(path.getByText('Sin iniciar', { exact: true })).toBeVisible();
   await enterCourse(page);
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await page.getByLabel('Código Python').fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('¡Correcto!');
+  await page.getByRole('tab', { name: 'Lección', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Valores y variables', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Siguiente tema', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Expresiones y salida', exact: true })).toBeVisible();
@@ -50,6 +52,7 @@ test('visits and legacy data do not approve exercises; completing a shared cours
   await expect(page.getByRole('button', { name: 'Continuar curso', exact: true })).toBeVisible();
   await expect(page.getByText('Sin iniciar', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Continuar curso', exact: true }).click();
+  await page.getByRole('tab', { name: /Ejercicios/ }).click();
   await page.getByLabel('Código Python').fill('nombre = "Ada"\nprint("Hola, " + nombre)');
   await page.getByRole('button', { name: 'Ejecutar', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('¡Correcto!');
