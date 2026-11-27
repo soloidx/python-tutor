@@ -14,7 +14,7 @@ export default function DecisionWalkthrough({ walkthrough, example, session }) {
   return <section className="walkthrough" aria-label="Recorrido interactivo">
     <h3>{isCollection ? 'Colección' : isDecision ? 'Decisión' : 'Secuencia'}</h3>
     {isDecision && <div className="walkthrough-scenarios" aria-label="Escenarios">{walkthrough.scenarios.map((item, index) => <button type="button" key={item.id} aria-pressed={index === position.scenario} onClick={() => change({ scenario:index, step:0 })}>{item.label}</button>)}</div>}
-    <div className="walkthrough-layout"><div className="walkthrough-diagram">{isCollection ? walkthrough.groups.map(group => <section key={group.id} className="walkthrough-group" aria-label={group.label}><h4>{group.label}</h4>{group.elements.map(element => {
+    <div className="walkthrough-layout"><div className="walkthrough-diagram">{isCollection ? walkthrough.groups.map(group => <section key={group.id} className="walkthrough-group" aria-label={group.label}><h4>{group.label}</h4>{group.elements.filter(element => element.introducedAt === undefined || element.introducedAt <= position.step + 1).map(element => {
       const index = scenario.steps.findIndex(item => item.element === element.id);
       const content = <><span>{element.key}</span><span>{element.value}</span></>;
       return index < 0 ? <div key={element.id} className="walkthrough-element walkthrough-entry">{content}</div> : <button type="button" key={element.id} className="walkthrough-element walkthrough-entry" aria-label={`${element.key}: ${element.value}`} aria-pressed={step.element === element.id} onClick={() => change({ ...position, step:index })}>{content}</button>;

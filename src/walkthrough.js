@@ -7,9 +7,9 @@ export function validateWalkthrough(value, example) {
   const distinct = xs => new Set(xs).size === xs.length;
   const line = x => Number.isInteger(x) && x > 0 && x <= example.split('\n').length;
   if (obj(value) && value.type === 'collection') {
-    if (!Array.isArray(value.groups) || !value.groups.length || !value.groups.every(g => obj(g) && id(g.id) && text(g.label) && Array.isArray(g.elements) && g.elements.length && g.elements.every(e => obj(e) && id(e.id) && text(e.key) && text(e.value))) || !distinct(value.groups.map(g => g.id))) fail();
+    if (!Array.isArray(value.groups) || !value.groups.length || !value.groups.every(g => obj(g) && id(g.id) && text(g.label) && Array.isArray(g.elements) && g.elements.length && g.elements.every(e => obj(e) && id(e.id) && text(e.key) && text(e.value) && (e.introducedAt === undefined || (Number.isInteger(e.introducedAt) && e.introducedAt > 0 && Array.isArray(value.steps) && e.introducedAt <= value.steps.length)))) || !distinct(value.groups.map(g => g.id))) fail();
     const elements = value.groups.flatMap(g => g.elements);
-    if (!distinct(elements.map(e => e.id)) || !value.groups.every(g => distinct(g.elements.map(e => e.key))) || !Array.isArray(value.steps) || !value.steps.length || !value.steps.every(step => obj(step) && elements.some(e => e.id === step.element) && line(step.line) && text(step.explanation) && (step.output === undefined || text(step.output)))) fail();
+    if (!distinct(elements.map(e => e.id)) || !value.groups.every(g => distinct(g.elements.map(e => e.key))) || !Array.isArray(value.steps) || !value.steps.length || !value.steps.every(step => obj(step) && elements.some(e => e.id === step.element && (e.introducedAt === undefined || e.introducedAt <= value.steps.indexOf(step) + 1)) && line(step.line) && text(step.explanation) && (step.output === undefined || text(step.output)))) fail();
     return value;
   }
   if (obj(value) && value.type === 'sequence') {

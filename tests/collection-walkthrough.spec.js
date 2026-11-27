@@ -9,6 +9,9 @@ for (const width of [390, 1280]) test(`collection follows the example at ${width
  await serveCatalog(context,catalog); await page.goto('/'); await enterCourse(page);
  await expect(page.getByRole('heading',{name:'Colección'})).toBeVisible();
  const diagram=page.locator('.walkthrough-diagram');
+ await expect(diagram.getByLabel('Lista').locator('.walkthrough-entry')).toHaveText(['0rojo','1azul']);
+ await expect(diagram.getByLabel('Diccionario').locator('.walkthrough-entry')).toHaveText(['tituloPython','paginas100']);
+ await page.getByRole('button',{name:'Siguiente',exact:true}).click();
  await expect(diagram.getByLabel('Lista').locator('.walkthrough-entry')).toHaveText(['0rojo','1azul','2verde']);
  await expect(diagram.getByLabel('Diccionario').locator('.walkthrough-entry')).toHaveText(['tituloPython','paginas100']);
  await expect(diagram.getByRole('button',{name:'2: verde'})).toHaveAttribute('aria-pressed','true');
@@ -25,7 +28,7 @@ for (const width of [390, 1280]) test(`collection follows the example at ${width
  await diagram.getByRole('button',{name:'titulo: Python'}).click();
  await expect(page.getByLabel('Salida del recorrido')).toHaveText('rojo\nPython');
 });
-for (const [name, mutate] of [['empty group',w=>w.groups[0].elements=[]],['duplicate element',w=>w.groups[1].elements[0].id='rojo'],['unknown reference',w=>w.steps[0].element='missing'],['invalid line',w=>w.steps[0].line=999]]) test(`invalid collection ${name} preserves the saved publication`, async ({page,context}) => {
+for (const [name, mutate] of [['empty group',w=>w.groups[0].elements=[]],['duplicate element',w=>w.groups[1].elements[0].id='rojo'],['unknown reference',w=>w.steps[0].element='missing'],['invalid line',w=>w.steps[0].line=999],['invalid introduction',w=>w.groups[0].elements[2].introducedAt=999],['reference before introduction',w=>w.steps[0].element='verde']]) test(`invalid collection ${name} preserves the saved publication`, async ({page,context}) => {
  await page.goto('/'); await expect(page.getByRole('button',{name:'Explorar Primeros pasos con Python'})).toBeVisible();
  const old=await page.evaluate(()=>localStorage.getItem('python-tutor:catalog:v1'));
  const next=publication('invalid-collection'); updateCourse(next,'python-fundamentos',course=>{course.topics[0].walkthrough=structuredClone(collection);mutate(course.topics[0].walkthrough);});
