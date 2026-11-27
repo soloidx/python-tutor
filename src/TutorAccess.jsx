@@ -17,13 +17,15 @@ export function TutorPanel({
   topicId,
   topicTitle,
   capture,
+  draftSession,
+  closeLabel = "Cerrar tutor",
 }) {
   const scope = { courseId, topicId };
   const state = useSyncExternalStore(
     conversation.subscribe,
     conversation.getSnapshot,
   );
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(draftSession?.tutorDraft || "");
   const [copied, setCopied] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const deleteButton = useRef(null);
@@ -56,8 +58,8 @@ export function TutorPanel({
       onAccessIssue: access.reportIssue,
     });
     const submitted = message;
-    if (conversation.getSnapshot().active) setMessage("");
-    if (!(await pending)) setMessage((current) => current || submitted);
+    if (conversation.getSnapshot().active) { setMessage(""); if (draftSession) draftSession.tutorDraft = ""; }
+    if (!(await pending)) setMessage((current) => { const value = current || submitted; if (draftSession) draftSession.tutorDraft = value; return value; });
   }
   const ready = access.status === "ready";
   const checking = access.status === "checking";
@@ -74,7 +76,7 @@ export function TutorPanel({
             Configuración
           </button>
           {onClose && (
-            <button className="secondary" onClick={onClose} aria-label="Cerrar tutor">×</button>
+            <button className="secondary" onClick={onClose} aria-label={closeLabel}>×</button>
           )}
         </div>
       </div>
@@ -154,7 +156,7 @@ export function TutorPanel({
             .map((exchange) => (
               <article key={exchange.id} className="tutor-exchange">
                 <p>
-                  <strong>{exchange.capture.exercise.title}</strong>
+                  <strong>{exchange.capture.exercise?.title || exchange.capture.topic.title}</strong>
                 </p>
                 <p className="tutor-question">{exchange.message}</p>
                 {exchange.attempts.map((attempt) => (
@@ -215,7 +217,7 @@ export function TutorPanel({
           <textarea
             disabled={!ready}
             value={message}
-            onChange={(event) => setMessage(event.target.value)}
+            onChange={(event) => { setMessage(event.target.value); if (draftSession) draftSession.tutorDraft = event.target.value; }}
             onKeyDown={(event) => {
               if (
                 event.key === "Enter" &&
@@ -233,7 +235,7 @@ export function TutorPanel({
         </button>
         {busy && (
           <button className="secondary" onClick={conversation.cancel}>
-            Detener
+            {draftSession ? "Detener respuesta" : "Detener"}
           </button>
         )}
         </div>
@@ -506,7 +508,7 @@ export function TutorSettings({ access, onClose, onSaved }) {
           </button>
         )}
         <button className="secondary" onClick={onClose}>
-          Cancelar
+          Volver
         </button>
         <button
           className="primary"

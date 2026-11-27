@@ -59,13 +59,14 @@ function validCapture(capture, courseId, topicId) {
     !capture.topic.explanation.every(text) ||
     !text(capture.topic.example) ||
     !text(capture.topic.takeaway) ||
-    !record(capture.exercise) ||
+    (capture.exercise !== undefined && (!record(capture.exercise) ||
     !nonEmptyText(capture.exercise.id) ||
     !nonEmptyText(capture.exercise.title) ||
-    !nonEmptyText(capture.exercise.prompt)
+    !nonEmptyText(capture.exercise.prompt)))
   )
     return false;
 
+  if (capture.exercise === undefined) return hasOnly(capture, ["course", "topic"]);
   const type = capture.exercise.type;
   if (type === undefined || type === "code") {
     if (
@@ -177,8 +178,6 @@ function validExchange(item, courseId) {
     typeof item.message === "string" &&
     item.capture?.topic?.id === item.topicId &&
     validCapture(item.capture, courseId, item.topicId) &&
-    typeof item.capture?.exercise?.id === "string" &&
-    typeof item.capture?.exercise?.title === "string" &&
     Array.isArray(item.attempts) &&
     item.attempts.length > 0 &&
     item.attempts.every(validAttempt)

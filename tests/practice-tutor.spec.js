@@ -107,6 +107,7 @@ for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 
     await page.setViewportSize(viewport);
     await serveCatalog(context, tutorPublication());
     const requests = await setup(page, model, 'Respuesta parcial', 'length');
+    if (viewport.width < 821) await page.getByRole('button', { name: 'Cerrar Tutor', exact: true }).click();
     await practice(page).click();
     await rail(page).getByRole('button', { name: /Tu primera variable/ }).click();
     await openTutor(page);
@@ -246,6 +247,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await serveCatalog(context, tutorPublication());
     await setup(page);
+    if (width === 390) await page.getByRole('button', { name: 'Cerrar Tutor', exact: true }).click();
     await practice(page).click();
     await rail(page).getByRole('button', { name: /Tu primera variable/ }).click();
     const trigger = page.getByRole('button', { name: /^(Abrir|Ocultar) tutor$/ });

@@ -2036,3 +2036,13 @@ textarea:focus-visible {
 
 .topic-workspace { display: grid; gap: 20px; }
 .topic-workspace > [hidden] { display: none; }
+
+.tutor-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 20; min-height: 48px; padding: 12px 20px; border: 0; border-radius: 28px; background: #b91c1c; color: white; font-weight: 700; box-shadow: 0 8px 25px #17203340; cursor: pointer; }
+.topic-tutor-dock { position: fixed; inset: 0 0 0 auto; width: min(440px, 100vw); height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; box-shadow: 0 0 32px #17203333; overflow: hidden; }
+.topic-tutor-dock::backdrop { background: #17203366; }
+.topic-tutor-dock[open], .topic-tutor-dock .tutor-panel { display: flex; flex-direction: column; }
+.topic-tutor-dock .tutor-panel { height: 100%; min-height: 0; }
+.topic-tutor-dock .panel-heading { flex-shrink: 0; padding: 16px; }
+.topic-tutor-dock .tutor-panel-actions button { min-width: 44px; min-height: 44px; }
+.topic-tutor-dock .tutor-body { flex: 1; height: auto; min-height: 0; max-height: none; }
+@media (max-width: 700px) { .topic-tutor-dock { width: 100vw; } }

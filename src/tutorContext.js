@@ -12,6 +12,10 @@ export function captureContext({
   selectionResult = null,
   feedback = null,
 }) {
+  if (!exercise) return {
+    course: { id: course.id, title: course.title },
+    topic: { id: topic.id, title: topic.title, summary: topic.summary, explanation: [...topic.explanation], example: topic.example, takeaway: topic.takeaway },
+  };
   const capturedExercise = {
     id: exercise.id,
     title: exercise.title,

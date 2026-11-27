@@ -113,6 +113,7 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
   );
   const access = useTutorAccess({ beforeApply: conversation.cancel });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tutorOpen, setTutorOpen] = useState(false);
   const [practiceRecovery] = useState(() => loadPractice(publication));
   const [practiceRound, setPracticeRound] = useState(practiceRecovery.round);
   const [practiceStorageAvailable, setPracticeStorageAvailable] = useState(
@@ -175,7 +176,6 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
   useEffect(() => {
     history.replaceState(rootLocation, "");
     const onBack = (event) => {
-      conversation.cancel();
       setResumeNotice("");
       setLocation(event.state?.screen ? event.state : rootLocation);
     };
@@ -187,14 +187,13 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
       focusTutorAfterSettings.current = false;
       if (location.screen === "practice")
         document.querySelector(".practice-tutor textarea")?.focus();
-      else document.getElementById("tutor-tab")?.focus();
+      else document.querySelector(".topic-tutor-dock textarea")?.focus();
     }
   }, [settingsOpen]);
   function navigate(next) {
     if (next.screen === "practice")
       setPracticeRound((round) => round || createPracticeRound(publication));
     setConfirmReset(false);
-    conversation.cancel();
     setResumeNotice("");
     const value = { ...location, ...next };
     if (value.screen === "paths") Object.assign(value, rootLocation);
@@ -890,6 +889,8 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
                   })()}
                   learningTab={learningTab}
                   setLearningTab={setLearningTab}
+                  tutorOpen={tutorOpen}
+                  setTutorOpen={setTutorOpen}
                   onConfigure={() => setSettingsOpen(true)}
                 />
                 {course.assessment && (
@@ -992,7 +993,7 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
           onSaved={() => {
             focusTutorAfterSettings.current = true;
             setSettingsOpen(false);
-            setLearningTab("tutor");
+            if (view === "learn") setTutorOpen(true);
             if (course && view !== "learn" && view !== "practice") startCourse(course);
           }}
         />
@@ -1013,12 +1014,12 @@ function LearningWorkspace({
   setLearningTab,
   onConfigure,
   personalExecutionFor,
+  tutorOpen,
+  setTutorOpen,
 }) {
-  useEffect(() => () => conversation.cancel(), [conversation]);
   const [exerciseIndex, setExerciseIndexState] = useState(session.exerciseIndex);
   const [tab, setTabState] = useState(session.tab);
   const [, refreshExercise] = useState(0);
-  const [tutorOpen, setTutorOpen] = useState(false);
   const previousLearningTab = useRef(learningTab);
   const setTab = (value) => { session.tab = value; setTabState(value); setLearningTab(value); };
   const setExerciseIndex = (value) => { session.exerciseIndex = value; setExerciseIndexState(value); };
@@ -1159,34 +1160,49 @@ function LearningWorkspace({
             </div>
           </section>
           <div role="tabpanel" tabIndex={0} id="exercises-panel" aria-labelledby="exercises-tab" hidden={tab !== "exercises"}>{content}</div>
-          {/* Temporary entry point until the dedicated Tutor panel is integrated. */}
-          <button className="secondary" onClick={() => setTutorOpen(!tutorOpen)} aria-expanded={tutorOpen} aria-controls="tutor-panel">Tutor</button>
-          <section className="lesson-panel panel" hidden={!tutorOpen}>
-            <div
-              id="tutor-panel"
-            >
-              <TutorPanel
-                onConfigure={onConfigure}
-                access={access}
-                conversation={conversation}
-                courseId={course.id}
-                topicId={topic.id}
-                topicTitle={topic.title}
-                capture={() =>
-                  captureContext({
-                    course,
-                    topic,
-                    exercise,
-                    ...context,
-                  })
-                }
-              />
-            </div>
-          </section>
+          <button className="tutor-launcher" onClick={() => setTutorOpen(true)} aria-expanded={tutorOpen} aria-controls="tutor-panel">Tutor IA</button>
+          <TopicTutor open={tutorOpen} onClose={() => setTutorOpen(false)}>
+            <TutorPanel
+              onClose={() => setTutorOpen(false)}
+              onConfigure={onConfigure}
+              access={access}
+              conversation={conversation}
+              courseId={course.id}
+              topicId={topic.id}
+              topicTitle={topic.title}
+              closeLabel="Cerrar Tutor"
+              draftSession={session}
+              capture={() => captureContext({ course, topic, ...(tab === "lesson" ? {} : { exercise, ...context }) })}
+            />
+          </TopicTutor>
         </div>
       )}
     </ExerciseWorkspace>
   );
+}
+
+function TopicTutor({ open, onClose, children }) {
+  const dialog = useRef(null);
+  useEffect(() => {
+    const node = dialog.current;
+    if (open) {
+      if (matchMedia("(max-width: 700px)").matches) node.showModal();
+      else node.show();
+      node.querySelector('[aria-label="Cerrar Tutor"]')?.focus();
+    } else if (node.open) {
+      node.close();
+      document.querySelector('.tutor-launcher')?.focus();
+    }
+  }, [open]);
+  return <dialog ref={dialog} id="tutor-panel" className="topic-tutor-dock" aria-label="Tutor IA" onKeyDown={(event) => {
+    if (event.key === "Escape") { event.preventDefault(); onClose(); }
+    if (event.key === "Tab" && matchMedia("(max-width: 700px)").matches) {
+      const controls = [...dialog.current.querySelectorAll('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter((element) => element.getClientRects().length);
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+  }} onCancel={(event) => { event.preventDefault(); onClose(); }}>{children}</dialog>;
 }
 
 function FinalAssessment({ course, result, onResult, onBack }) {
