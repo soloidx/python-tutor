@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Tutor · Prototipo del editor de recorridos</title>
+<style>
+:root { color-scheme: light; font: 14px/1.55 Inter, system-ui, sans-serif; color: #172033; background: #f8fafc; --border: #e2e8f0; --muted: #475569; --red: #b91c1c; --rose: #fff1f2; --mono: "JetBrains Mono", ui-monospace, monospace; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+:focus-visible { outline: 3px solid #fb7185; outline-offset: 3px; }
+h1, h2, h3, p, figure { margin: 0; }
+h1, h2, h3 { line-height: 1.25; letter-spacing: -.025em; }
+p { color: var(--muted); }
+code, pre { font-family: var(--mono); font-variant-ligatures: none; }
+[hidden] { display: none !important; }
+.topbar { background: white; border-bottom: 1px solid var(--border); }
+.topbar-inner { max-width: 1440px; margin: auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px clamp(16px, 4vw, 48px); }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 750; letter-spacing: -.04em; }
+.logo { display: grid; place-items: center; width: 34px; height: 34px; background: #dc2626; color: white; border-radius: 9px; font: 600 13px var(--mono); }
+.modes { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: #f1f5f9; border-radius: 10px; }
+.modes button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 7px; font-weight: 600; padding: 7px 13px; }
+.modes [aria-pressed="true"] { border-color: var(--border); background: white; color: var(--red); box-shadow: 0 1px 2px #0f172a0b; }
+main { max-width: 1440px; margin: auto; padding: 28px clamp(14px, 4vw, 48px) 48px; }
+.course-head { margin-bottom: 24px; }
+.eyebrow { font-size: 11px; color: var(--red); font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+h1 { font-size: clamp(27px, 4vw, 36px); margin: 6px 0; }
+.course-head > p:last-child { max-width: 66ch; }
+.layout { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 20px; align-items: start; }
+.card { background: white; border: 1px solid var(--border); border-radius: 13px; box-shadow: 0 1px 2px #0f172a05; min-width: 0; }
+.course-nav { padding: 14px; }
+.course-nav h2 { font-size: 14px; margin: 1px 5px 10px; }
+.course-nav button { display: flex; align-items: center; gap: 9px; text-align: left; width: 100%; border: 1px solid transparent; background: transparent; color: var(--muted); padding: 9px 8px; border-radius: 8px; font-weight: 550; }
+.course-nav button + button { margin-top: 3px; }
+.course-nav [aria-current="page"] { border-color: #fecdd3; color: var(--red); background: var(--rose); }
+.course-nav span { font: 500 11px var(--mono); }
+.workspace { display: grid; gap: 16px; min-width: 0; }
+.workspace.author { grid-template-columns: minmax(290px, .65fr) minmax(0, 1.35fr); align-items: start; }
+.lesson, .editor { padding: clamp(14px, 2vw, 24px); }
+.lesson-head { margin-bottom: 16px; }
+.lesson-head h2 { margin: 4px 0; font-size: 24px; }
+.walkthrough { border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; padding: 13px; container-type: inline-size; }
+.walkthrough figcaption { font-weight: 700; font-size: 15px; }
+.examples, .controls, .editor-controls, .step-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.examples { margin-top: 9px; }
+.btn, .example { border: 1px solid var(--border); background: white; border-radius: 8px; color: #334155; min-height: 36px; padding: 6px 10px; font-weight: 600; }
+.btn:not(:disabled):hover, .example:hover { background: var(--rose); border-color: #fecdd3; }
+.btn.primary { color: white; background: #b91c1c; border-color: #b91c1c; }
+.btn.primary:hover { background: #991b1b; border-color: #991b1b; }
+.example[aria-pressed="true"] { color: var(--red); background: var(--rose); border-color: #fda4af; }
+.trace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin: 12px 0; align-items: start; }
+.trace h3 { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.diagram, .codebox { min-height: 130px; padding: 10px; background: white; border: 1px solid var(--border); border-radius: 8px; }
+.diagram { display: grid; gap: 8px; align-content: center; }
+.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.nodes { display: flex; flex-wrap: wrap; gap: 6px; }
+.node { display: grid; gap: 3px; align-content: center; text-align: center; padding: 7px 6px; border: 1px solid #cbd5e1; border-radius: 7px; min-width: 0; overflow-wrap: anywhere; color: #334155; background: white; }
+button.node { min-height: 42px; }
+.node small { font-size: 11px; }
+.node.active { border-color: #f87171; background: var(--rose); color: #991b1b; box-shadow: inset 0 -2px #fda4af; }
+.connector { text-align: center; color: #64748b; line-height: .75; }
+.sequence-arrow { align-self: center; color: #64748b; }
+.codebox { padding: 7px 0; overflow-x: auto; }
+.code-line { display: flex; min-height: 22px; min-width: max-content; color: #334155; font-size: 11.5px; border-left: 2px solid transparent; padding: 2px 7px 2px 3px; }
+.code-line span { color: #64748b; width: 23px; text-align: center; }
+.code-line code { white-space: pre; }
+.code-line.active { border-left-color: #dc2626; color: #991b1b; background: var(--rose); }
+.state { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 8px; margin-bottom: 12px; }
+.state > div { padding: 8px; border: 1px solid var(--border); border-radius: 7px; background: white; min-width: 0; }
+.state strong { display: block; font-size: 11px; margin-bottom: 2px; }
+.state pre { margin: 0; color: #334155; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.controls output { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding-inline: 4px; }
+.takeaway { color: #854d0e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 9px 12px; margin-top: 14px; font-size: 12px; }
+.editor h2 { font-size: 20px; margin-bottom: 5px; }
+.editor h3 { font-size: 14px; margin: 14px 0 6px; }
+.editor > p { font-size: 12px; }
+.field { display: grid; gap: 4px; margin-top: 9px; }
+.field label { font-weight: 600; font-size: 12px; }
+.field input, .field select { min-width: 0; width: 100%; border: 1px solid #cbd5e1; background: white; color: #172033; border-radius: 7px; padding: 6px 8px; }
+.step-actions { margin-top: 8px; }
+.editor-controls { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 12px; }
+details { margin-top: 8px; }
+summary { color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 650; }
+.json { overflow: auto; max-height: 200px; padding: 8px; margin-bottom: 0; font-size: 11px; background: #f8fafc; border: 1px solid var(--border); border-radius: 7px; }
+.filepath { display: block; margin-top: 9px; overflow-wrap: anywhere; color: var(--muted); font-size: 11px; }
+
+.lesson.narrow { width: min(100%, 390px); justify-self: center; }
+.lesson-head .btn { margin-top: 8px; }
+.field + .step-actions { margin-bottom: 8px; }
+.diagram h3 { margin: 0 0 4px; }
+#template-name { font-weight: 650; }
+.guide { margin-top: 10px; font-size: 13px; }
+@container (max-width: 500px) { .trace { grid-template-columns: minmax(0, 1fr); } .diagram, .codebox { min-height: 0; } }
+@media (max-width: 1050px) { .workspace.author { grid-template-columns: 1fr; } }
+@media (max-width: 690px) { .layout { grid-template-columns: 1fr; } .course-nav { display: flex; flex-wrap: wrap; gap: 4px; } .course-nav h2 { width: 100%; } .course-nav button { width: auto; } .course-nav button + button { margin: 0; } }
+@media (max-width: 385px) { .state { grid-template-columns: 1fr; } .controls .btn { padding-inline: 7px; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="logo" aria-hidden="true">&gt;_</span> Python Tutor</div>
+    <nav class="modes" aria-label="Modo del prototipo">
+      <button type="button" data-mode="author" aria-pressed="true">Editor de recorridos</button>
+      <button type="button" data-mode="student" aria-pressed="false">Vista estudiante</button>
+    </nav>
+  </div>
+</header>
+<main>
+  <div class="course-head">
+    <h1>Prototipo del editor de recorridos</h1>
+    <p>Prueba si Decisión, Secuencia y Colección pueden compartir el editor de pasos. Los cambios viven en esta pestaña hasta recargar. Exportar descarga una copia del borrador.</p>
+  </div>
+  <div class="layout">
+    <nav class="course-nav card" aria-label="Temas de Python Fundamentos">
+      <h2>Python Fundamentos</h2>
+      <div id="lesson-links" style="display: contents"></div>
+    </nav>
+    <div class="workspace" id="workspace">
+      <section class="editor card" id="editor" aria-labelledby="editor-title" hidden>
+        <h2 id="editor-title">Editar recorrido</h2>
+        <p id="template-name"></p>
+        <div class="step-actions">
+          <button class="btn" type="button" id="new-draft">Empezar desde plantilla</button>
+          <button class="btn" type="button" id="reset-draft">Restaurar piloto</button>
+        </div>
+        <code class="filepath" id="filepath"></code>
+        <div class="field"><label for="visual-title">Título del recorrido</label><input id="visual-title" required></div>
+        <details id="diagram-editor" open>
+          <summary>Editar elementos del diagrama</summary>
+          <div class="field"><label for="author-node">Elemento del diagrama</label><select id="author-node"></select></div>
+          <div class="field"><label for="node-label">Etiqueta</label><input id="node-label"></div>
+          <div class="field"><label for="node-detail">Detalle</label><input id="node-detail"></div>
+          <div class="field" id="node-group-field"><label for="node-group">Grupo</label><select id="node-group"><option>Lista</option><option>Diccionario</option></select></div>
+          <div class="step-actions">
+            <button class="btn" type="button" id="add-node">Añadir elemento</button>
+            <button class="btn" type="button" id="node-earlier">Mover elemento antes</button>
+            <button class="btn" type="button" id="node-later">Mover elemento después</button>
+          </div>
+        </details>
+        <h3>Escenario</h3>
+        <div class="field"><label for="author-scenario">Escenario activo</label><select id="author-scenario"></select></div>
+        <div class="field"><label for="scenario-label">Nombre del escenario</label><input id="scenario-label"></div>
+        <div id="scenario-replacement">
+          <div class="field"><label for="scenario-line">Línea de Python que cambia</label><select id="scenario-line"></select></div>
+          <div class="field"><label for="scenario-code">Contenido de esa línea</label><input id="scenario-code"></div>
+          <div class="step-actions">
+            <button class="btn" type="button" id="copy-scenario">Duplicar escenario</button>
+            <button class="btn" type="button" id="delete-scenario">Eliminar escenario</button>
+          </div>
+        </div>
+        <h3>Pasos</h3>
+        <div class="field"><label for="author-step">Paso seleccionado</label><select id="author-step"></select></div>
+        <div class="step-actions">
+          <button class="btn" type="button" id="move-up">Subir</button>
+          <button class="btn" type="button" id="move-down">Bajar</button>
+          <button class="btn" type="button" id="add-step">Añadir paso</button>
+          <button class="btn" type="button" id="delete-step">Eliminar</button>
+        </div>
+        <div class="field"><label for="step-line">Línea de Python</label><select id="step-line"></select></div>
+        <div class="field"><label for="step-focus">Elemento resaltado</label><select id="step-focus"></select></div>
+        <div class="field"><label for="step-note">Qué ocurre en este paso</label><input id="step-note"></div>
+        <div class="field"><label for="step-output">Línea que se añade a la salida</label><input id="step-output"></div>
+        <div class="editor-controls">
+          <button class="btn primary" type="button" id="download">Exportar JSON</button>
+        </div>
+        <details><summary>Ver JSON del recorrido</summary><pre class="json" id="json"></pre></details>
+      </section>
+      <article class="lesson card" aria-labelledby="lesson-title">
+        <div class="lesson-head">
+          <p class="eyebrow" id="lesson-label">Lección</p>
+          <h2 id="lesson-title"></h2>
+          <p id="lesson-summary"></p>
+          <button class="btn" type="button" id="narrow" aria-pressed="false">Vista móvil</button>
+        </div>
+        <figure class="walkthrough" aria-labelledby="visual-caption">
+          <figcaption id="visual-caption"></figcaption>
+          <div id="examples" class="examples" aria-label="Ejemplos de entrada"></div>
+          <p class="guide" id="guide"></p>
+          <div class="examples" id="guide-actions" aria-label="Pruebas guiadas"></div>
+          <div class="trace">
+            <section><h3>Diagrama</h3><div class="diagram" id="diagram"></div></section>
+            <section><h3>Código Python</h3><div class="codebox" id="code"></div></section>
+          </div>
+          <div class="state" aria-live="polite" aria-atomic="true">
+            <div><strong>Qué ocurre</strong><p id="note"></p></div>
+            <div><strong>Salida acumulada</strong><pre id="console"></pre></div>
+          </div>
+          <div class="controls">
+            <button class="btn" id="previous" type="button">Anterior</button>
+            <output id="counter"></output>
+            <button class="btn primary" id="next" type="button">Siguiente</button>
+            <button class="btn" id="reset" type="button">Reiniciar</button>
+          </div>
+        </figure>
+        <p class="takeaway" id="takeaway"></p>
+      </article>
+    </div>
+  </div>
+</main>
+<script>
+const lessons = [
+  {
+    id: "condicionales",
+    title: "Condicionales",
+    summary: "Haz que tu programa tome decisiones.",
+    takeaway: "= asigna; == compara. La sangría indica qué instrucciones pertenecen a cada bloque.",
+    code: ["temperatura = 25", "if temperatura >= 24:", "    print(\"Hace calor\")", "else:", "    print(\"Hace fresco\")"],
+    visual: {
+      type: "decision", title: "Qué camino sigue el programa",
+      nodes: [
+        { id: "condicion", label: "temperatura >= 24" },
+        { id: "if", label: "if", detail: "Verdadero" },
+        { id: "else", label: "else", detail: "Falso" }
+      ],
+      scenarios: [25, 24, 23].map((value) => ({
+        id: `temperatura-${value}`, label: `Temperatura ${value}`,
+        replacement: { line: 1, text: `temperatura = ${value}` },
+        steps: [
+          { line: 2, focus: "condicion", note: `La condición ${value} >= 24 es ${value >= 24 ? "verdadera" : "falsa"}.` },
+          { line: value >= 24 ? 3 : 4, focus: value >= 24 ? "if" : "else", note: `El programa entra en el bloque ${value >= 24 ? "if" : "else"}.` },
+          { line: value >= 24 ? 3 : 5, focus: value >= 24 ? "if" : "else", note: "Se ejecuta print().", output: value >= 24 ? "Hace calor" : "Hace fresco" }
+        ]
+      }))
+    }
+  },
+  {
+    id: "bucles",
+    title: "Bucles",
+    summary: "Repite instrucciones sin repetir tu código.",
+    takeaway: "Usa cuatro espacios dentro del bucle. Si un while no termina, pulsa Detener ejecución y revisa cómo cambia su condición.",
+    code: ["for paso in range(1, 4):", "    print(\"Paso\", paso)", "print(\"Listo\")"],
+    visual: {
+      type: "sequence", title: "Cada vuelta del bucle",
+      nodes: [
+        { id: "rango", label: "range(1, 4)" },
+        { id: "paso-1", label: "paso = 1" },
+        { id: "paso-2", label: "paso = 2" },
+        { id: "paso-3", label: "paso = 3" },
+        { id: "fin", label: "Fin del bucle" }
+      ],
+      scenarios: [{
+        id: "rango", label: "Desde 1 hasta 3", steps: [
+          { line: 1, focus: "rango", note: "range(1, 4) produce 1, 2 y 3." },
+          ...[1, 2, 3].map((value) => ({
+            line: 2, focus: `paso-${value}`, note: `En esta vuelta, paso vale ${value}.`, output: `Paso ${value}`
+          })),
+          { line: 3, focus: "fin", note: "El bucle terminó. Se ejecuta la línea de fuera.", output: "Listo" }
+        ]
+      }]
+    }
+  },
+  {
+    id: "listas-diccionarios",
+    title: "Listas y diccionarios",
+    summary: "Organiza varios datos en una sola colección.",
+    takeaway: "Las listas usan posiciones desde 0. Los diccionarios usan claves. Un índice o una clave inexistente produce un error.",
+    code: ["colores = [\"rojo\", \"azul\"]", "colores.append(\"verde\")", "print(colores[0])", "", "libro = {\"titulo\": \"Python\", \"paginas\": 100}", "print(libro[\"titulo\"])"],
+    visual: {
+      type: "collection", title: "Elige un índice o una clave",
+      nodes: [
+        { id: "indice-0", label: "0", detail: '"rojo"', group: "Lista" },
+        { id: "indice-1", label: "1", detail: '"azul"', group: "Lista" },
+        { id: "indice-2", label: "2", detail: '"verde"', group: "Lista" },
+        { id: "titulo", label: "titulo", detail: '"Python"', group: "Diccionario" },
+        { id: "paginas", label: "paginas", detail: "100", group: "Diccionario" }
+      ],
+      scenarios: [{
+        id: "acceso", label: "Añadir y consultar valores", steps: [
+          { line: 2, focus: "indice-2", note: 'append("verde") añade el valor al final de la lista, en el índice 2.' },
+          { line: 3, focus: "indice-0", note: "El índice 0 devuelve el primer color.", output: "rojo" },
+          { line: 6, focus: "titulo", note: 'La clave "titulo" devuelve el nombre del libro.', output: "Python" }
+        ]
+      }]
+    }
+  }
+];
+
+function readStep(lesson, scenarioIndex, stepIndex) {
+  const scenario = lesson.visual.scenarios[scenarioIndex];
+  return {
+    scenario,
+    steps: scenario.steps,
+    current: scenario.steps[stepIndex],
+    output: scenario.steps.slice(0, stepIndex + 1).map((step) => step.output).filter(Boolean).join("\n"),
+    code: lesson.code.map((line, index) => scenario.replacement?.line === index + 1 ? scenario.replacement.text : line)
+  };
+}
+
+const pilot = structuredClone(lessons);
+
+function startFromTemplate(visual) {
+  const draft = structuredClone(visual);
+  draft.title = "Nuevo recorrido";
+  if (draft.type === "sequence") draft.nodes = draft.nodes.slice(0, 1);
+  if (draft.type === "collection") draft.nodes = draft.nodes.filter((node) => ["indice-0", "titulo"].includes(node.id));
+  const scenario = draft.scenarios[0];
+  draft.scenarios = [{
+    ...scenario,
+    id: "escenario-1",
+    label: "Escenario 1",
+    steps: [{ line: 1, focus: draft.nodes[0].id, note: "Describe el primer paso." }]
+  }];
+  return draft;
+}
+</script>
+<script>
+const templateNames = { decision: "Decisión", sequence: "Secuencia", collection: "Colección" };
+const guided = {
+  condicionales: {
+    text: "Compara el bloque que se ejecuta con 25, 24 y 23. En cada caso, prueba el salto a la rama activa.",
+    actions: []
+  },
+  bucles: {
+    text: "Compara la segunda vuelta con el final. La salida conserva las vueltas anteriores.",
+    actions: [["Segunda vuelta", "paso-2"], ["Ir al final", "fin"]]
+  },
+  "listas-diccionarios": {
+    text: "Compara el índice añadido, la lectura del primer color y la lectura del título.",
+    actions: [["Añadir verde", "indice-2"], ["Leer índice 0", "indice-0"], ["Leer título", "titulo"]]
+  }
+};
+
+const byId = (id) => document.getElementById(id);
+const make = (tag, className, content) => {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (content !== undefined) element.textContent = content;
+  return element;
+};
+const state = { lesson: 0, scenario: 0, step: 0, mode: "author", node: null };
+const getLesson = () => lessons[state.lesson];
+const getStep = () => readStep(getLesson(), state.scenario, state.step);
+const fileName = () => `${getLesson().id}.json`;
+const json = () => JSON.stringify(getLesson().visual, null, 2) + "\n";
+const option = (label, value) => new Option(label, value);
+
+function setStep(index, fromPreview) {
+  state.step = index;
+  renderPreview();
+  if (state.mode === "author") renderEditor();
+  if (fromPreview) {
+    const active = byId("diagram").querySelector("button.active");
+    if (active) active.focus();
+  }
+}
+
+function setScenario(index) {
+  state.scenario = index;
+  state.step = 0;
+  renderPreview();
+  renderEditor();
+}
+
+const lessonButtons = lessons.map((lesson, index) => {
+  const button = make("button");
+  button.type = "button";
+  button.textContent = lesson.title;
+  button.onclick = () => {
+    state.lesson = index;
+    state.scenario = 0;
+    state.step = 0;
+    state.node = null;
+    render();
+  };
+  return button;
+});
+byId("lesson-links").append(...lessonButtons);
+
+function drawNode(node, active, steps, interactive) {
+  const stepIndex = steps.findIndex((step) => step.focus === node.id);
+  const clickable = interactive && stepIndex >= 0;
+  const selected = node.id === active;
+  const tile = make(clickable ? "button" : "div", selected ? "node active" : "node");
+  tile.append(make("code", "", node.label));
+  if (node.detail) tile.append(make("small", "", node.detail));
+  if (clickable) {
+    tile.type = "button";
+    tile.setAttribute("aria-pressed", String(selected));
+    tile.onclick = () => setStep(stepIndex, true);
+  } else if (selected) {
+    tile.setAttribute("aria-current", "step");
+  }
+  return tile;
+}
+
+function drawDiagram(visual, current, steps) {
+  const diagram = byId("diagram");
+  if (visual.type === "decision") {
+    const connector = make("span", "connector", "↓");
+    connector.setAttribute("aria-hidden", "true");
+    const branches = make("div", "split");
+    branches.append(...visual.nodes.slice(1).map((node) => drawNode(node, current.focus, steps, true)));
+    diagram.replaceChildren(drawNode(visual.nodes[0], current.focus, steps, true), connector, branches);
+  } else if (visual.type === "collection") {
+    diagram.replaceChildren(...["Lista", "Diccionario"].map((group) => {
+      const row = make("div");
+      const tiles = make("div", "nodes");
+      tiles.append(...visual.nodes.filter((node) => node.group === group).map((node) => drawNode(node, current.focus, steps, true)));
+      row.append(make("h3", "", group), tiles);
+      return row;
+    }));
+  } else {
+    const tiles = make("div", "nodes");
+    visual.nodes.forEach((node, index) => {
+      if (index) {
+        const arrow = make("span", "sequence-arrow", "→");
+        arrow.setAttribute("aria-hidden", "true");
+        tiles.append(arrow);
+      }
+      tiles.append(drawNode(node, current.focus, steps, true));
+    });
+    diagram.replaceChildren(tiles);
+  }
+}
+
+function renderPreview() {
+  const lesson = getLesson();
+  const { current, code, steps, output } = getStep();
+  byId("lesson-title").textContent = lesson.title;
+  byId("lesson-summary").textContent = lesson.summary;
+  byId("takeaway").textContent = lesson.takeaway;
+  byId("visual-caption").textContent = lesson.visual.title;
+  const examples = byId("examples");
+  const focusedExample = examples.contains(document.activeElement);
+  examples.hidden = lesson.visual.scenarios.length < 2;
+  examples.replaceChildren(...lesson.visual.scenarios.map((scenario, index) => {
+    const button = make("button", "example", scenario.label);
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(index === state.scenario));
+    button.onclick = () => setScenario(index);
+    return button;
+  }));
+  if (focusedExample) examples.children[state.scenario].focus();
+  const guide = guided[lesson.id];
+  byId("guide").textContent = guide.text;
+  const guideActions = byId("guide-actions");
+  const focusedAction = Array.from(guideActions.children).indexOf(document.activeElement);
+  guideActions.replaceChildren(...guide.actions.map(([label, focus]) => {
+    const button = make("button", "btn", label);
+    button.type = "button";
+    const target = steps.findIndex((step) => step.focus === focus);
+    button.disabled = target < 0;
+    button.onclick = () => setStep(target);
+    return button;
+  }));
+  if (focusedAction >= 0) guideActions.children[focusedAction]?.focus();
+  drawDiagram(lesson.visual, current, steps);
+  byId("code").replaceChildren(...code.map((line, index) => {
+    const selected = index === current.line - 1;
+    const row = make("div", selected ? "code-line active" : "code-line");
+    if (selected) row.setAttribute("aria-current", "step");
+    row.append(make("span", "", index + 1), make("code", "", line));
+    return row;
+  }));
+  byId("note").textContent = current.note || "Describe qué ocurre en este paso.";
+  byId("console").textContent = output || "Sin salida";
+  byId("counter").textContent = `Paso ${state.step + 1} de ${steps.length}`;
+  byId("previous").disabled = state.step === 0;
+  byId("next").disabled = state.step === steps.length - 1;
+}
+
+function renderEditor() {
+  if (state.mode !== "author") return;
+  const lesson = getLesson();
+  const { scenario: activeScenario, steps, current, code } = getStep();
+  byId("template-name").textContent = templateNames[lesson.visual.type];
+  byId("scenario-label").value = activeScenario.label;
+  byId("scenario-replacement").hidden = lesson.visual.type !== "decision";
+  const scenarioLine = byId("scenario-line");
+  scenarioLine.replaceChildren(...lesson.code.map((line, index) => option(`${index + 1} · ${line || "Línea vacía"}`, index + 1)));
+  scenarioLine.value = activeScenario.replacement?.line ?? 1;
+  byId("scenario-code").value = activeScenario.replacement?.text ?? lesson.code[0];
+  byId("delete-scenario").disabled = lesson.visual.scenarios.length === 1;
+  byId("filepath").textContent = `content/visuals/python-fundamentos/${fileName()}`;
+  byId("visual-title").value = lesson.visual.title;
+  renderNodeEditor(lesson.visual);
+  const scenario = byId("author-scenario");
+  scenario.replaceChildren(...lesson.visual.scenarios.map((item, index) => option(item.label, index)));
+  scenario.value = state.scenario;
+  const picker = byId("author-step");
+  picker.replaceChildren(...steps.map((item, index) => option(`${index + 1}. ${item.note || "Sin descripción"}`, index)));
+  picker.value = state.step;
+  const line = byId("step-line");
+  line.replaceChildren(...code.map((value, index) => option(`${index + 1} · ${value || "Línea vacía"}`, index + 1)));
+  line.value = current.line;
+  const focus = byId("step-focus");
+  focus.replaceChildren(...lesson.visual.nodes.map((node) => option(node.label, node.id)));
+  focus.value = current.focus;
+  byId("step-note").value = current.note;
+  byId("step-output").value = current.output || "";
+  byId("move-up").disabled = state.step === 0;
+  byId("move-down").disabled = state.step === steps.length - 1;
+  byId("delete-step").disabled = steps.length === 1;
+  byId("json").textContent = json();
+}
+
+function renderNodeEditor(visual) {
+  const node = visual.nodes.find((item) => item.id === state.node) || visual.nodes[0];
+  state.node = node.id;
+  const picker = byId("author-node");
+  picker.replaceChildren(...visual.nodes.map((item) => option(item.label || "Sin etiqueta", item.id)));
+  picker.value = node.id;
+  byId("node-label").value = node.label;
+  byId("node-detail").value = node.detail || "";
+  byId("node-group-field").hidden = visual.type !== "collection";
+  byId("node-group").value = node.group || "Lista";
+  byId("add-node").hidden = visual.type === "decision";
+  const position = visual.nodes.indexOf(node);
+  byId("node-earlier").hidden = byId("node-later").hidden = visual.type !== "sequence";
+  byId("node-earlier").disabled = position === 0;
+  byId("node-later").disabled = position === visual.nodes.length - 1;
+}
+
+function render() {
+  lessonButtons.forEach((button, index) => {
+    if (index === state.lesson) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  document.querySelectorAll("[data-mode]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.mode === state.mode));
+  });
+  const author = state.mode === "author";
+  byId("editor").hidden = !author;
+  byId("workspace").classList.toggle("author", author);
+  byId("lesson-label").textContent = author ? "Vista previa del estudiante" : "Lección";
+  renderPreview();
+  renderEditor();
+}
+
+document.querySelectorAll("[data-mode]").forEach((button) => {
+  button.onclick = () => {
+    state.mode = button.dataset.mode;
+    render();
+  };
+});
+byId("previous").onclick = () => setStep(state.step - 1);
+byId("next").onclick = () => setStep(state.step + 1);
+byId("reset").onclick = () => setStep(0);
+byId("author-scenario").onchange = (event) => setScenario(Number(event.target.value));
+byId("scenario-label").oninput = (event) => {
+  const label = event.target.value;
+  getStep().scenario.label = label;
+  byId("author-scenario").selectedOptions[0].textContent = label;
+  byId("json").textContent = json();
+  renderPreview();
+};
+byId("scenario-line").onchange = (event) => {
+  const line = Number(event.target.value);
+  getStep().scenario.replacement = { line, text: getLesson().code[line - 1] };
+  renderPreview();
+  renderEditor();
+};
+byId("scenario-code").oninput = (event) => {
+  const { replacement } = getStep().scenario;
+  replacement.text = event.target.value;
+  byId("step-line").options[replacement.line - 1].textContent =
+    `${replacement.line} · ${replacement.text || "Línea vacía"}`;
+  renderPreview();
+  byId("json").textContent = json();
+};
+let copies = 0;
+byId("copy-scenario").onclick = () => {
+  const { scenarios } = getLesson().visual;
+  const copy = structuredClone(getStep().scenario);
+  copy.id = `copia-${++copies}`;
+  copy.label += " (copia)";
+  scenarios.push(copy);
+  setScenario(scenarios.length - 1);
+  byId("scenario-label").select();
+};
+byId("delete-scenario").onclick = () => {
+  const { scenarios } = getLesson().visual;
+  scenarios.splice(state.scenario, 1);
+  setScenario(Math.min(state.scenario, scenarios.length - 1));
+};
+byId("narrow").onclick = (event) => {
+  const narrow = document.querySelector(".lesson").classList.toggle("narrow");
+  event.currentTarget.setAttribute("aria-pressed", String(narrow));
+};
+function replaceDraft(visual) {
+  getLesson().visual = visual;
+  state.node = null;
+  setScenario(0);
+}
+byId("new-draft").onclick = () => replaceDraft(startFromTemplate(pilot[state.lesson].visual));
+byId("reset-draft").onclick = () => replaceDraft(structuredClone(pilot[state.lesson].visual));
+
+byId("author-step").onchange = (event) => setStep(Number(event.target.value));
+byId("visual-title").oninput = (event) => {
+  getLesson().visual.title = event.target.value;
+  renderPreview();
+  byId("json").textContent = json();
+};
+byId("author-node").onchange = (event) => {
+  state.node = event.target.value;
+  renderNodeEditor(getLesson().visual);
+};
+for (const [id, key] of [["node-label", "label"], ["node-detail", "detail"], ["node-group", "group"]]) {
+  byId(id).oninput = (event) => {
+    const node = getLesson().visual.nodes.find((item) => item.id === state.node);
+    const value = event.target.value;
+    if (key === "detail" && !value) delete node.detail;
+    else node[key] = value;
+    const label = node.label || "Sin etiqueta";
+    byId("author-node").selectedOptions[0].textContent = label;
+    Array.from(byId("step-focus").options).find((item) => item.value === node.id).textContent = label;
+    byId("json").textContent = json();
+    renderPreview();
+  };
+}
+byId("add-node").onclick = () => {
+  const { visual } = getLesson();
+  const node = { id: `elemento-${visual.nodes.length + 1}`, label: "Nuevo elemento" };
+  if (visual.type === "collection") node.group = byId("node-group").value;
+  visual.nodes.push(node);
+  state.node = node.id;
+  render();
+  byId("node-label").select();
+};
+for (const [id, key] of [["step-line", "line"], ["step-focus", "focus"], ["step-note", "note"], ["step-output", "output"]]) {
+  byId(id).oninput = (event) => {
+    const current = getStep().current;
+    const value = event.target.value;
+    if (key === "output" && !value) delete current.output;
+    else current[key] = key === "line" ? Number(value) : value;
+    byId("author-step").options[state.step].textContent = `${state.step + 1}. ${current.note || "Sin descripción"}`;
+    byId("json").textContent = json();
+    renderPreview();
+  };
+}
+function moveNode(direction) {
+  const { nodes } = getLesson().visual;
+  const position = nodes.findIndex((node) => node.id === state.node);
+  const destination = position + direction;
+  [nodes[position], nodes[destination]] = [nodes[destination], nodes[position]];
+  render();
+}
+byId("node-earlier").onclick = () => moveNode(-1);
+byId("node-later").onclick = () => moveNode(1);
+
+function moveStep(direction) {
+  const { steps } = getStep();
+  const destination = state.step + direction;
+  [steps[state.step], steps[destination]] = [steps[destination], steps[state.step]];
+  setStep(destination);
+}
+byId("move-up").onclick = () => moveStep(-1);
+byId("move-down").onclick = () => moveStep(1);
+byId("add-step").onclick = () => {
+  const { steps, current } = getStep();
+  steps.splice(state.step + 1, 0, { line: current.line, focus: current.focus, note: "Nuevo paso" });
+  setStep(state.step + 1);
+  byId("step-note").select();
+};
+byId("delete-step").onclick = () => {
+  const { steps } = getStep();
+  steps.splice(state.step, 1);
+  setStep(Math.min(state.step, steps.length - 1));
+};
+byId("download").onclick = () => {
+  const link = make("a");
+  link.href = URL.createObjectURL(new Blob([json()], { type: "application/json" }));
+  link.download = fileName();
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+};
+
+render();
+</script>
+</body>
+</html>
