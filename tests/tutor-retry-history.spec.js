@@ -10,13 +10,17 @@ test("retry after reload preserves captures and partials without borrowing later
   await setup(page);
   const fixture = await streamingOpenRouter(page);
   try {
+    await page.getByRole("button", { name: "Cerrar Tutor" }).click();
     await page.getByLabel("Código Python").fill("# captura persistida");
+    await page.getByRole("button", { name: "Tutor IA" }).click();
     await page.getByLabel("Mensaje al tutor").fill("Pregunta pendiente");
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect.poll(() => fixture.responses.length).toBe(1);
     fixture.responses[0].end(frame("Parcial persistido") + frame("", "length"));
     await expect(page.getByText(/límite de salida/)).toBeVisible();
+    await page.getByRole("button", { name: "Cerrar Tutor" }).click();
     await page.getByLabel("Código Python").fill("# captura posterior");
+    await page.getByRole("button", { name: "Tutor IA" }).click();
     await page.getByLabel("Mensaje al tutor").fill("Pregunta posterior");
     await page.getByRole("button", { name: "Enviar", exact: true }).click();
     await expect.poll(() => fixture.responses.length).toBe(2);
@@ -27,7 +31,7 @@ test("retry after reload preserves captures and partials without borrowing later
     ).toHaveCount(1);
     await page.reload();
     await enterCourse(page);
-    await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+    await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Enviar", exact: true }),
     ).toBeEnabled();
@@ -43,7 +47,7 @@ test("retry after reload preserves captures and partials without borrowing later
     ).toHaveCount(2);
     await page.reload();
     await enterCourse(page);
-    await page.getByRole("tab", { name: "Tutor", exact: true }).click();
+    await page.getByRole("button", { name: "Tutor IA", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Enviar", exact: true }),
     ).toBeEnabled();
