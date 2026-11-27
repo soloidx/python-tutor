@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutor lateral · Prototipo de Python Tutor</title>
+<style>
+:root { color-scheme: light; font: 16px/1.55 Inter, system-ui, sans-serif; color: #172033; background: #f8fafc; --line: #dbe3ee; --muted: #475569; --red: #b91c1c; --rose: #fff1f2; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+header { background: white; border-bottom: 1px solid var(--line); }
+header div, main { max-width: 1080px; margin: auto; padding: 18px clamp(14px, 4vw, 38px); }
+main { padding-block: 28px 90px; }
+h1, h2, h3, p, figure { margin: 0; }
+h1 { font-size: clamp(26px, 4vw, 36px); }
+h2 { font-size: 26px; }
+h3 { font-size: 18px; }
+p, .muted { color: var(--muted); }
+.course { color: var(--red); font-size: 13px; font-weight: 700; }
+button, select, textarea { font: inherit; }
+button, select { border: 1px solid var(--line); border-radius: 8px; background: white; color: #172033; min-height: 42px; padding: 7px 12px; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .52; }
+button[aria-pressed=true], button[aria-current=true] { background: var(--rose); color: var(--red); border-color: #fda4af; }
+:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.demo, .card { margin-top: 18px; border: 1px solid var(--line); border-radius: 12px; background: white; padding: clamp(14px, 3vw, 26px); }
+.demo { font-size: 14px; }
+.demo summary { cursor: pointer; font-weight: 700; }
+.demo p { margin-top: 8px; }
+.demo label { display: block; margin-block: 9px; }
+label select { max-width: 100%; }
+#state { display: block; background: #f1f5f9; margin-top: 8px; padding: 8px 12px; border-radius: 8px; }
+.topics { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.tabs { display: flex; gap: 14px; border-bottom: 1px solid var(--line); margin-top: 12px; }
+.tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; }
+.tabs button[aria-selected=true] { color: #172033; border-color: var(--red); font-weight: 700; }
+.count { font-size: .78em; padding: 2px 7px; border-radius: 20px; background: #f1f5f9; }
+.card p { margin-top: 10px; }
+pre, textarea { background: #111827; color: #e2e8f0; font: 14px/1.55 ui-monospace, monospace; border-radius: 8px; padding: 12px; }
+pre { overflow: auto; }
+#example { background: #f1f5f9; color: #172033; border: 1px solid var(--line); }
+textarea { width: 100%; min-height: 140px; margin-block: 6px 12px; resize: vertical; }
+figure { padding: 14px; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; }
+figcaption { font-weight: 700; margin-bottom: 8px; }
+.trace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; margin-block: 10px; }
+.diagram { display: grid; gap: 8px; align-content: center; }
+.branches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.trace pre { margin: 0; }
+.trace pre span { display: block; min-width: max-content; }
+.trace .active { background: #7f1d1d; color: white; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.step-button { display: inline-grid; place-items: center; width: 44px; min-height: 44px; padding: 0; }
+.step-button svg { width: 20px; height: 20px; }
+.trace-result { display: grid; gap: 4px; margin-top: 14px; padding: 12px 14px; border: 1px solid #fecdd3; border-left: 4px solid var(--red); border-radius: 8px; background: var(--rose); }
+.trace-result label { color: #991b1b; font-size: 13px; font-weight: 700; }
+#trace-output { color: #172033; font: 600 16px/1.5 ui-monospace, monospace; }
+.takeaway { padding: 12px; background: #fffbeb; border-radius: 8px; }
+.exercise-list { margin-block: 12px 16px; }
+#answer-list { display: grid; gap: 8px; margin-block: 14px; }
+#result { font-weight: 600; }
+.primary { background: var(--red); color: white; border-color: var(--red); }
+.tutor { position: fixed; right: 16px; bottom: 16px; border-radius: 30px; box-shadow: 0 4px 14px #0002; }
+@media (max-width: 590px) {
+  .trace { grid-template-columns: 1fr; }
+  .tabs button { flex: 1; }
+}
+#tutor-panel { position: fixed; inset: 0 0 0 auto; margin: 0; padding: 0; width: min(390px, 100%); max-width: 100%; height: 100dvh; max-height: 100dvh; border: 0; border-left: 1px solid var(--line); box-shadow: -12px 0 36px #17203320; }
+#tutor-panel[open] { display: flex; flex-direction: column; animation: enter .16s ease-out; }
+@keyframes enter { from { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { #tutor-panel[open] { animation: none; } }
+#tutor-panel::backdrop, #settings::backdrop { background: #17203365; }
+#composer { padding: 16px; }
+.tutor-heading {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.tutor-heading h2 { font-size: 18px; line-height: 1.25; }
+.tutor-heading p { margin-top: 3px; font-size: 13px; }
+.tutor-heading-actions { display: flex; flex-shrink: 0; gap: 4px; }
+.tutor-icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.tutor-icon-button:hover { background: #f1f5f9; color: #172033; }
+.tutor-icon-button svg { width: 20px; height: 20px; }
+#tutor-scroll { flex: 1; min-height: 0; overflow: auto; padding: 16px; overflow-wrap: anywhere; }
+#transcript article { display: grid; gap: 8px; margin-bottom: 16px; }
+#transcript p, #capture-preview { padding: 8px 12px; background: #f1f5f9; border-radius: 8px; white-space: pre-wrap; }
+#capture-preview { margin-top: 8px; }
+#chat-status { min-height: 1.55em; }
+#composer { border-top: 1px solid var(--line); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+#composer textarea { min-height: 64px; max-height: 25dvh; background: white; color: #172033; border: 1px solid var(--line); margin-bottom: 4px; }
+#settings { max-width: min(420px, calc(100% - 24px)); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+#settings p { margin-block: 12px; }
+@media (min-width: 821px) {
+  body[data-tutor-mode="push"] { padding-right: 390px; }
+}
+</style>
+</head>
+<body>
+<header><div><strong>Python Tutor</strong> · Aprender</div></header>
+<main>
+<p class="course">Python Fundamentos</p>
+<h1 id="topic-title">Tema 03 · Condicionales</h1>
+<details class="demo">
+  <summary>Guía de prueba del Tutor lateral</summary>
+  <p>Compara las dos disposiciones de escritorio y el panel modal de móvil. El Tutor simula respuestas de 8 segundos y conserva las conversaciones mientras esta página siga abierta.</p>
+  <label>Disposición en escritorio
+    <select id="desktop-mode"><option value="overlay">Superponer el panel</option><option value="push">Desplazar el contenido</option></select>
+  </label>
+  <ol>
+    <li>Avanza el recorrido, abre Tutor IA y envía una pregunta. Cierra con Escape, cambia a Ejercicios y vuelve a abrirlo.</li>
+    <li>Envía desde Ejercicios, cambia a Bucles con la respuesta en curso y vuelve a Condicionales. En móvil, cierra el panel primero.</li>
+    <li>Abre Configuración desde el Tutor. Prueba Volver y Guardar. En móvil, usa Tab para comprobar que el foco se mantiene dentro del panel.</li>
+  </ol>
+  <output id="state"></output>
+</details>
+<nav class="topics" aria-label="Temas del curso">
+  <button id="topic-current" aria-current="true">Condicionales</button>
+  <button id="topic-away">Bucles</button>
+</nav>
+<div id="workspace">
+  <div class="tabs" role="tablist" aria-label="Vistas de Condicionales">
+    <button role="tab" id="lesson-tab" aria-selected="true" aria-controls="lesson-panel">Lección</button>
+    <button role="tab" id="exercises-tab" aria-selected="false" aria-controls="exercises-panel" tabindex="-1">Ejercicios <span class="count" id="count"></span></button>
+  </div>
+  <section class="card" id="lesson-panel" role="tabpanel" aria-labelledby="lesson-tab" tabindex="0">
+    <span class="muted" id="duration"></span>
+    <h2>Condicionales</h2>
+    <div id="lesson-text"></div>
+    <pre id="example"></pre>
+    <figure>
+      <figcaption>Recorrido interactivo</figcaption>
+      <div class="actions" aria-label="Temperatura">
+        <button class="temperature" data-value="23">23 °C</button>
+        <button class="temperature" data-value="25">25 °C</button>
+      </div>
+      <div class="trace">
+        <div class="diagram" aria-label="Diagrama del condicional">
+          <button id="condition">temperatura &gt;= 24</button>
+          <div class="branches"><button id="true-branch">True · if</button><button id="false-branch">False · else</button></div>
+        </div>
+        <pre id="trace-code" aria-label="Código del recorrido"></pre>
+      </div>
+      <div class="actions">
+        <button class="step-button" id="previous" aria-label="Anterior" title="Anterior">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5m7 7-7-7 7-7"/>
+          </svg>
+        </button>
+        <button class="step-button" id="next" aria-label="Siguiente" title="Siguiente">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14m-7-7 7 7-7 7"/>
+          </svg>
+        </button>
+        <output id="step-status"></output>
+      </div>
+      <div class="trace-result">
+        <label for="trace-output">Salida</label>
+        <output id="trace-output">—</output>
+      </div>
+    </figure>
+    <p class="takeaway" id="takeaway"></p>
+  </section>
+  <section class="card" id="exercises-panel" role="tabpanel" aria-labelledby="exercises-tab" tabindex="0" hidden>
+    <h2>Ahora te toca a ti</h2>
+    <nav class="exercise-list actions" id="exercise-list" aria-label="Ejercicios del tema"></nav>
+    <h3 id="exercise-title"></h3>
+    <p id="exercise-prompt"></p>
+    <div id="code-exercise">
+      <label for="editor">Tu código</label>
+      <textarea id="editor" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="primary" id="run">Ejecutar muestra</button>
+        <button id="stop" disabled>Detener</button>
+      </div>
+      <p>La ejecución de muestra dura 5 segundos y usa un resultado simulado.</p>
+    </div>
+    <form id="choice-exercise" hidden>
+      <pre id="choice-code"></pre>
+      <div id="answer-list"></div>
+      <button class="primary">Comprobar</button>
+    </form>
+    <p id="result" role="status"></p>
+  </section>
+</div>
+<section class="card" id="away" hidden>
+  <h2>Bucles</h2>
+  <p>Un bucle for recorre los elementos de una secuencia.</p>
+  <pre>for numero in range(3):
+    print(numero)</pre>
+</section>
+<button class="primary tutor" id="open-tutor" aria-controls="tutor-panel" aria-expanded="false">Tutor IA</button>
+</main>
+<dialog id="tutor-panel" aria-labelledby="tutor-title">
+  <div class="tutor-heading">
+    <div><h2 id="tutor-title">Tutor IA</h2><p id="chat-topic"></p></div>
+    <div class="tutor-heading-actions">
+      <button type="button" class="tutor-icon-button" id="configure" aria-label="Configuración" title="Configuración">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 2h4l.7 2.6 1.6.9 2.6-.7 2 3.4-1.9 1.9v1.8l1.9 1.9-2 3.4-2.6-.7-1.6.9L14 20h-4l-.7-2.6-1.6-.9-2.6.7-2-3.4L5 11.9v-1.8L3.1 8.2l2-3.4 2.6.7 1.6-.9L10 2Z" transform="translate(0 1)"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+      <button type="button" class="tutor-icon-button" id="close-tutor" aria-label="Cerrar Tutor" title="Cerrar Tutor">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div id="tutor-scroll">
+    <p id="chat-empty">Todavía no hay preguntas en este tema.</p>
+    <div id="transcript"></div>
+    <p id="chat-status" role="status"></p>
+    <details><summary>Contexto de la próxima pregunta</summary><p id="capture-preview"></p></details>
+  </div>
+  <form id="composer">
+    <label for="question">Tu pregunta</label>
+    <textarea id="question" rows="2" required></textarea>
+    <div class="actions">
+      <button class="primary" id="send">Enviar</button>
+      <button type="button" id="stop-chat" hidden>Detener respuesta</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="settings" aria-labelledby="settings-title">
+  <h2 id="settings-title">Configuración</h2>
+  <p>Guardar simula aplicar una configuración nueva y detiene la respuesta en curso.</p>
+  <form id="settings-form" class="actions">
+    <button value="back" autofocus>Volver</button>
+    <button class="primary" value="save">Guardar</button>
+  </form>
+</dialog>
+<script id="topic-data" type="application/json">
+{"id":"condicionales","title":"Condicionales","duration":"15 min","summary":"Haz que tu programa tome decisiones.","explanation":["Una condición da True (verdadero) o False (falso). Compara valores con == (igual), != (diferente), >, <, >= o <=.","if ejecuta un bloque cuando la condición es verdadera. else ejecuta una alternativa cuando es falsa. Escribe dos puntos al final de if y else, y cuatro espacios delante de las instrucciones del bloque.","El operador % calcula el resto de una división. Si numero % 2 == 0, el número es par. Puedes combinar condiciones con and (ambas) u or (al menos una)."],"example":"temperatura = 25\nif temperatura >= 24:\n    print(\"Hace calor\")\nelse:\n    print(\"Hace fresco\")","takeaway":"= asigna; == compara. La sangría indica qué instrucciones pertenecen a cada bloque.","exercises":[{"id":"entrada-edad","type":"code","title":"Una decisión por edad","prompt":"Guarda 20 en edad. Usa if para mostrar Puede entrar si edad es mayor o igual a 18; en caso contrario, muestra Debe esperar.","starter":"edad = 20\n# Compara edad y elige un mensaje"},{"id":"par-impar","type":"code","title":"¿Par o impar?","prompt":"Guarda 7 en numero. Si numero % 2 == 0, muestra Par; en caso contrario, muestra Impar.","starter":"numero = 7\n# Decide si el número es par o impar"},{"id":"condicion-igualdad","type":"choice","title":"Leer una condición","prompt":"Con edad = 18, ¿qué mensaje muestra este código?","code":"edad = 18\nif edad >= 18:\n    print(\"Puede entrar\")\nelse:\n    print(\"Debe esperar\")","options":[{"id":"puede-entrar","text":"Puede entrar"},{"id":"debe-esperar","text":"Debe esperar","retry":"La condición usa >=, así que 18 sí cumple el límite."},{"id":"ambos-mensajes","text":"Ambos mensajes"}],"answerId":"puede-entrar"}]}
+</script>
+<script>
+// Prototipo desechable. Todo el estado vive durante la visita a esta página.
+function transition(state, action) {
+  switch (action.type) {
+    case "showTab": return { ...state, tab: action.tab };
+    case "leave": return { ...state, away: true, running: false, result: state.running ? "Ejecución detenida al salir del tema." : state.result };
+    case "return": return { ...state, away: false, tab: state.tab };
+    case "temperature": return { ...state, temperature: action.value, step: 0 };
+    case "step": return { ...state, step: action.step };
+    case "exercise": return { ...state, exercise: action.index, result: "" };
+    case "draft": return { ...state, drafts: { ...state.drafts, [state.exercise]: action.value } };
+    case "answer": return { ...state, answer: action.value, checkedAnswer: null, result: "" };
+    case "run": return { ...state, running: true, result: "Ejecutando muestra…" };
+    case "stop": return { ...state, running: false, result: "Ejecución detenida." };
+    case "finish": return {
+      ...state, running: false, result: "La ejecución de muestra terminó.",
+      lastRun: { exercise: state.exercise, code: action.code, output: "Resultado simulado" }
+    };
+    case "check": return {
+      ...state,
+      checkedAnswer: action.correct ? "Correcta" : "Incorrecta",
+      completed: action.correct ? new Set([...state.completed, action.id]) : state.completed,
+      result: action.correct ? "Respuesta correcta." : "Revisa la comparación y vuelve a intentarlo."
+    };
+    default: return state;
+  }
+}
+</script>
+<script>
+const byId = id => document.getElementById(id);
+const topic = JSON.parse(byId("topic-data").textContent);
+const tabs = [byId("lesson-tab"), byId("exercises-tab")];
+const panels = [byId("lesson-panel"), byId("exercises-panel")];
+const temperatures = [...document.querySelectorAll(".temperature")];
+const editor = byId("editor");
+let timer;
+let state = { checkedAnswer: null, lastRun: null, away: false, tab: "lesson", temperature: 25, step: 0, exercise: 0, drafts: {}, answer: "", running: false, result: "", completed: new Set() };
+
+const paragraph = text => Object.assign(document.createElement("p"), { textContent: text });
+byId("lesson-text").append(...[topic.summary, ...topic.explanation].map(paragraph));
+byId("duration").textContent = topic.duration;
+byId("example").textContent = topic.example;
+byId("takeaway").textContent = topic.takeaway;
+
+const exerciseButtons = topic.exercises.map((exercise, index) => {
+  const button = Object.assign(document.createElement("button"), { textContent: exercise.title });
+  button.addEventListener("click", () => dispatch({ type: "exercise", index }));
+  byId("exercise-list").append(button);
+  return button;
+});
+const choice = topic.exercises.find(exercise => exercise.type === "choice");
+byId("choice-code").textContent = choice.code;
+const answers = choice.options.map(option => {
+  const input = Object.assign(document.createElement("input"), { type: "radio", name: "answer", value: option.id, required: true });
+  input.addEventListener("change", () => dispatch({ type: "answer", value: input.value }));
+  const label = document.createElement("label");
+  label.append(input, " " + option.text);
+  byId("answer-list").append(label);
+  return input;
+});
+
+function render() {
+  const exercise = topic.exercises[state.exercise];
+  const warm = state.temperature >= 24;
+  byId("workspace").hidden = state.away;
+  byId("away").hidden = !state.away;
+  byId("topic-title").textContent = state.away ? "Tema 04 · Bucles" : "Tema 03 · Condicionales";
+  byId("topic-current").setAttribute("aria-current", String(!state.away));
+  byId("topic-away").setAttribute("aria-current", String(state.away));
+  tabs.forEach((tab, index) => {
+    const selected = tab.id === state.tab + "-tab";
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    panels[index].hidden = !selected;
+  });
+  byId("count").textContent = state.completed.size + "/" + topic.exercises.length;
+  byId("count").setAttribute("aria-label", state.completed.size + " de " + topic.exercises.length + " completados");
+  temperatures.forEach(button => button.setAttribute("aria-pressed", String(Number(button.dataset.value) === state.temperature)));
+  byId("condition").setAttribute("aria-pressed", String(state.step === 0));
+  byId("true-branch").setAttribute("aria-pressed", String(state.step > 0 && warm));
+  byId("false-branch").setAttribute("aria-pressed", String(state.step > 0 && !warm));
+  const line = [1, warm ? 1 : 3, warm ? 2 : 4][state.step];
+  const lines = topic.example.replace("temperatura = 25", "temperatura = " + state.temperature).split("\n");
+  byId("trace-code").replaceChildren(...lines.map((textContent, index) => Object.assign(document.createElement("span"), { textContent, className: index === line ? "active" : "" })));
+  byId("previous").disabled = state.step === 0;
+  byId("next").disabled = state.step === 2;
+  byId("step-status").textContent = "Paso " + (state.step + 1) + " de 3 · " + ["Evaluar la condición", "Elegir la rama", "Mostrar la salida"][state.step];
+  byId("trace-output").textContent = state.step === 2 ? (warm ? "Hace calor" : "Hace fresco") : "—";
+
+  exerciseButtons.forEach((button, index) => {
+    const item = topic.exercises[index];
+    button.setAttribute("aria-current", String(index === state.exercise));
+    button.disabled = state.running;
+    button.textContent = item.title + (state.completed.has(item.id) ? " ✓" : "");
+  });
+  byId("exercise-title").textContent = exercise.title;
+  byId("exercise-prompt").textContent = exercise.prompt;
+  byId("code-exercise").hidden = exercise.type !== "code";
+  byId("choice-exercise").hidden = exercise.type !== "choice";
+  const draft = state.drafts[state.exercise] ?? exercise.starter ?? "";
+  if (editor.value !== draft) editor.value = draft;
+  editor.readOnly = state.running;
+  answers.forEach(input => { input.checked = input.value === state.answer; });
+  byId("run").disabled = state.running;
+  byId("stop").disabled = !state.running;
+  if (byId("result").textContent !== state.result) byId("result").textContent = state.result;
+  byId("state").textContent = [
+    state.away ? "Bucles" : (state.tab === "lesson" ? "Lección" : "Ejercicios"),
+    "Recorrido " + (state.step + 1) + "/3",
+    exercise.title,
+    Object.hasOwn(state.drafts, state.exercise) ? "Código editado" : "Sin edición de código",
+    state.result || "Sin resultado"
+  ].join(" · ");
+}
+
+function dispatch(action) {
+  state = transition(state, action);
+  render();
+  renderTutor();
+}
+
+tabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => {
+    dispatch({ type: "showTab", tab: tab.id.replace("-tab", "") });
+    tab.focus();
+  });
+  tab.addEventListener("keydown", event => {
+    const target = { ArrowLeft: 1 - index, ArrowRight: 1 - index, Home: 0, End: 1 }[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    tabs[target].click();
+  });
+});
+byId("topic-away").onclick = () => {
+  clearTimeout(timer);
+  dispatch({ type: "leave" });
+};
+byId("topic-current").onclick = () => {
+  if (state.away) dispatch({ type: "return" });
+};
+temperatures.forEach(button => { button.onclick = () => dispatch({ type: "temperature", value: Number(button.dataset.value) }); });
+byId("condition").onclick = () => dispatch({ type: "step", step: 0 });
+byId("true-branch").onclick = () => {
+  dispatch({ type: "temperature", value: 25 });
+  dispatch({ type: "step", step: 1 });
+};
+byId("false-branch").onclick = () => {
+  dispatch({ type: "temperature", value: 23 });
+  dispatch({ type: "step", step: 1 });
+};
+byId("previous").onclick = () => {
+  dispatch({ type: "step", step: state.step - 1 });
+  if (state.step === 0) byId("next").focus();
+};
+byId("next").onclick = () => {
+  dispatch({ type: "step", step: state.step + 1 });
+  if (state.step === 2) byId("previous").focus();
+};
+editor.oninput = () => dispatch({ type: "draft", value: editor.value });
+byId("run").onclick = () => {
+  const code = editor.value;
+  dispatch({ type: "run" });
+  byId("stop").focus();
+  timer = setTimeout(() => {
+    const restoreFocus = document.activeElement === byId("stop");
+    dispatch({ type: "finish", code });
+    if (restoreFocus && !panels[1].hidden) byId("run").focus();
+  }, 5000);
+};
+byId("stop").onclick = () => {
+  clearTimeout(timer);
+  dispatch({ type: "stop" });
+  byId("run").focus();
+};
+byId("choice-exercise").onsubmit = event => {
+  event.preventDefault();
+  dispatch({ type: "check", correct: state.answer === choice.answerId, id: choice.id });
+};
+</script>
+<script>
+// Estado de conversación independiente de la visibilidad del panel.
+function updateChat(chat, action) {
+  switch (action.type) {
+    case "draft":
+      return { ...chat, drafts: { ...chat.drafts, [action.topic]: action.text } };
+    case "send": {
+      if (chat.active || !action.text.trim()) return chat;
+      const exchange = { question: action.text.trim(), capture: action.capture, status: "pending" };
+      return {
+        ...chat,
+        active: action.topic,
+        drafts: { ...chat.drafts, [action.topic]: "" },
+        history: { ...chat.history, [action.topic]: [...(chat.history[action.topic] ?? []), exchange] }
+      };
+    }
+    case "finish": {
+      if (!chat.active) return chat;
+      const history = chat.history[chat.active];
+      return {
+        ...chat,
+        active: null,
+        history: {
+          ...chat.history,
+          [chat.active]: [...history.slice(0, -1), { ...history.at(-1), status: action.status }]
+        }
+      };
+    }
+    default: return chat;
+  }
+}
+
+function getCapture(learning, topic) {
+  if (learning.away) {
+    return ["Python Fundamentos · Bucles · Lección", "Un bucle for recorre los elementos de una secuencia.", "for numero in range(3):", "    print(numero)"];
+  }
+  const fields = ["Python Fundamentos · Condicionales", topic.summary, ...topic.explanation, topic.example, topic.takeaway];
+  if (learning.tab === "lesson") {
+    return [
+      ...fields, "Pestaña · Lección", "Temperatura · " + learning.temperature + " °C",
+      "Paso del recorrido · " + (learning.step + 1),
+      "Salida · " + (learning.step < 2 ? "—" : learning.temperature >= 24 ? "Hace calor" : "Hace fresco")
+    ];
+  }
+  const exercise = topic.exercises[learning.exercise];
+  fields.push("Pestaña · Ejercicios", exercise.title, exercise.prompt);
+  if (exercise.type === "choice") {
+    const selected = exercise.options.find(option => option.id === learning.answer);
+    return [...fields, exercise.code, ...exercise.options.map(option => option.text),
+      "Selección · " + (selected?.text ?? "—"), "Comprobación · " + (learning.checkedAnswer ?? "Pendiente")];
+  }
+  const code = learning.drafts[learning.exercise] ?? exercise.starter;
+  fields.push("Borrador de código", code);
+  if (learning.lastRun?.exercise === learning.exercise) {
+    fields.push("Último resultado · " + learning.lastRun.output);
+    if (learning.lastRun.code !== code) fields.push("Código del último resultado", learning.lastRun.code);
+  }
+  return fields;
+}
+</script>
+<script>
+const drawer = byId("tutor-panel");
+const trigger = byId("open-tutor");
+const question = byId("question");
+const settings = byId("settings");
+const mobile = matchMedia("(max-width: 820px)");
+const topicKey = () => state.away ? "bucles" : "condicionales";
+let chat = { active: null, history: {}, drafts: {} };
+let chatTimer;
+
+function renderTutor() {
+  const key = topicKey();
+  const history = chat.history[key] ?? [];
+  byId("chat-topic").textContent = state.away ? "Bucles · Lección" : "Condicionales · " + (state.tab === "lesson" ? "Lección" : "Ejercicios");
+  byId("chat-empty").hidden = history.length > 0;
+  const transcript = byId("transcript");
+  if (transcript.renderedHistory !== chat.history[key] || transcript.renderedTopic !== key) {
+    const scroll = byId("tutor-scroll");
+    const followLatest = transcript.renderedTopic !== key || scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 30;
+    transcript.replaceChildren(...history.map(exchange => {
+      const item = document.createElement("article");
+      const sent = paragraph("Tú · " + exchange.question);
+      const details = document.createElement("details");
+      const summary = Object.assign(document.createElement("summary"), { textContent: "Contexto enviado" });
+      details.append(summary, paragraph(exchange.capture.join("\n")));
+      item.append(sent, details);
+      if (exchange.status === "complete") item.append(paragraph("Tutor · Respuesta de muestra. Señala qué parte del ejemplo quieres revisar."));
+      if (exchange.status === "stopped") item.append(paragraph("Respuesta detenida."));
+      return item;
+    }));
+    transcript.renderedHistory = chat.history[key];
+    transcript.renderedTopic = key;
+    if (followLatest) scroll.scrollTop = scroll.scrollHeight;
+  }
+  const message = chat.drafts[key] ?? "";
+  if (message !== question.value) question.value = message;
+  const status = chat.active === key ? "Preparando la respuesta…" : chat.active ? "El Tutor está respondiendo en otro tema." : "";
+  if (byId("chat-status").textContent !== status) byId("chat-status").textContent = status;
+  byId("stop-chat").hidden = chat.active !== key;
+  byId("send").disabled = Boolean(chat.active) || !message.trim();
+  byId("capture-preview").textContent = getCapture(state, topic).join("\n");
+  trigger.setAttribute("aria-expanded", String(drawer.open));
+  trigger.hidden = drawer.open;
+  document.body.dataset.tutorMode = drawer.open && !mobile.matches ? byId("desktop-mode").value : "";
+}
+
+function openTutor() {
+  if (mobile.matches) drawer.showModal();
+  else drawer.show();
+  renderTutor();
+  byId("close-tutor").focus();
+}
+
+function closeTutor() {
+  drawer.close();
+  renderTutor();
+  trigger.focus({ preventScroll: true });
+}
+
+function finishChat(status) {
+  clearTimeout(chatTimer);
+  const restoreFocus = document.activeElement === byId("stop-chat");
+  chat = updateChat(chat, { type: "finish", status });
+  renderTutor();
+  if (restoreFocus) question.focus();
+}
+
+trigger.onclick = () => drawer.open ? closeTutor() : openTutor();
+byId("close-tutor").onclick = closeTutor;
+byId("desktop-mode").onchange = renderTutor;
+function syncDrawerMode() {
+  if (!drawer.open || settings.open || drawer.matches(":modal") === mobile.matches) return;
+  const focused = drawer.contains(document.activeElement) ? document.activeElement : byId("close-tutor");
+  drawer.close();
+  openTutor();
+  focused.focus({ preventScroll: true });
+}
+mobile.onchange = syncDrawerMode;
+drawer.addEventListener("cancel", event => {
+  event.preventDefault();
+  closeTutor();
+});
+document.addEventListener("keydown", event => {
+  if (event.key !== "Escape" || !drawer.open || mobile.matches || settings.open) return;
+  event.preventDefault();
+  closeTutor();
+});
+question.oninput = () => {
+  chat = updateChat(chat, { type: "draft", topic: topicKey(), text: question.value });
+  renderTutor();
+};
+byId("composer").onsubmit = event => {
+  event.preventDefault();
+  if (chat.active || !question.value.trim()) return;
+  chat = updateChat(chat, { type: "send", topic: topicKey(), text: question.value, capture: getCapture(state, topic) });
+  renderTutor();
+  question.focus();
+  chatTimer = setTimeout(() => finishChat("complete"), 8000);
+};
+byId("stop-chat").onclick = () => finishChat("stopped");
+byId("configure").onclick = () => settings.showModal();
+function closeSettings(save) {
+  settings.close();
+  syncDrawerMode();
+  if (save) {
+    finishChat("stopped");
+    question.focus();
+  } else {
+    byId("configure").focus();
+  }
+}
+byId("settings-form").onsubmit = event => {
+  event.preventDefault();
+  closeSettings(event.submitter?.value === "save");
+};
+settings.addEventListener("cancel", event => {
+  event.preventDefault();
+  closeSettings(false);
+});
+
+render();
+renderTutor();
+</script>
+</body>
+</html>
