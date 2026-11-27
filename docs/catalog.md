@@ -134,7 +134,7 @@ In editable content, `walkthrough` is instead a reference of the form `walkthrou
 
 ## Sequence walkthrough
 
-A topic may instead publish a `walkthrough` of `type: "sequence"` with a nonempty ordered `elements` array and an equally sized `steps` array. Each element has a unique slug `id` and nonempty `label`. Each step refers to the element at the same position by `element`, has a valid one-based `line` in the example and a nonempty `explanation`, and may have nonempty `output`. Output contributions accumulate through the selected step. Selecting an element jumps to its step; next and previous retain the declared order. The source publisher embeds the referenced walkthrough before hashing the course. Release the compatible consumer before publishing this template.
+A topic may instead publish a `walkthrough` of `type: "sequence"` with a nonempty ordered `elements` array and a nonempty ordered `steps` array. Each element has a unique slug `id` and nonempty `label`. Each step refers to an existing element by `element`, has a valid one-based `line` in the example and a nonempty `explanation`, and may have nonempty `output`. Output contributions accumulate through the selected step. Elements and steps have independent orders; steps may revisit elements or leave elements unused. Selecting an element jumps to its first step; next and previous retain the declared order. The source publisher embeds the referenced walkthrough before hashing the course. Release the compatible consumer before publishing this template.
 
 ### Collection walkthroughs
 

@@ -13,7 +13,7 @@ export function validateWalkthrough(value, example) {
     return value;
   }
   if (obj(value) && value.type === 'sequence') {
-    if (!Array.isArray(value.elements) || !value.elements.length || !value.elements.every(e => obj(e) && id(e.id) && text(e.label)) || !distinct(value.elements.map(e => e.id)) || !Array.isArray(value.steps) || value.steps.length !== value.elements.length || !value.steps.every((step, index) => obj(step) && step.element === value.elements[index].id && line(step.line) && text(step.explanation) && (step.output === undefined || text(step.output)))) fail();
+    if (!Array.isArray(value.elements) || !value.elements.length || !value.elements.every(e => obj(e) && id(e.id) && text(e.label)) || !distinct(value.elements.map(e => e.id)) || !Array.isArray(value.steps) || !value.steps.length || !value.steps.every(step => obj(step) && value.elements.some(e => e.id === step.element) && line(step.line) && text(step.explanation) && (step.output === undefined || text(step.output)))) fail();
     return value;
   }
   if (!obj(value) || value.type !== 'decision' || !Array.isArray(value.elements) || value.elements.length !== 3 || !Array.isArray(value.scenarios) || !value.scenarios.length) fail();
