@@ -2063,3 +2063,74 @@ textarea:focus-visible {
 .walkthrough-group h4 { margin: 0 0 .5rem; }
 .walkthrough-group { display: grid; gap: .4rem; }
 .walkthrough-entry { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; width: 100%; }
+
+.svg-walkthrough {
+  --scene-surface: #f8fafc;
+  --scene-border: #cbd5e1;
+  --scene-ink: #172033;
+  --scene-muted: #475569;
+  --scene-accent: #b91c1c;
+  --scene-active: #fef2f2;
+  container-type: inline-size;
+  min-width: 0;
+  border-color: #e2e8f0;
+}
+.svg-walkthrough-scenarios, .svg-walkthrough-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.svg-walkthrough-scenarios { margin-bottom: 1rem; }
+.svg-walkthrough-scenarios button, .svg-walkthrough-controls button {
+  color: var(--scene-ink);
+  background: #fff;
+  border: 1px solid var(--scene-border);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 0 .85rem;
+}
+.svg-walkthrough-scenarios button[aria-pressed="true"], .svg-walkthrough-controls button:hover:not(:disabled) {
+  color: var(--scene-accent);
+  background: var(--scene-active);
+  border-color: var(--scene-accent);
+}
+.svg-walkthrough-controls button {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+}
+.svg-walkthrough-controls output {
+  margin-inline-start: .5rem;
+  font-variant-numeric: tabular-nums;
+}
+.svg-walkthrough-scene { display: grid; gap: 1rem; align-items: start; }
+.svg-walkthrough-scene.has-code { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.svg-walkthrough-graphic svg { display: block; width: 100%; height: auto; max-width: 42rem; margin-inline: auto; }
+.svg-walkthrough [data-walkthrough-hidden] { display: none; }
+.svg-walkthrough [data-style="surface"] { fill: var(--scene-surface); stroke: var(--scene-border); }
+.svg-walkthrough [data-style="label"], .svg-walkthrough [data-style="caption"] {
+  fill: var(--scene-ink);
+  font-weight: 650;
+}
+.svg-walkthrough [data-style="caption"] { fill: var(--scene-muted); font-weight: 500; }
+.svg-walkthrough [data-style="connector"] { fill: none; stroke: var(--scene-muted); stroke-linecap: round; stroke-linejoin: round; }
+.svg-walkthrough [data-style="arrowhead"] { fill: var(--scene-muted); }
+.svg-walkthrough :is([data-walkthrough-highlight][data-style="surface"], [data-walkthrough-highlight] [data-style="surface"]) {
+  fill: var(--scene-active);
+  stroke: var(--scene-accent);
+}
+.svg-walkthrough :is([data-walkthrough-highlight], [data-walkthrough-animate]):is([data-style="connector"], :has([data-style="connector"])) {
+  --scene-muted: var(--scene-accent);
+}
+.svg-walkthrough :is([data-walkthrough-highlight][data-style="label"], [data-walkthrough-highlight] [data-style="label"]) { fill: var(--scene-accent); }
+.svg-walkthrough [data-walkthrough-animate] { animation: walkthrough-signal .55s ease-out; }
+@keyframes walkthrough-signal { from { opacity: .35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .svg-walkthrough [data-walkthrough-animate] { animation: none; } }
+.svg-walkthrough-code { margin: 0; min-width: 0; }
+.svg-walkthrough-code [aria-current="step"] { background: #3b2e42; box-shadow: inset 3px 0 #fda4af; }
+.svg-walkthrough-readout { margin-block: 1rem; }
+.svg-walkthrough-readout p { margin-bottom: 0; }
+.svg-walkthrough-readout .walkthrough-output { margin-top: .6rem; }
+@container (max-width: 39rem) { .svg-walkthrough-scene.has-code { grid-template-columns: minmax(0, 1fr); } }

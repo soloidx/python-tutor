@@ -1,4 +1,20 @@
 export function visibleWalkthrough(walkthrough, example, position = { scenario: 0, step: 0 }) {
+  if (walkthrough.type === "svg") {
+    const { id, label, steps, replacement } = walkthrough.scenarios[position.scenario];
+    const { line, explanation, output } = steps[position.step];
+    const code = walkthrough.code ? example.split("\n") : [];
+    if (replacement) code[replacement.line - 1] = replacement.code;
+    return {
+      type: "svg",
+      scenario: { id, label },
+      step: { explanation, ...(line === undefined ? {} : { line }) },
+      stepNumber: position.step + 1,
+      stepCount: steps.length,
+      code: code.join("\n"),
+      output: output ?? "",
+    };
+  }
+
   const scenario = walkthrough.type === 'decision' ? walkthrough.scenarios[position.scenario] : { steps: walkthrough.steps };
   const step = scenario.steps[position.step];
   const element = walkthrough.type === 'collection'

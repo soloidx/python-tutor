@@ -1,3 +1,4 @@
+import SvgWalkthrough from "./SvgWalkthrough.jsx";
 import DecisionWalkthrough from "./DecisionWalkthrough.jsx";
 import { visibleWalkthrough } from "./walkthroughState.js";
 import { learnerTransaction, inspectLegacyConflict, preserveLegacyConflict, readLegacyRecoveries } from "./learnerStore.js";
@@ -1151,10 +1152,12 @@ function LearningWorkspace({
                 {topic.explanation.map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
                 ))}
-                <pre className="example">
-                  <code>{topic.example}</code>
-                </pre>
-                {topic.walkthrough && <DecisionWalkthrough walkthrough={topic.walkthrough} example={topic.example} session={session} />}
+                {!(topic.walkthrough?.type === "svg" && topic.walkthrough.code) && (
+                  <pre className="example"><code>{topic.example}</code></pre>
+                )}
+                {topic.walkthrough?.type === "svg"
+                  ? <SvgWalkthrough walkthrough={topic.walkthrough} example={topic.example} session={session} />
+                  : topic.walkthrough && <DecisionWalkthrough walkthrough={topic.walkthrough} example={topic.example} session={session} />}
                 <div className="takeaway">
                   <Icon name="bulb" />
                   <p>{topic.takeaway}</p>

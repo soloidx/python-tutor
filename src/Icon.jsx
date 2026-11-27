@@ -10,6 +10,8 @@ export function Icon({ name, ...props }) {
     play: "m8 5 11 7-11 7z",
     bulb: "M9 18h6 m-6 3h6 M8 14a7 7 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2",
     back: "m14 6-6 6 6 6",
+    forward: "m10 6 6 6-6 6",
+    restart: "M3 12a9 9 0 1 1 2.6 6.4M3 5v7h7",
     clock: "M12 8v4l3 2 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
   };
   return (

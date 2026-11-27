@@ -71,6 +71,14 @@ function validCapture(capture, courseId, topicId) {
     if (!hasOnly(capture, ["course", "topic", "walkthrough"])) return false;
     if (capture.walkthrough === undefined) return true;
     const w = capture.walkthrough;
+    if (w?.type === "svg") {
+      return hasOnly(w, ["type", "scenario", "step", "stepNumber", "stepCount", "code", "output"]) &&
+        hasOnly(w.scenario, ["id", "label"]) && nonEmptyText(w.scenario.id) && nonEmptyText(w.scenario.label) &&
+        hasOnly(w.step, ["line", "explanation"]) && nonEmptyText(w.step.explanation) &&
+        (w.step.line === undefined || (Number.isSafeInteger(w.step.line) && w.step.line > 0)) &&
+        Number.isSafeInteger(w.stepNumber) && w.stepNumber > 0 && Number.isSafeInteger(w.stepCount) && w.stepCount >= w.stepNumber &&
+        text(w.code) && text(w.output);
+    }
     return hasOnly(w, ["type", "scenario", "step", "element", "stepNumber", "stepCount", "code", "output"]) &&
       ["decision", "sequence", "collection"].includes(w.type) &&
       (w.type === "decision" ? hasOnly(w.scenario, ["id", "label"]) && nonEmptyText(w.scenario.id) && nonEmptyText(w.scenario.label) : w.scenario === null) &&

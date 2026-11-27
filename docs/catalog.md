@@ -139,3 +139,11 @@ A topic may instead publish a `walkthrough` of `type: "sequence"` with a nonempt
 ### Collection walkthroughs
 
 A topic may embed a `walkthrough` of type `collection`. Its nonempty `groups` have unique IDs, labels, and nonempty `elements` with globally unique IDs and nonempty `key` and `value` strings. Keys are unique within each group. Its nonempty `steps` reference element IDs and provide a one-based example `line`, an `explanation`, and optional nonempty `output`. Elements without steps remain visible. A collection element may declare `introducedAt`, a one-based step number; it is hidden until that step. Omitted values are visible from the start, and a step cannot reference an element before its introduction. Steps are ordered; output accumulates through the current step. Editable publisher sources reference a walkthrough JSON file under `content/walkthroughs/`; the builder embeds it in the immutable course document. Existing walkthrough types and publications without walkthroughs remain valid.
+
+## Recorridos con escenas SVG
+
+El formato de autoría nuevo usa `type: "svg"`. El publicador incorpora cada SVG en `walkthrough.graphics`, dentro del curso inmutable. La validación del curso comprueba el SVG y los IDs de cada paso tanto en la descarga como al restaurar un respaldo. Los iconos conservan su contrato independiente.
+
+Cada escenario elige un gráfico y define la lista de pasos. El reproductor monta únicamente los nodos y atributos que reconoce [walkthroughSvg.js](../src/walkthroughSvg.js). Las escenas usan `data-part` para identificar grupos o formas y `data-style` para adoptar los estilos del sitio. Los pasos controlan el resaltado, la animación y la visibilidad desde la escena base. `code: true` muestra el ejemplo Python con resaltado opcional y reemplazo de una línea por escenario. `output` contiene la salida completa del paso actual.
+
+Los recorridos anteriores siguen disponibles. La app compatible debe desplegarse antes que el contenido con el tipo nuevo. La habilidad `author-svg-walkthrough` y los gráficos de ejemplo viven en el publicador.

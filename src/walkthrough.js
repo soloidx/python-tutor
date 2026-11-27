@@ -1,5 +1,8 @@
+import { validateSvgWalkthrough } from "./svgWalkthroughContract.js";
+
 // Shared publication contract: all line numbers are one-based in the topic example.
 export function validateWalkthrough(value, example) {
+  if (value?.type === "svg") return validateSvgWalkthrough(value, example);
   const fail = () => { throw new Error('Catálogo inválido: recorrido inválido.'); };
   const obj = x => x && typeof x === 'object' && !Array.isArray(x);
   const text = x => typeof x === 'string' && x.trim().length > 0;
