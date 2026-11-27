@@ -35,6 +35,7 @@ function validCapture(capture, courseId, topicId) {
       "selectedOptionId",
       "selectionStatus",
       "feedback",
+      "walkthrough",
     ])
   )
     return false;
@@ -66,7 +67,20 @@ function validCapture(capture, courseId, topicId) {
   )
     return false;
 
-  if (capture.exercise === undefined) return hasOnly(capture, ["course", "topic"]);
+  if (capture.exercise === undefined) {
+    if (!hasOnly(capture, ["course", "topic", "walkthrough"])) return false;
+    if (capture.walkthrough === undefined) return true;
+    const w = capture.walkthrough;
+    return hasOnly(w, ["type", "scenario", "step", "element", "stepNumber", "stepCount", "code", "output"]) &&
+      ["decision", "sequence", "collection"].includes(w.type) &&
+      (w.type === "decision" ? hasOnly(w.scenario, ["id", "label"]) && nonEmptyText(w.scenario.id) && nonEmptyText(w.scenario.label) : w.scenario === null) &&
+      hasOnly(w.step, ["line", "element", "explanation", "output"]) &&
+      Number.isSafeInteger(w.step.line) && w.step.line > 0 && nonEmptyText(w.step.element) && text(w.step.explanation) &&
+      (w.step.output === undefined || text(w.step.output)) &&
+      (w.type === "collection" ? hasOnly(w.element, ["id", "key", "value"]) && nonEmptyText(w.element.key) && nonEmptyText(w.element.value) : hasOnly(w.element, ["id", "label"]) && nonEmptyText(w.element.label)) && w.element.id === w.step.element &&
+      Number.isSafeInteger(w.stepNumber) && w.stepNumber > 0 && Number.isSafeInteger(w.stepCount) && w.stepCount >= w.stepNumber &&
+      text(w.code) && text(w.output);
+  }
   const type = capture.exercise.type;
   if (type === undefined || type === "code") {
     if (

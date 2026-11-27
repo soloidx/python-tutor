@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { visibleWalkthrough } from './walkthroughState.js';
 
 export default function DecisionWalkthrough({ walkthrough, example, session }) {
   const [position, setPosition] = useState(session.walkthrough || { scenario: 0, step: 0 });
@@ -7,9 +8,9 @@ export default function DecisionWalkthrough({ walkthrough, example, session }) {
   const isCollection = walkthrough.type === 'collection';
   const scenario = isDecision ? walkthrough.scenarios[position.scenario] : { steps: walkthrough.steps };
   const step = scenario.steps[position.step];
-  const lines = example.split('\n');
-  if (scenario.replacement) lines[scenario.replacement.line - 1] = scenario.replacement.code;
-  const output = scenario.steps.slice(0, position.step + 1).flatMap(item => item.output ? [item.output] : []).join('\n');
+  const visible = visibleWalkthrough(walkthrough, example, position);
+  const lines = visible.code.split('\n');
+  const output = visible.output;
   return <section className="walkthrough" aria-label="Recorrido interactivo">
     <h3>{isCollection ? 'Colección' : isDecision ? 'Decisión' : 'Secuencia'}</h3>
     {isDecision && <div className="walkthrough-scenarios" aria-label="Escenarios">{walkthrough.scenarios.map((item, index) => <button type="button" key={item.id} aria-pressed={index === position.scenario} onClick={() => change({ scenario:index, step:0 })}>{item.label}</button>)}</div>}

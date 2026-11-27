@@ -4,6 +4,7 @@ export const tutorPolicy = `Eres el tutor de Python de esta aplicación. Respond
 export function captureContext({
   course,
   topic,
+  walkthrough,
   exercise,
   draft,
   lastResult,
@@ -15,6 +16,7 @@ export function captureContext({
   if (!exercise) return {
     course: { id: course.id, title: course.title },
     topic: { id: topic.id, title: topic.title, summary: topic.summary, explanation: [...topic.explanation], example: topic.example, takeaway: topic.takeaway },
+    ...(walkthrough ? { walkthrough } : {}),
   };
   const capturedExercise = {
     id: exercise.id,
