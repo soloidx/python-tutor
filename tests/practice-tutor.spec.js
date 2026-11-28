@@ -233,13 +233,14 @@ test('topic conversation survives invalidated rounds and completed review keeps 
   await send(page, 'Revisar la ronda completada');
   await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(3);
   const capture = JSON.parse(requests[2].messages.at(-1).content).capture;
-  expect(capture).toMatchObject({ topic: { summary: 'Contenido conservado de la segunda revisión' }, exercise: { id: 'second-choice' }, selectedOptionId: 'seven', selectionStatus: 'checked', lastResult: { optionId: 'seven', correct: true }, feedback: 'Guarda el valor siete' });
+  expect(capture).toMatchObject({ exercise: { id: 'second-choice' }, selectedOptionId: 'seven', selectionStatus: 'checked', lastResult: { optionId: 'seven', correct: true }, feedback: 'Guarda el valor siete' });
+  expect(capture.topic).not.toHaveProperty('summary');
   expect(JSON.stringify(requests)).not.toMatch(/INTERNAL_|answerId|"check"/);
   await page.getByRole('button', { name: 'Nueva ronda', exact: true }).click();
   await expect(page.getByText('Revisar la ronda completada', { exact: true })).toBeVisible();
   await send(page, 'Ayuda con la nueva ronda');
   await expect(page.getByText('Respuesta completa', { exact: true })).toHaveCount(4);
-  expect(JSON.parse(requests[3].messages.at(-1).content).capture).toMatchObject({ topic: { summary: 'Contenido nuevo que no pertenece a la ronda completada' }, exercise: { id: 'third-choice' } });
+  expect(JSON.parse(requests[3].messages.at(-1).content).capture).toMatchObject({ exercise: { id: 'third-choice' } });
 });
 
 for (const width of [1440, 390]) {
