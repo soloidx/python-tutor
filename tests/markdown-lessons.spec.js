@@ -120,3 +120,26 @@ test('mixed examples and repeated walkthroughs preserve order and independent st
   await expect(players.nth(2).getByLabel('Paso del recorrido')).toHaveText('1 / 2');
   await expect(players.nth(2).getByRole('button',{name:'A',exact:true})).toHaveAttribute('aria-pressed','true');
 });
+
+test('lesson players restore their own state and alert markers in fenced code stay literal', async ({page, context}) => {
+  const catalog = publication('lesson-player-state');
+  updateCourse(catalog, 'python-fundamentos', course => {
+    const topic = course.topics[0]; delete topic.explanation; delete topic.example; delete topic.takeaway;
+    const graphics={scene:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" data-part="box"/></svg>'};
+    const walkthrough={type:'svg',graphics,scenarios:[{id:'a',label:'A',graphic:'scene',steps:[{explanation:'Primero'},{explanation:'Segundo'}]}]};
+    const other={type:'svg',graphics,scenarios:[{id:'a',label:'A',graphic:'scene',steps:[{explanation:'Único'}]}]};
+    topic.lessons=[
+      {id:'one',title:'Primera',markdown:'# Primera\n\n```text\n> [!TIP]\n```\n\n> [!TIP]\n> Consejo real.\n\n[Visual](visual.json)',walkthroughs:[{code:null,walkthrough}]},
+      {id:'two',title:'Segunda',markdown:'# Segunda\n\n[Visual](visual.json)',walkthroughs:[{code:null,walkthrough:other}]},
+    ];
+  });
+  await serveCatalog(context,catalog); await page.goto('/'); await enterCourse(page);
+  await expect(page.locator('pre').filter({hasText:'> [!TIP]'})).toBeVisible();
+  await expect(page.getByText('Consejo Consejo real.', {exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Siguiente',exact:true}).click();
+  await expect(page.getByText('Segundo',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Segunda',exact:true}).click();
+  await expect(page.getByText('Único',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Primera',exact:true}).click();
+  await expect(page.getByText('Segundo',{exact:true})).toBeVisible();
+});

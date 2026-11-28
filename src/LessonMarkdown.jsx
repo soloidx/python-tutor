@@ -9,17 +9,22 @@ const labels = {NOTE:'Nota', TIP:'Consejo', IMPORTANT:'Importante', WARNING:'Adv
 export default function LessonMarkdown({lesson, session}) {
   const occurrences = lessonOccurrences(lesson.markdown);
   const walkthroughs = lesson.walkthroughs || [];
-  const markdown = lesson.markdown.replace(/^([ \t]*>\s*)\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/gm, (_, prefix, type) => `${prefix}**${labels[type]}**`);
-  // Match nodes by their original source positions; alert title expansion changes offsets,
-  // so derive positions again after the Markdown transformation.
-  const transformed = lessonOccurrences(markdown);
   function walkthroughPlugin() {
     return tree => {
       function visit(node) {
         if (!node.children) return;
+        if (node.type === 'blockquote') {
+          const paragraph = node.children[0];
+          const first = paragraph?.type === 'paragraph' && paragraph.children[0];
+          const match = first?.type === 'text' && first.value.match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](?:\n|$)/);
+          if (match) {
+            const rest = first.value.slice(match[0].length);
+            paragraph.children.splice(0, 1, {type:'strong', children:[{type:'text', value:labels[match[1]]}]}, ...(rest ? [{type:'text', value:`\n${rest}`}] : []));
+          }
+        }
         for (let i = 0; i < node.children.length; i++) {
           const child = node.children[i];
-          const index = transformed.findIndex(item => item.start === child.position?.start.offset);
+          const index = occurrences.findIndex(item => item.start === child.position?.start.offset);
           if (index >= 0) {
             const item = walkthroughs[index];
             if (item.walkthrough.code && occurrences[index].codeStart !== null) { node.children.splice(i - 1, 1); i--; }
@@ -35,6 +40,6 @@ export default function LessonMarkdown({lesson, session}) {
     const item = walkthroughs[Number(index)];
     const key = `${lesson.id}:${index}`;
     session.lessonWalkthroughs[key] ||= {};
-    return <SvgWalkthrough walkthrough={item.walkthrough} example={item.code || ''} session={session.lessonWalkthroughs[key]}/>;
-  }}}>{markdown}</Markdown>;
+    return <SvgWalkthrough key={key} walkthrough={item.walkthrough} example={item.code || ''} session={session.lessonWalkthroughs[key]}/>;
+  }}}>{lesson.markdown}</Markdown>;
 }
