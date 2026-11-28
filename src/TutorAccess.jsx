@@ -156,7 +156,7 @@ export function TutorPanel({
             .map((exchange) => (
               <article key={exchange.id} className="tutor-exchange">
                 <p>
-                  <strong>{exchange.capture.exercise?.title || exchange.capture.topic.title}</strong>
+                  <strong>{exchange.capture.exercise?.title || exchange.capture.lesson?.title || exchange.capture.topic.title}</strong>
                 </p>
                 <p className="tutor-question">{exchange.message}</p>
                 {exchange.attempts.map((attempt) => (
