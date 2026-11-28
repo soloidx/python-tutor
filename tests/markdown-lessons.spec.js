@@ -72,7 +72,7 @@ test('linked SVG walkthrough renders its code from the saved publication', async
     delete topic.explanation; delete topic.example; delete topic.takeaway;
     const code = 'x = 25\nprint(x)';
     const walkthrough = {type:'svg', code:true, graphics:{scene:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" data-part="box"/></svg>'}, scenarios:[{id:'a',label:'A',graphic:'scene',steps:[{line:2,explanation:'Muestra x',output:'25'}]}]};
-    topic.lessons = [{id:'one',title:'Ejemplo',markdown:'# Ejemplo\n\n```python\nx = 25\nprint(x)\n```\n\n[Recorrido](../walkthroughs/example.json)',walkthroughs:[{code,walkthrough}]}];
+    topic.lessons = [{id:'one',title:'Ejemplo',markdown:'# Ejemplo\n\n```python\nx = 25\nprint(x)\n```\n\n[Recorrido][demo]\n\n[demo]: ../walkthroughs/example.json',walkthroughs:[{code,walkthrough}]}];
   });
   await context.unrouteAll({behavior:'wait'}); await serveCatalog(context,catalog);
   await page.goto('/'); await enterCourse(page);
