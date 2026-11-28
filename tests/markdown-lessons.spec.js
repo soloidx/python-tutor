@@ -95,3 +95,28 @@ test('an invalid linked scene leaves the previous publication available', async 
   await context.unrouteAll({behavior:'wait'});await serveCatalog(context,invalid);await page.reload();await enterCourse(page);
   await expect(page.getByText('Una variable es un nombre que guarda un valor.')).toBeVisible();
 });
+
+test('mixed examples and repeated walkthroughs preserve order and independent state', async ({page, context}) => {
+  const catalog = publication('multiple-lesson-walkthroughs');
+  updateCourse(catalog, 'python-fundamentos', course => {
+    const topic = course.topics[0]; delete topic.explanation; delete topic.example; delete topic.takeaway;
+    const graphics={scene:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" data-part="box"/></svg>'};
+    const walkthrough={type:'svg',code:true,graphics,scenarios:[{id:'a',label:'A',graphic:'scene',steps:[{line:1,explanation:'Primer paso'},{line:2,explanation:'Segundo paso'}]},{id:'b',label:'B',graphic:'scene',steps:[{line:1,explanation:'Otro escenario'},{line:2,explanation:'Final'}]}]};
+    const visual={type:'svg',graphics,scenarios:[{id:'a',label:'A',graphic:'scene',steps:[{explanation:'Solo visual'}]}]};
+    const code='x = 2\nprint(x)';
+    topic.lessons=[{id:'one',title:'Mezcla',markdown:'# Mezcla\n\n```python\nprint("estático")\n```\n\n[Visual](visual.json)\n\n```python\nx = 2\nprint(x)\n```\n\n[Uno](demo.json)\n\n```python\nx = 2\nprint(x)\n```\n\n[Dos](demo.json)',walkthroughs:[{code:null,walkthrough:visual},{code,walkthrough},{code,walkthrough}]}];
+  });
+  await serveCatalog(context,catalog); await page.goto('/'); await enterCourse(page);
+  const players=page.getByRole('region',{name:'Recorrido interactivo'});
+  await expect(players).toHaveCount(3);
+  await expect(page.locator('pre').filter({hasText:'estático'})).toBeVisible();
+  await expect(players.nth(0).getByText('Solo visual')).toBeVisible();
+  expect(await page.locator('pre').filter({hasText:'estático'}).evaluate((node) => Boolean(node.compareDocumentPosition(document.querySelector('[aria-label="Recorrido interactivo"]')) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  await expect(players.nth(1).getByLabel('Código del recorrido')).toContainText('x = 2');
+  await expect(players.nth(2).getByLabel('Código del recorrido')).toContainText('x = 2');
+  await players.nth(1).getByRole('button',{name:'B',exact:true}).click();
+  await players.nth(1).getByRole('button',{name:'Siguiente',exact:true}).click();
+  await expect(players.nth(1).getByLabel('Paso del recorrido')).toHaveText('2 / 2');
+  await expect(players.nth(2).getByLabel('Paso del recorrido')).toHaveText('1 / 2');
+  await expect(players.nth(2).getByRole('button',{name:'A',exact:true})).toHaveAttribute('aria-pressed','true');
+});
