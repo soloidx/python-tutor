@@ -1029,12 +1029,12 @@ function LearningWorkspace({
   setTutorOpen,
 }) {
   const [exerciseIndex, setExerciseIndexState] = useState(session.exerciseIndex);
-  const [tab, setTabState] = useState(topic.lessons ? (lessonLocation.lessonTab || "lesson") : session.tab);
+  const [tab, setTabState] = useState(lessonLocation.lessonTab || "lesson");
   const lesson = topic.lessons?.find(item => item.id === lessonLocation.lessonId) || topic.lessons?.[0];
-  useEffect(() => { if (topic.lessons) setTabState(lessonLocation.lessonTab || "lesson"); }, [topic, lessonLocation.lessonTab]);
+  useEffect(() => { setTabState(lessonLocation.lessonTab || "lesson"); }, [topic, lessonLocation.lessonTab]);
   const [, refreshExercise] = useState(0);
   const previousLearningTab = useRef(learningTab);
-  const setTab = (value) => { session.tab = value; setTabState(value); setLearningTab(value); if (topic.lessons && value !== tab) navigateLesson({ lessonTab: value, lessonId: lesson.id }); };
+  const setTab = (value) => { session.tab = value; setTabState(value); setLearningTab(value); if (value !== tab) navigateLesson({ lessonTab: value, lessonId: lesson?.id }); };
   const setExerciseIndex = (value) => { session.exerciseIndex = value; setExerciseIndexState(value); };
   useEffect(() => {
     if (previousLearningTab.current !== learningTab && learningTab === "tutor") setTutorOpen(true);
