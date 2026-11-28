@@ -83,3 +83,15 @@ test('linked SVG walkthrough renders its code from the saved publication', async
   await page.reload(); await enterCourse(page);
   await expect(page.getByLabel('Código del recorrido')).toContainText('print(x)');
 });
+
+test('an invalid linked scene leaves the previous publication available', async ({page, context}) => {
+  await context.unrouteAll({behavior:'wait'}); await serveCatalog(context,publication('valid-before-svg'));
+  await page.goto('/'); await enterCourse(page);
+  const invalid=publication('invalid-svg');
+  updateCourse(invalid,'python-fundamentos',course=>{
+    const topic=course.topics[0]; delete topic.explanation;delete topic.example;delete topic.takeaway;
+    topic.lessons=[{id:'one',title:'Ejemplo',markdown:'# Ejemplo\n\n```python\nprint(1)\n```\n\n[Recorrido](../walkthroughs/example.json)',walkthroughs:[{code:'print(1)',walkthrough:{type:'svg',code:true,graphics:{scene:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><script>alert(1)</script></svg>'},scenarios:[{id:'a',label:'A',graphic:'scene',steps:[{line:1,explanation:'Muestra'}]}]}}]}];
+  });
+  await context.unrouteAll({behavior:'wait'});await serveCatalog(context,invalid);await page.reload();await enterCourse(page);
+  await expect(page.getByText('Una variable es un nombre que guarda un valor.')).toBeVisible();
+});
