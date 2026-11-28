@@ -251,7 +251,7 @@ test("omits oldest complete captures to fit capacity while preserving current an
   );
   if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();
   await page.getByRole("tab", { name: /Ejercicios/ }).click();
-  await page.getByLabel("Código Python").fill("# original " + "a".repeat(3000));
+  await page.getByLabel("Código Python").fill("# original " + "a".repeat(4000));
   await tutor(page);
   await send(page, "Pregunta antigua", 1);
   if (await page.getByRole("button", { name: "Cerrar Tutor" }).isVisible()) await page.getByRole("button", { name: "Cerrar Tutor" }).click();

@@ -4,7 +4,7 @@ export const tutorPolicy = `Eres el tutor de Python de esta aplicación. Respond
 export function captureContext({
   course,
   topic,
-  walkthrough,
+  lesson,
   exercise,
   draft,
   lastResult,
@@ -15,8 +15,8 @@ export function captureContext({
 }) {
   if (!exercise) return {
     course: { id: course.id, title: course.title },
-    topic: { id: topic.id, title: topic.title, summary: topic.summary, explanation: [...(topic.explanation || [])], example: topic.example || "", takeaway: topic.takeaway },
-    ...(walkthrough ? { walkthrough } : {}),
+    topic: lesson ? { id: topic.id, title: topic.title } : { id: topic.id, title: topic.title, summary: topic.summary || "", explanation: [...(topic.explanation || [])], example: topic.example || "", takeaway: topic.takeaway || "" },
+    ...(lesson ? { lesson: { id: lesson.id, title: lesson.title, markdown: lesson.markdown } } : {}),
   };
   const capturedExercise = {
     id: exercise.id,
@@ -32,14 +32,7 @@ export function captureContext({
     }));
     return {
       course: { id: course.id, title: course.title },
-      topic: {
-        id: topic.id,
-        title: topic.title,
-        summary: topic.summary,
-        explanation: [...(topic.explanation || [])],
-        example: topic.example || "",
-        takeaway: topic.takeaway || "",
-      },
+      topic: { id: topic.id, title: topic.title },
       exercise: capturedExercise,
       selectedOptionId: selectionStatus === "none" ? null : selectedOptionId,
       selectionStatus,
@@ -54,14 +47,7 @@ export function captureContext({
   }
   return {
     course: { id: course.id, title: course.title },
-    topic: {
-      id: topic.id,
-      title: topic.title,
-      summary: topic.summary,
-      explanation: [...(topic.explanation || [])],
-      example: topic.example || "",
-      takeaway: topic.takeaway || "",
-    },
+    topic: { id: topic.id, title: topic.title },
     exercise: capturedExercise,
     draft,
     lastResult:

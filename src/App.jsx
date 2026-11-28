@@ -3,7 +3,6 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import SvgWalkthrough from "./SvgWalkthrough.jsx";
 import DecisionWalkthrough from "./DecisionWalkthrough.jsx";
-import { visibleWalkthrough } from "./walkthroughState.js";
 import { learnerTransaction, inspectLegacyConflict, preserveLegacyConflict, readLegacyRecoveries } from "./learnerStore.js";
 import { removeHistory, historyChanged, storedCourseIds } from "./tutorHistory.js";
 import React, {
@@ -1192,7 +1191,7 @@ function LearningWorkspace({
               topicTitle={topic.title}
               closeLabel="Cerrar Tutor"
               draftSession={session}
-              capture={() => captureContext({ course, topic, ...(tab === "lesson" ? { walkthrough: topic.walkthrough && visibleWalkthrough(topic.walkthrough, topic.example, session.walkthrough) } : { exercise, ...context }) })}
+              capture={() => captureContext({ course, topic, ...(tab === "lesson" ? { lesson } : { exercise, ...context }) })}
             />
           </TopicTutor>
         </div>
