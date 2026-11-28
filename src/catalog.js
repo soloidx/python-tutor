@@ -1,3 +1,4 @@
+import { lessonOccurrences } from './lesson-walkthroughs.js';
 import { validateWalkthrough } from "./walkthrough.js";
 import { validateSvgIcon } from "./svgIcon.js";
 // One predetermined public source; publishing and operating it are external to this app.
@@ -160,8 +161,17 @@ export function validateCourse(course, expectedId) {
       for (const lesson of topic.lessons) {
         object(lesson, "lesson");
         slug(lesson.id, "lesson.id");
-        requireValue(Object.keys(lesson).every(key => ["id", "title", "markdown"].includes(key)), "campos de lección inválidos");
+        requireValue(Object.keys(lesson).every(key => ["id", "title", "markdown", "walkthroughs"].includes(key)), "campos de lección inválidos");
         fields(lesson, ["title", "markdown"], "lesson");
+          const occurrences = lessonOccurrences(lesson.markdown);
+          const walkthroughs = lesson.walkthroughs ?? [];
+          requireValue(Array.isArray(walkthroughs) && walkthroughs.length === occurrences.length, "asociaciones de recorrido inválidas");
+          for (let i = 0; i < occurrences.length; i++) {
+            const item = walkthroughs[i], occurrence = occurrences[i];
+            requireValue(item && typeof item === "object" && Object.keys(item).every(key => ["code", "walkthrough"].includes(key)) && item.walkthrough?.type === "svg", "asociación de recorrido inválida");
+            requireValue(item.walkthrough.code === true ? occurrence.code !== null && item.code === occurrence.code : item.code === null, "código de recorrido inválido");
+            validateWalkthrough(item.walkthrough, item.code || "");
+          }
       }
       unique(topic.lessons.map(lesson => lesson.id), "topic.lessons");
     } else {

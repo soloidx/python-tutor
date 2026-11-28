@@ -64,3 +64,22 @@ test('a mixed update activates on reload and its saved Markdown works offline', 
   await page.reload(); await enterCourse(page);
   await expect(page.getByText('Contenido guardado.')).toBeVisible();
 });
+
+test('linked SVG walkthrough renders its code from the saved publication', async ({page, context}) => {
+  const catalog = publication('lesson-svg');
+  updateCourse(catalog, 'python-fundamentos', course => {
+    const topic = course.topics[0];
+    delete topic.explanation; delete topic.example; delete topic.takeaway;
+    const code = 'x = 25\nprint(x)';
+    const walkthrough = {type:'svg', code:true, graphics:{scene:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" data-part="box"/></svg>'}, scenarios:[{id:'a',label:'A',graphic:'scene',steps:[{line:2,explanation:'Muestra x',output:'25'}]}]};
+    topic.lessons = [{id:'one',title:'Ejemplo',markdown:'# Ejemplo\n\n```python\nx = 25\nprint(x)\n```\n\n[Recorrido](../walkthroughs/example.json)',walkthroughs:[{code,walkthrough}]}];
+  });
+  await context.unrouteAll({behavior:'wait'}); await serveCatalog(context,catalog);
+  await page.goto('/'); await enterCourse(page);
+  await expect(page.getByLabel('Código del recorrido')).toContainText('print(x)');
+  await expect(page.getByText('Muestra x')).toBeVisible();
+  await expect(page.getByRole('link',{name:'Recorrido'})).toHaveCount(0);
+  await context.unrouteAll({behavior:'wait'}); await context.route('https://www.ider.ninja/python-tutor-content/**', route => route.abort());
+  await page.reload(); await enterCourse(page);
+  await expect(page.getByLabel('Código del recorrido')).toContainText('print(x)');
+});
