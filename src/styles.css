@@ -2134,3 +2134,8 @@ textarea:focus-visible {
 .svg-walkthrough-readout p { margin-bottom: 0; }
 .svg-walkthrough-readout .walkthrough-output { margin-top: .6rem; }
 @container (max-width: 39rem) { .svg-walkthrough-scene.has-code { grid-template-columns: minmax(0, 1fr); } }
+
+.lesson-selector { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.5rem; }
+.lesson-selector button { padding: .55rem .8rem; border: 1px solid #cbd5e1; border-radius: .5rem; background: white; text-align: left; }
+.lesson-selector button[aria-current] { border-color: #4f46e5; background: #eef2ff; font-weight: 700; }
+.lesson-content blockquote { border-left: 4px solid #6366f1; padding: .25rem 1rem; margin: 1rem 0; background: #f5f7ff; }

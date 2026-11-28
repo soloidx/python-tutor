@@ -1,6 +1,8 @@
+import LessonMarkdown from './LessonMarkdown.jsx';
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import SvgWalkthrough from "./SvgWalkthrough.jsx";
 import DecisionWalkthrough from "./DecisionWalkthrough.jsx";
-import { visibleWalkthrough } from "./walkthroughState.js";
 import { learnerTransaction, inspectLegacyConflict, preserveLegacyConflict, readLegacyRecoveries } from "./learnerStore.js";
 import { removeHistory, historyChanged, storedCourseIds } from "./tutorHistory.js";
 import React, {
@@ -259,6 +261,8 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
       screen: "learn",
       courseId: selectedCourse.id,
       topicId: selectedTopic.id,
+      lessonId: selectedTopic.lessons?.[0]?.id,
+      lessonTab: "lesson",
     });
   }
   function startCourse(selectedCourse) {
@@ -890,6 +894,8 @@ export default function App({ publication, onPersonalIncorporated, personalExecu
                     if (!topicSessions.current.has(key)) topicSessions.current.set(key, { tab: "lesson", exerciseIndex: 0, exercises: {} });
                     return topicSessions.current.get(key);
                   })()}
+                  lessonLocation={location}
+                  navigateLesson={navigate}
                   learningTab={learningTab}
                   setLearningTab={setLearningTab}
                   tutorOpen={tutorOpen}
@@ -1013,6 +1019,8 @@ function LearningWorkspace({
   access,
   conversation,
   session,
+  lessonLocation,
+  navigateLesson,
   learningTab,
   setLearningTab,
   onConfigure,
@@ -1021,10 +1029,12 @@ function LearningWorkspace({
   setTutorOpen,
 }) {
   const [exerciseIndex, setExerciseIndexState] = useState(session.exerciseIndex);
-  const [tab, setTabState] = useState(session.tab);
+  const [tab, setTabState] = useState(lessonLocation.lessonTab || "lesson");
+  const lesson = topic.lessons?.find(item => item.id === lessonLocation.lessonId) || topic.lessons?.[0];
+  useEffect(() => { setTabState(lessonLocation.lessonTab || "lesson"); }, [topic, lessonLocation.lessonTab]);
   const [, refreshExercise] = useState(0);
   const previousLearningTab = useRef(learningTab);
-  const setTab = (value) => { session.tab = value; setTabState(value); setLearningTab(value); };
+  const setTab = (value) => { session.tab = value; setTabState(value); setLearningTab(value); if (value !== tab) navigateLesson({ lessonTab: value, lessonId: lesson?.id }); };
   const setExerciseIndex = (value) => { session.exerciseIndex = value; setExerciseIndexState(value); };
   useEffect(() => {
     if (previousLearningTab.current !== learningTab && learningTab === "tutor") setTutorOpen(true);
@@ -1146,7 +1156,10 @@ function LearningWorkspace({
                   {topic.duration}
                 </span>
               </div>
-              <div className="lesson-content">
+              {lesson ? <div className="lesson-content">
+                <nav aria-label="Lecciones" className="lesson-selector">{topic.lessons.map(item => <button key={item.id} aria-current={item.id === lesson.id ? "page" : undefined} onClick={() => { if (item.id !== lesson.id) navigateLesson({ lessonId: item.id, lessonTab: "lesson" }); }}>{item.title}</button>)}</nav>
+                <LessonMarkdown lesson={lesson} session={session} />
+              </div> : <div className="lesson-content">
                 <h2>{topic.title}</h2>
                 <p className="lesson-intro">{topic.summary}</p>
                 {topic.explanation.map((paragraph) => (
@@ -1162,7 +1175,7 @@ function LearningWorkspace({
                   <Icon name="bulb" />
                   <p>{topic.takeaway}</p>
                 </div>
-              </div>
+              </div>}
             </div>
           </section>
           <div role="tabpanel" tabIndex={0} id="exercises-panel" aria-labelledby="exercises-tab" hidden={tab !== "exercises"}>{content}</div>
@@ -1178,7 +1191,7 @@ function LearningWorkspace({
               topicTitle={topic.title}
               closeLabel="Cerrar Tutor"
               draftSession={session}
-              capture={() => captureContext({ course, topic, ...(tab === "lesson" ? { walkthrough: topic.walkthrough && visibleWalkthrough(topic.walkthrough, topic.example, session.walkthrough) } : { exercise, ...context }) })}
+              capture={() => captureContext({ course, topic, ...(tab === "lesson" ? { lesson } : { exercise, ...context }) })}
             />
           </TopicTutor>
         </div>

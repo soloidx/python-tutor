@@ -22,7 +22,8 @@ test("the lesson and exercises occupy accessible tabs", async ({ page }) => {
   await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
   await expect(lesson).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: /01 Valores y variables/ }).click();
-  await expect(exercises).toHaveAttribute("aria-selected", "true");
+  await expect(lesson).toHaveAttribute("aria-selected", "true");
+  await exercises.click();
   await expect(page.getByLabel("Código Python")).toHaveValue("# mi borrador");
 });
 
@@ -60,7 +61,25 @@ test("mobile learners can complete a choice exercise and return to their draft",
   await expect(page.getByRole("tab", { name: /Ejercicios \(1\/2\)/ })).toBeVisible();
   await page.getByRole("button", { name: /02 Expresiones y salida/ }).click();
   await page.getByRole("button", { name: /01 Valores y variables/ }).click();
+  await page.getByRole("tab", { name: /Ejercicios/ }).click();
   await expect(page.getByRole("radio", { name: "Guarda 7 en edad" })).toBeChecked();
   await page.getByRole("button", { name: /1\. / }).click();
   await expect(page.getByLabel("Código Python")).toHaveValue("# borrador móvil");
+});
+
+test('legacy topic tab history restores each visit and explicit selection starts at the lesson', async ({ page }) => {
+  await page.goto('/'); await enterCourse(page);
+  const lesson = page.getByRole('tab', {name:'Lección'});
+  const exercises = page.getByRole('tab', {name:/Ejercicios/});
+  await exercises.click();
+  await page.getByRole('button', {name:/02 Expresiones y salida/}).click();
+  await expect(lesson).toHaveAttribute('aria-selected', 'true');
+  await page.goBack();
+  await expect(exercises).toHaveAttribute('aria-selected', 'true');
+  await page.goBack();
+  await expect(lesson).toHaveAttribute('aria-selected', 'true');
+  await page.goForward();
+  await expect(exercises).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('button', {name:/01 Valores y variables/}).click();
+  await expect(lesson).toHaveAttribute('aria-selected', 'true');
 });

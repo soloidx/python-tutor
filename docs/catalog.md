@@ -147,3 +147,15 @@ El formato de autoría nuevo usa `type: "svg"`. El publicador incorpora cada SVG
 Cada escenario elige un gráfico y define la lista de pasos. El reproductor monta únicamente los nodos y atributos que reconoce [walkthroughSvg.js](../src/walkthroughSvg.js). Las escenas usan `data-part` para identificar grupos o formas y `data-style` para adoptar los estilos del sitio. Los pasos controlan el resaltado, la animación y la visibilidad desde la escena base. `code: true` muestra el ejemplo Python con resaltado opcional y reemplazo de una línea por escenario. `output` contiene la salida completa del paso actual.
 
 Los recorridos anteriores siguen disponibles. La app compatible debe desplegarse antes que el contenido con el tipo nuevo. La habilidad `author-svg-walkthrough` y los gráficos de ejemplo viven en el publicador.
+
+## Markdown lessons
+
+A topic may use an ordered, nonempty `lessons` list in place of the legacy `explanation`, `example`, `takeaway` and `walkthrough` fields. Each published lesson has a stable topic-local slug `id`, a nonempty `title` and its complete `markdown` text. A course can mix lesson topics and legacy topics. IDs are independent of titles, filenames and list order. The schema remains version 1; the exact course bytes, including Markdown, are checked and saved with the complete publication.
+
+In the publisher's editable source, each lesson is `{ "id": "...", "file": "lessons/....md" }`. The file must resolve within `content/`; its first level-one heading supplies the title. Build and check reject missing files, missing titles, invalid or duplicate IDs, and topics mixing formats. Markdown is rendered without raw HTML, and NOTE, TIP, IMPORTANT, WARNING and CAUTION blockquotes receive Spanish labels.
+
+Before publishing, verify the compatible Tutor against an original historical backup and the mixed course. Then validate the publisher sources, build and check, upload the new immutable course files, and update the catalog last. Keep the historical immutable files and previous catalog so the index can be restored. The Tutor saves a valid update for the next reload and preserves the last valid backup if validation or integrity fails.
+
+## Recorridos en lecciones Markdown
+
+Una lección puede vincular un recorrido SVG con un enlace relativo al JSON, como único contenido de un párrafo. Si `code` es `true`, el párrafo debe seguir inmediatamente a un bloque cercado `python` del mismo nivel; cada aparición valida sus líneas y reemplazos contra ese bloque. Los recorridos sin código dejan intacto cualquier bloque anterior. El publicador resuelve el enlace dentro del árbol de contenido, incorpora el recorrido y sus gráficos en `lesson.walkthroughs`, en orden de aparición, y conserva el Markdown original. Cada entrada contiene `code` (el texto vinculado o `null`) y `walkthrough`. El curso y su respaldo incluyen todos los datos; una asociación o escena inválida rechaza la publicación completa. El editor usa la misma lectura y permite elegir lección y aparición.

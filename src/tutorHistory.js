@@ -36,6 +36,7 @@ function validCapture(capture, courseId, topicId) {
       "selectionStatus",
       "feedback",
       "walkthrough",
+      "lesson",
     ])
   )
     return false;
@@ -55,11 +56,9 @@ function validCapture(capture, courseId, topicId) {
     ]) ||
     capture.topic.id !== topicId ||
     !nonEmptyText(capture.topic.title) ||
-    !text(capture.topic.summary) ||
-    !Array.isArray(capture.topic.explanation) ||
-    !capture.topic.explanation.every(text) ||
-    !text(capture.topic.example) ||
-    !text(capture.topic.takeaway) ||
+    !(hasOnly(capture.topic, ["id", "title"]) ||
+      (text(capture.topic.summary) && Array.isArray(capture.topic.explanation) &&
+       capture.topic.explanation.every(text) && text(capture.topic.example) && text(capture.topic.takeaway))) ||
     (capture.exercise !== undefined && (!record(capture.exercise) ||
     !nonEmptyText(capture.exercise.id) ||
     !nonEmptyText(capture.exercise.title) ||
@@ -68,7 +67,8 @@ function validCapture(capture, courseId, topicId) {
     return false;
 
   if (capture.exercise === undefined) {
-    if (!hasOnly(capture, ["course", "topic", "walkthrough"])) return false;
+    if (!hasOnly(capture, ["course", "topic", "walkthrough", "lesson"])) return false;
+    if (capture.lesson !== undefined) return capture.walkthrough === undefined && hasOnly(capture.lesson, ["id", "title", "markdown"]) && nonEmptyText(capture.lesson.id) && nonEmptyText(capture.lesson.title) && text(capture.lesson.markdown);
     if (capture.walkthrough === undefined) return true;
     const w = capture.walkthrough;
     if (w?.type === "svg") {
