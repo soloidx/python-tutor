@@ -1,3 +1,4 @@
+import LessonMarkdown from './LessonMarkdown.jsx';
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import SvgWalkthrough from "./SvgWalkthrough.jsx";
@@ -1157,7 +1158,7 @@ function LearningWorkspace({
               </div>
               {lesson ? <div className="lesson-content">
                 <nav aria-label="Lecciones" className="lesson-selector">{topic.lessons.map(item => <button key={item.id} aria-current={item.id === lesson.id ? "page" : undefined} onClick={() => { if (item.id !== lesson.id) navigateLesson({ lessonId: item.id, lessonTab: "lesson" }); }}>{item.title}</button>)}</nav>
-                <Markdown remarkPlugins={[remarkGfm]} skipHtml disallowedElements={["img"]}>{lesson.markdown.replace(/^([ \t]*>\s*)\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/gm, (_, prefix, type) => `${prefix}**${({NOTE:"Nota",TIP:"Consejo",IMPORTANT:"Importante",WARNING:"Advertencia",CAUTION:"Precaución"})[type]}**`)}</Markdown>
+                <LessonMarkdown lesson={lesson} session={session} />
               </div> : <div className="lesson-content">
                 <h2>{topic.title}</h2>
                 <p className="lesson-intro">{topic.summary}</p>
