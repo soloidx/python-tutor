@@ -152,13 +152,24 @@ export function validateCourse(course, expectedId) {
     object(topic, "topic");
     slug(topic.id, "topic.id");
     validateIcon(topic.icon);
-    fields(topic, ["title", "summary", "example", "takeaway"], "topic");
+    fields(topic, ["title", "summary"], "topic");
     if (topic.duration !== undefined) text(topic.duration, "topic.duration");
-    list(topic.explanation, "topic.explanation");
-    topic.explanation.forEach((paragraph) =>
-      text(paragraph, "topic.explanation"),
-    );
-    if (topic.walkthrough !== undefined) validateWalkthrough(topic.walkthrough, topic.example);
+    if (topic.lessons !== undefined) {
+      absent(topic, ["explanation", "example", "takeaway", "walkthrough"], "topic");
+      list(topic.lessons, "topic.lessons");
+      for (const lesson of topic.lessons) {
+        object(lesson, "lesson");
+        slug(lesson.id, "lesson.id");
+        requireValue(Object.keys(lesson).every(key => ["id", "title", "markdown"].includes(key)), "campos de lección inválidos");
+        fields(lesson, ["title", "markdown"], "lesson");
+      }
+      unique(topic.lessons.map(lesson => lesson.id), "topic.lessons");
+    } else {
+      fields(topic, ["example", "takeaway"], "topic");
+      list(topic.explanation, "topic.explanation");
+      topic.explanation.forEach((paragraph) => text(paragraph, "topic.explanation"));
+      if (topic.walkthrough !== undefined) validateWalkthrough(topic.walkthrough, topic.example);
+    }
     list(topic.exercises, "topic.exercises");
     for (const exercise of topic.exercises) {
       object(exercise, "exercise");

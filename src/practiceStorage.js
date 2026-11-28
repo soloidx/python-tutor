@@ -33,9 +33,9 @@ function snapshotEntry({ course, topic, exercise }) {
       id: topic.id,
       title: topic.title,
       summary: topic.summary,
-      explanation: [...topic.explanation],
-      example: topic.example,
-      takeaway: topic.takeaway,
+      explanation: [...(topic.explanation || [])],
+      example: topic.example || "",
+      takeaway: topic.takeaway || "",
     },
     exercise: {
       id: exercise.id,

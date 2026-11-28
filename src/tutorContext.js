@@ -15,7 +15,7 @@ export function captureContext({
 }) {
   if (!exercise) return {
     course: { id: course.id, title: course.title },
-    topic: { id: topic.id, title: topic.title, summary: topic.summary, explanation: [...topic.explanation], example: topic.example, takeaway: topic.takeaway },
+    topic: { id: topic.id, title: topic.title, summary: topic.summary, explanation: [...(topic.explanation || [])], example: topic.example || "", takeaway: topic.takeaway },
     ...(walkthrough ? { walkthrough } : {}),
   };
   const capturedExercise = {
@@ -36,9 +36,9 @@ export function captureContext({
         id: topic.id,
         title: topic.title,
         summary: topic.summary,
-        explanation: [...topic.explanation],
-        example: topic.example,
-        takeaway: topic.takeaway,
+        explanation: [...(topic.explanation || [])],
+        example: topic.example || "",
+        takeaway: topic.takeaway || "",
       },
       exercise: capturedExercise,
       selectedOptionId: selectionStatus === "none" ? null : selectedOptionId,
@@ -58,9 +58,9 @@ export function captureContext({
       id: topic.id,
       title: topic.title,
       summary: topic.summary,
-      explanation: [...topic.explanation],
-      example: topic.example,
-      takeaway: topic.takeaway,
+      explanation: [...(topic.explanation || [])],
+      example: topic.example || "",
+      takeaway: topic.takeaway || "",
     },
     exercise: capturedExercise,
     draft,
